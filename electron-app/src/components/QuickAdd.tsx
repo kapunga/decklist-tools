@@ -1,29 +1,18 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Plus, Loader2, Minus } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { useStore } from '@/hooks/useStore'
 import { autocomplete, searchCardByName } from '@/lib/scryfall'
 import { AUTOCOMPLETE } from '@/lib/constants'
-import type { DeckCard, CardRole, ScryfallCard } from '@/types'
+import { CardAddModal } from '@/components/CardAddModal'
+import type { DeckCard, CardRole, ScryfallCard, DeckFormat, CustomRoleDefinition } from '@/types'
+import { generateDeckCardId } from '@/types'
 
 interface QuickAddProps {
   deckId: string
+  format: DeckFormat
+  colorIdentity?: string[]  // For commander format filtering
+  customRoles?: CustomRoleDefinition[]
 }
 
 interface DropdownState {
@@ -32,27 +21,20 @@ interface DropdownState {
   isVisible: boolean
 }
 
-interface PendingCard {
-  name: string
-  scryfallCard: ScryfallCard
-  inferredRole: CardRole
-}
-
 const initialDropdownState: DropdownState = {
   suggestions: [],
   selectedIndex: -1,
   isVisible: false
 }
 
-export function QuickAdd({ deckId }: QuickAddProps) {
+export function QuickAdd({ deckId, format, colorIdentity, customRoles }: QuickAddProps) {
   const [inputValue, setInputValue] = useState('')
   const [dropdown, setDropdown] = useState<DropdownState>(initialDropdownState)
   const [isLoading, setIsLoading] = useState(false)
 
   // Modal state
-  const [pendingCard, setPendingCard] = useState<PendingCard | null>(null)
-  const [quantity, setQuantity] = useState(1)
-  const [role, setRole] = useState<CardRole>('support')
+  const [pendingCard, setPendingCard] = useState<ScryfallCard | null>(null)
+  const [initialQuantity, setInitialQuantity] = useState(1)
 
   const inputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -111,35 +93,26 @@ export function QuickAdd({ deckId }: QuickAddProps) {
         return
       }
 
-      // Infer role from type
-      let inferredRole: CardRole = 'support'
-      const typeLine = scryfallCard.type_line.toLowerCase()
-      if (typeLine.includes('land')) {
-        inferredRole = 'land'
-      } else if (typeLine.includes('legendary creature')) {
-        inferredRole = 'core'
-      }
-
       // Open modal with card info
-      setPendingCard({ name: scryfallCard.name, scryfallCard, inferredRole })
-      setQuantity(parsedQuantity)
-      setRole(inferredRole)
+      setPendingCard(scryfallCard)
+      setInitialQuantity(parsedQuantity)
       setInputValue('')
     } finally {
       setIsLoading(false)
     }
   }, [])
 
-  // Confirm adding the card
-  const handleConfirmAdd = useCallback(async () => {
+  // Confirm adding the card from modal
+  const handleConfirmAdd = useCallback(async (quantity: number, role: CardRole) => {
     if (!pendingCard) return
 
     const deckCard: DeckCard = {
+      id: generateDeckCardId(),
       card: {
-        scryfallId: pendingCard.scryfallCard.id,
-        name: pendingCard.scryfallCard.name,
-        setCode: pendingCard.scryfallCard.set,
-        collectorNumber: pendingCard.scryfallCard.collector_number
+        scryfallId: pendingCard.id,
+        name: pendingCard.name,
+        setCode: pendingCard.set,
+        collectorNumber: pendingCard.collector_number
       },
       quantity,
       inclusion: 'confirmed',
@@ -154,7 +127,7 @@ export function QuickAdd({ deckId }: QuickAddProps) {
     await addCardToDeck(deckId, deckCard)
     setPendingCard(null)
     inputRef.current?.focus()
-  }, [pendingCard, quantity, role, deckId, addCardToDeck])
+  }, [pendingCard, deckId, addCardToDeck])
 
   const handleCloseModal = useCallback(() => {
     setPendingCard(null)
@@ -268,76 +241,16 @@ export function QuickAdd({ deckId }: QuickAddProps) {
       </div>
 
       {/* Add Card Modal */}
-      <Dialog open={!!pendingCard} onOpenChange={(open) => !open && handleCloseModal()}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Add Card</DialogTitle>
-            <DialogDescription>
-              {pendingCard?.name}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            {/* Quantity */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Quantity</label>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setQuantity(q => Math.max(1, q - 1))}
-                  disabled={quantity <= 1}
-                >
-                  <Minus className="w-4 h-4" />
-                </Button>
-                <Input
-                  type="number"
-                  min={1}
-                  max={99}
-                  value={quantity}
-                  onChange={e => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                  className="w-20 text-center"
-                />
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setQuantity(q => q + 1)}
-                >
-                  <Plus className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-
-            {/* Role */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Role</label>
-              <Select value={role} onValueChange={(v) => setRole(v as CardRole)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="commander">Commander</SelectItem>
-                  <SelectItem value="core">Core</SelectItem>
-                  <SelectItem value="enabler">Enabler</SelectItem>
-                  <SelectItem value="support">Support</SelectItem>
-                  <SelectItem value="flex">Flex</SelectItem>
-                  <SelectItem value="land">Land</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={handleCloseModal}>
-              Cancel
-            </Button>
-            <Button onClick={handleConfirmAdd}>
-              <Plus className="w-4 h-4 mr-2" />
-              Add {quantity > 1 ? `${quantity} cards` : 'card'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <CardAddModal
+        card={pendingCard}
+        isOpen={!!pendingCard}
+        onClose={handleCloseModal}
+        onConfirm={handleConfirmAdd}
+        format={format}
+        colorIdentity={colorIdentity}
+        customRoles={customRoles}
+        initialQuantity={initialQuantity}
+      />
     </>
   )
 }

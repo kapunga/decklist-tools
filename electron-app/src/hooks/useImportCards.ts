@@ -1,8 +1,9 @@
 import { useState, useCallback, useRef } from 'react'
 import { formats, detectFormat, type ParsedCard } from '@/lib/formats'
-import { searchCardByName } from '@/lib/scryfall'
+import { searchCardByName, getCardBySetAndNumber } from '@/lib/scryfall'
 import { SCRYFALL, IMPORT_PREVIEW } from '@/lib/constants'
 import type { DeckCard, CardRole } from '@/types'
+import { generateDeckCardId } from '@/types'
 
 export interface ImportProgress {
   current: number
@@ -109,7 +110,16 @@ export function useImportCards(): UseImportCardsResult {
       }
 
       try {
-        const scryfallCard = await searchCardByName(parsed.name)
+        // Try to fetch specific printing first if set and collector number are available
+        let scryfallCard = null
+        if (parsed.setCode && parsed.collectorNumber) {
+          scryfallCard = await getCardBySetAndNumber(parsed.setCode, parsed.collectorNumber)
+        }
+
+        // Fall back to name search if specific printing not found
+        if (!scryfallCard) {
+          scryfallCard = await searchCardByName(parsed.name)
+        }
 
         if (!scryfallCard) {
           newErrors.push(`Card not found: ${parsed.name}`)
@@ -126,6 +136,7 @@ export function useImportCards(): UseImportCardsResult {
         }
 
         const deckCard: DeckCard = {
+          id: generateDeckCardId(),
           card: {
             scryfallId: scryfallCard.id,
             name: scryfallCard.name,

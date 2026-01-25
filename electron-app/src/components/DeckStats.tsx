@@ -54,9 +54,9 @@ export function DeckStats({ deck }: DeckStatsProps) {
             Cards to Buy ({totalNeedToBuy})
           </h3>
           <div className="space-y-2">
-            {needToBuy.map(card => (
+            {needToBuy.map((card, index) => (
               <div
-                key={card.card.name}
+                key={`${card.card.name}-${card.card.scryfallId || index}`}
                 className="flex items-center justify-between p-2 bg-secondary rounded"
               >
                 <span>{card.quantity}x {card.card.name}</span>

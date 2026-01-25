@@ -49,10 +49,26 @@ object OwnershipStatus:
     case other => Left(s"Unknown ownership status: $other")
   }
 
-enum CardRole:
-  case Commander, Core, Enabler, Support, Flex, Land
+// CardRole is now a string to support custom roles
+// Built-in roles are defined as constants
+opaque type CardRole = String
 
 object CardRole:
+  // Built-in role values
+  val Commander: CardRole = "commander"
+  val Core: CardRole = "core"
+  val Enabler: CardRole = "enabler"
+  val Support: CardRole = "support"
+  val Flex: CardRole = "flex"
+  val Land: CardRole = "land"
+
+  // Built-in roles list for validation
+  val builtInRoles: Set[CardRole] = Set(Commander, Core, Enabler, Support, Flex, Land)
+
+  def apply(value: String): CardRole = value
+
+  def isBuiltIn(role: CardRole): Boolean = builtInRoles.contains(role)
+
   def importanceScore(role: CardRole): Int = role match
     case Commander => 10
     case Core => 9
@@ -60,24 +76,13 @@ object CardRole:
     case Enabler => 7
     case Support => 5
     case Flex => 3
+    case _ => 1 // Custom roles have lowest default importance
 
-  given Encoder[CardRole] = Encoder.encodeString.contramap {
-    case Commander => "commander"
-    case Core => "core"
-    case Enabler => "enabler"
-    case Support => "support"
-    case Flex => "flex"
-    case Land => "land"
-  }
-  given Decoder[CardRole] = Decoder.decodeString.emap {
-    case "commander" => Right(Commander)
-    case "core" => Right(Core)
-    case "enabler" => Right(Enabler)
-    case "support" => Right(Support)
-    case "flex" => Right(Flex)
-    case "land" => Right(Land)
-    case other => Left(s"Unknown card role: $other")
-  }
+  extension (role: CardRole)
+    def value: String = role
+
+  given Encoder[CardRole] = Encoder.encodeString.contramap(_.value)
+  given Decoder[CardRole] = Decoder.decodeString.map(CardRole.apply)
 
 enum AddedBy:
   case User, Import
@@ -117,7 +122,8 @@ case class DeckFormat(
   deckSize: Int,
   sideboardSize: Int,
   cardLimit: Int,
-  unlimitedCards: List[String]
+  unlimitedCards: List[String],
+  specialLimitCards: Option[Map[String, Int]] = None
 )
 
 object DeckFormat:
@@ -131,23 +137,31 @@ object DeckFormat:
       cardLimit = 1,
       unlimitedCards = List(
         "Relentless Rats", "Rat Colony", "Shadowborn Apostle",
-        "Seven Dwarves", "Dragon's Approach", "Persistent Petitioners",
-        "Cid Timeless Artificer"
-      )
+        "Dragon's Approach", "Persistent Petitioners", "Slime Against Humanity"
+      ),
+      specialLimitCards = Some(Map(
+        "Seven Dwarves" -> 7,
+        "Nazgûl" -> 9
+      ))
     )
     case FormatType.Standard => DeckFormat(
       `type` = FormatType.Standard,
       deckSize = 60,
       sideboardSize = 15,
       cardLimit = 4,
-      unlimitedCards = Nil
+      unlimitedCards = Nil,
+      specialLimitCards = Some(Map("Seven Dwarves" -> 7))
     )
     case FormatType.Modern => DeckFormat(
       `type` = FormatType.Modern,
       deckSize = 60,
       sideboardSize = 15,
       cardLimit = 4,
-      unlimitedCards = Nil
+      unlimitedCards = Nil,
+      specialLimitCards = Some(Map(
+        "Seven Dwarves" -> 7,
+        "Nazgûl" -> 9
+      ))
     )
     case FormatType.KitchenTable => DeckFormat(
       `type` = FormatType.KitchenTable,
@@ -156,6 +170,18 @@ object DeckFormat:
       cardLimit = Int.MaxValue,
       unlimitedCards = Nil
     )
+
+// Custom Role Definition for user-defined roles
+case class CustomRoleDefinition(
+  id: String,
+  name: String,
+  description: Option[String] = None,
+  color: Option[String] = None,
+  sortOrder: Int = 0
+)
+
+object CustomRoleDefinition:
+  given Codec[CustomRoleDefinition] = deriveCodec
 
 // Deck Card
 case class DeckCard(
@@ -268,7 +294,11 @@ case class Deck(
   alternates: List[DeckCard],
   sideboard: List[DeckCard],
   customTags: List[CustomTagDefinition],
-  notes: List[DeckNote]
+  notes: List[DeckNote],
+  // New fields
+  artCardScryfallId: Option[String] = None,
+  colorIdentity: Option[List[String]] = None,
+  customRoles: List[CustomRoleDefinition] = Nil
 )
 
 object Deck:
@@ -290,7 +320,10 @@ object Deck:
       alternates = Nil,
       sideboard = Nil,
       customTags = Nil,
-      notes = Nil
+      notes = Nil,
+      artCardScryfallId = None,
+      colorIdentity = None,
+      customRoles = Nil
     )
 
 // Taxonomy

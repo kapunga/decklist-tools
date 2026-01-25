@@ -159,3 +159,117 @@ export function getColorIdentityString(colors: string[]): string {
   if (!colors || colors.length === 0) return 'Colorless'
   return colors.join('')
 }
+
+// WUBRG order for consistent color sorting
+const WUBRG_ORDER = ['W', 'U', 'B', 'R', 'G']
+
+// Sort colors in WUBRG order
+export function sortColorsWUBRG(colors: string[]): string[] {
+  return [...colors].sort((a, b) => WUBRG_ORDER.indexOf(a) - WUBRG_ORDER.indexOf(b))
+}
+
+// Check if a card is legal in a specific format
+export function isLegalInFormat(card: ScryfallCard, format: string): boolean {
+  const formatKey = format.toLowerCase().replace('_', '')
+  const legality = card.legalities[formatKey]
+  return legality === 'legal' || legality === 'restricted'
+}
+
+// Check if a card's color identity is a subset of allowed colors
+export function matchesColorIdentity(card: ScryfallCard, allowedColors: string[]): boolean {
+  if (!allowedColors || allowedColors.length === 0) {
+    // If no color identity restriction, only colorless cards match
+    return card.color_identity.length === 0
+  }
+  // Card's color identity must be a subset of allowed colors
+  return card.color_identity.every(color => allowedColors.includes(color))
+}
+
+// Search cards with format legality and color identity filters
+export async function searchCardsWithFilters(
+  query: string,
+  format?: string,
+  colorIdentity?: string[]
+): Promise<SearchResult | null> {
+  // Build Scryfall query with filters
+  let fullQuery = query
+
+  // Add format legality filter (skip for kitchen_table)
+  if (format && format !== 'kitchen_table') {
+    const scryfallFormat = format.replace('_', '')
+    fullQuery += ` f:${scryfallFormat}`
+  }
+
+  // Add color identity filter
+  if (colorIdentity && colorIdentity.length > 0) {
+    const colorString = colorIdentity.join('')
+    fullQuery += ` id<=${colorString}`
+  } else if (colorIdentity && colorIdentity.length === 0) {
+    // Colorless only
+    fullQuery += ` id:c`
+  }
+
+  return searchCards(fullQuery)
+}
+
+// Get art crop URL for a card (for background images)
+export function getCardArtCropUrl(card: ScryfallCard): string | null {
+  // Try main image_uris first
+  if (card.image_uris?.art_crop) {
+    return card.image_uris.art_crop
+  }
+  // Try first card face for DFCs
+  if (card.card_faces?.[0]?.image_uris?.art_crop) {
+    return card.card_faces[0].image_uris.art_crop
+  }
+  return null
+}
+
+// Get price information from a card
+export interface CardPrices {
+  usd?: string
+  usd_foil?: string
+  eur?: string
+  eur_foil?: string
+  tcgplayer?: string
+  cardmarket?: string
+}
+
+export function getCardPrices(card: ScryfallCard): CardPrices {
+  return {
+    usd: card.prices?.usd || undefined,
+    usd_foil: card.prices?.usd_foil || undefined,
+    eur: card.prices?.eur || undefined,
+    eur_foil: card.prices?.eur_foil || undefined,
+    tcgplayer: card.purchase_uris?.tcgplayer || undefined,
+    cardmarket: card.purchase_uris?.cardmarket || undefined
+  }
+}
+
+// Get card image URL for a specific face (0 = front, 1 = back)
+export function getCardFaceImageUrl(
+  card: ScryfallCard,
+  face: 0 | 1 = 0,
+  size: 'small' | 'normal' | 'large' = 'normal'
+): string | null {
+  // For single-faced cards, only face 0 is valid
+  if (!card.card_faces || card.card_faces.length === 0) {
+    if (face === 0 && card.image_uris) {
+      return card.image_uris[size]
+    }
+    return null
+  }
+
+  // For double-faced cards
+  const cardFace = card.card_faces[face]
+  if (cardFace?.image_uris) {
+    return cardFace.image_uris[size]
+  }
+
+  // Some DFCs have shared image_uris (like adventures)
+  if (face === 0 && card.image_uris) {
+    return card.image_uris[size]
+  }
+
+  return null
+}

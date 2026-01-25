@@ -21,7 +21,8 @@ import {
 import { useStore } from '@/hooks/useStore'
 import { useImportCards } from '@/hooks/useImportCards'
 import { formats } from '@/lib/formats'
-import type { FormatType, Deck } from '@/types'
+import { getCardById } from '@/lib/scryfall'
+import type { FormatType, Deck, DeckCard } from '@/types'
 
 export function ImportNewDeckDialog() {
   const [open, setOpen] = useState(false)
@@ -82,7 +83,7 @@ export function ImportNewDeckDialog() {
       const deck = await createDeck(deckName.trim(), deckFormat)
 
       // Group cards by list type and add them all at once
-      const cardsByList: Record<string, typeof resolvedCards[0]['card'][]> = {
+      const cardsByList: Record<string, DeckCard[]> = {
         cards: [],
         alternates: [],
         sideboard: []
@@ -91,12 +92,42 @@ export function ImportNewDeckDialog() {
         cardsByList[listType].push(card)
       }
 
+      // Auto-detect commander for commander format if none explicitly set
+      let colorIdentity: string[] | undefined
+      if (deckFormat === 'commander') {
+        const hasCommander = cardsByList.cards.some(c => c.role === 'commander')
+
+        if (!hasCommander && cardsByList.cards.length > 0) {
+          // Set the first card as commander
+          const firstCard = cardsByList.cards[0]
+          firstCard.role = 'commander'
+
+          // Fetch color identity from Scryfall
+          if (firstCard.card.scryfallId) {
+            const scryfallCard = await getCardById(firstCard.card.scryfallId)
+            if (scryfallCard) {
+              colorIdentity = scryfallCard.color_identity
+            }
+          }
+        } else if (hasCommander) {
+          // Get color identity from the existing commander
+          const commander = cardsByList.cards.find(c => c.role === 'commander')
+          if (commander?.card.scryfallId) {
+            const scryfallCard = await getCardById(commander.card.scryfallId)
+            if (scryfallCard) {
+              colorIdentity = scryfallCard.color_identity
+            }
+          }
+        }
+      }
+
       // Build the complete deck with all cards
       const completeDeck: Deck = {
         ...deck,
         cards: [...deck.cards, ...cardsByList.cards],
         alternates: [...deck.alternates, ...cardsByList.alternates],
-        sideboard: [...deck.sideboard, ...cardsByList.sideboard]
+        sideboard: [...deck.sideboard, ...cardsByList.sideboard],
+        colorIdentity
       }
 
       await updateDeck(completeDeck)

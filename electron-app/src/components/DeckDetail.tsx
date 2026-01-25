@@ -1,28 +1,39 @@
 import { useState, useEffect, useCallback } from 'react'
-import { ArrowLeft, Check, AlertTriangle } from 'lucide-react'
+import { ArrowLeft, Check, AlertTriangle, Settings } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useStore, useSelectedDeck } from '@/hooks/useStore'
-import { CardGrid } from '@/components/CardGrid'
+import { DeckListView } from '@/components/DeckListView'
 import { QuickAdd } from '@/components/QuickAdd'
 import { ImportDialog } from '@/components/ImportDialog'
 import { DeckStats } from '@/components/DeckStats'
+import { RoleEditModal } from '@/components/RoleEditModal'
+import { ColorPips } from '@/components/ColorPips'
 import { getCardCount } from '@/types'
 
 export function DeckDetail() {
   const deck = useSelectedDeck()
   const selectDeck = useStore(state => state.selectDeck)
   const updateDeck = useStore(state => state.updateDeck)
+  const clearSelection = useStore(state => state.clearSelection)
 
   const [isEditingName, setIsEditingName] = useState(false)
   const [editedName, setEditedName] = useState('')
   const [activeTab, setActiveTab] = useState('cards')
+  const [showRoleModal, setShowRoleModal] = useState(false)
 
   const handleTabChange = useCallback((value: string) => {
     setActiveTab(value)
-  }, [])
+    clearSelection() // Clear selection when switching tabs
+  }, [clearSelection])
+
+  const handleSaveCustomRoles = useCallback(async (customRoles: NonNullable<typeof deck>['customRoles']) => {
+    if (deck) {
+      await updateDeck({ ...deck, customRoles })
+    }
+  }, [deck, updateDeck])
 
   useEffect(() => {
     if (deck) {
@@ -86,11 +97,19 @@ export function DeckDetail() {
             {deck.format.type.replace('_', ' ')}
           </Badge>
 
+          {deck.colorIdentity && deck.colorIdentity.length > 0 && (
+            <ColorPips colors={deck.colorIdentity} size="sm" showColorless={false} />
+          )}
+
           {deck.archetype && (
             <Badge variant="secondary">{deck.archetype}</Badge>
           )}
 
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setShowRoleModal(true)}>
+              <Settings className="w-4 h-4 mr-1" />
+              Roles
+            </Button>
             <ImportDialog deckId={deck.id} />
           </div>
         </div>
@@ -132,7 +151,12 @@ export function DeckDetail() {
 
       {/* Quick Add */}
       <div className="border-b p-4 flex-shrink-0">
-        <QuickAdd deckId={deck.id} />
+        <QuickAdd
+          deckId={deck.id}
+          format={deck.format}
+          colorIdentity={deck.colorIdentity}
+          customRoles={deck.customRoles}
+        />
       </div>
 
       {/* Tabs */}
@@ -154,38 +178,34 @@ export function DeckDetail() {
           </TabsList>
         </div>
 
-        <div className="flex-1 overflow-auto">
+        <div className="flex-1 overflow-hidden">
           <TabsContent value="cards" className="m-0 h-full">
-            <CardGrid
-              cards={deck.cards}
-              deckId={deck.id}
-              listType="cards"
-            />
+            <DeckListView deck={deck} listType="cards" />
           </TabsContent>
 
           <TabsContent value="alternates" className="m-0 h-full">
-            <CardGrid
-              cards={deck.alternates}
-              deckId={deck.id}
-              listType="alternates"
-            />
+            <DeckListView deck={deck} listType="alternates" />
           </TabsContent>
 
           {deck.format.sideboardSize > 0 && (
             <TabsContent value="sideboard" className="m-0 h-full">
-              <CardGrid
-                cards={deck.sideboard}
-                deckId={deck.id}
-                listType="sideboard"
-              />
+              <DeckListView deck={deck} listType="sideboard" />
             </TabsContent>
           )}
 
-          <TabsContent value="stats" className="m-0 p-4">
+          <TabsContent value="stats" className="m-0 p-4 overflow-auto h-full">
             <DeckStats deck={deck} />
           </TabsContent>
         </div>
       </Tabs>
+
+      {/* Role Edit Modal */}
+      <RoleEditModal
+        isOpen={showRoleModal}
+        onClose={() => setShowRoleModal(false)}
+        customRoles={deck.customRoles}
+        onSave={handleSaveCustomRoles}
+      />
     </div>
   )
 }
