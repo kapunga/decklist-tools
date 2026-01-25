@@ -2,7 +2,7 @@
 
 ## Overview
 
-Build an MCP server for managing Magic: The Gathering decks. The server enables Claude to help users build, analyze, and manage their decks through natural conversation.
+An MCP server for managing Magic: The Gathering decks. The server enables Claude to help users build, analyze, and manage their decks through natural conversation.
 
 ## Technology Stack
 
@@ -28,7 +28,7 @@ List all saved decks with summary info.
 
 **Input:** None
 
-**Output:** List of decks with id, name, format, card count, last modified date.
+**Output:** List of decks with id, name, format, card count, commander(s), last modified date.
 
 ---
 
@@ -43,13 +43,18 @@ Get a deck by ID or name.
 ---
 
 #### `create_deck`
-Create a new empty deck.
+Create a new deck.
 
 **Input:**
 - `name` (string, required)
 - `format` (string, required): "commander" | "standard" | "modern" | "kitchen_table"
+- `commanders` (string[], optional): Commander card names (required for Commander format)
 - `archetype` (string, optional): e.g., "Tokens", "Control"
 - `description` (string, optional): Markdown description
+
+**Behavior:**
+- For Commander format, `commanders` is required and must resolve to valid legendary creatures or commander-eligible planeswalkers
+- Commanders are resolved via Scryfall and added to the deck's `commanders` array
 
 **Output:** Confirmation with new deck ID.
 
@@ -79,6 +84,24 @@ Delete a deck permanently.
 
 ---
 
+#### `set_commanders`
+Set or update the commanders for a deck.
+
+**Input:**
+- `deck_id` (string, required)
+- `commanders` (string[], required): Commander card names (1-2 cards)
+- `set_codes` (string[], optional): Set codes for specific printings
+- `collector_numbers` (string[], optional): Collector numbers for specific printings
+
+**Behavior:**
+- Validates that cards are legal commanders (legendary creatures or commander-eligible planeswalkers)
+- For partner commanders, validates both have Partner keyword
+- Updates deck's color identity based on commander(s)
+
+**Output:** Confirmation with resolved commander details.
+
+---
+
 ### Card Management
 
 #### `add_card`
@@ -90,10 +113,9 @@ Add a card to a deck. Resolves card via Scryfall.
 - `set_code` (string, optional): Set code for specific printing
 - `collector_number` (string, optional): Collector number for specific printing
 - `quantity` (number, optional, default 1)
-- `role` (string, optional): "commander" | "core" | "enabler" | "support" | "flex" | "land"
-- `tags` (string[], optional): Tag IDs to apply
+- `roles` (string[], optional): Role IDs to apply
 - `status` (string, optional, default "confirmed"): "confirmed" | "considering"
-- `ownership` (string, optional, default "owned"): "owned" | "pulled" | "need_to_buy"
+- `ownership` (string, optional, default "need_to_buy"): "owned" | "pulled" | "need_to_buy"
 - `to_alternates` (boolean, optional): Add to alternates list instead of mainboard
 - `to_sideboard` (boolean, optional): Add to sideboard instead of mainboard
 
@@ -101,7 +123,7 @@ Add a card to a deck. Resolves card via Scryfall.
 1. If set_code + collector_number provided, lookup that exact printing
 2. Otherwise, fuzzy search by name via Scryfall
 3. Cache the Scryfall data
-4. Validate against format rules (singleton, 4-of limit, etc.)
+4. Validate against format rules (singleton, 4-of limit, color identity for Commander)
 5. Warn but allow if validation fails (user may be building)
 
 **Output:** Confirmation with resolved card details, or error if card not found.
@@ -128,10 +150,9 @@ Update a card's metadata in a deck.
 **Input:**
 - `deck_id` (string, required)
 - `name` (string, required): Card name to update
-- `role` (string, optional)
-- `tags` (string[], optional): Replace all tags
-- `add_tags` (string[], optional): Add these tags
-- `remove_tags` (string[], optional): Remove these tags
+- `roles` (string[], optional): Replace all roles
+- `add_roles` (string[], optional): Add these roles
+- `remove_roles` (string[], optional): Remove these roles
 - `status` (string, optional): "confirmed" | "considering" | "cut"
 - `ownership` (string, optional): "owned" | "pulled" | "need_to_buy"
 - `pinned` (boolean, optional)
@@ -174,8 +195,8 @@ Render a deck using a specific view format.
 **Input:**
 - `deck_id` (string, required)
 - `view` (string, optional, default "full"): View ID
-- `sort_by` (string, optional): "name" | "set" | "cmc" | "type" | "role"
-- `group_by` (string, optional): "role" | "type" | "tag" | "status"
+- `sort_by` (string, optional): "name" | "cmc" | "type"
+- `group_by` (string, optional): "type" | "role" | "cmc"
 
 **Output:** Rendered view as text/markdown.
 
@@ -190,56 +211,54 @@ List available deck views.
 
 ---
 
-### Built-in Views to Implement
+### Built-in Views
 
 | ID | Name | Description |
 |----|------|-------------|
-| `full` | Full Deck | Complete deck with all metadata, stats, and mana curve. Good for LLM discussion. |
-| `skeleton` | Skeleton | Minimal: just card names grouped by role. Lowest token count. |
+| `full` | Full Deck | Complete deck with commanders, all cards by type, stats, and mana curve. Good for LLM discussion. |
+| `skeleton` | Skeleton | Minimal: commanders and card names grouped by type. Lowest token count. |
 | `checklist` | Pull Checklist | Sorted by set/collector number with checkboxes. For pulling cards from collection. |
 | `curve` | Mana Curve | Mana curve visualization and type distribution stats. |
 | `buy-list` | Buy List | Only cards with ownership="need_to_buy" across all lists. |
-| `by-role` | By Role | Grouped by card role with counts. |
-| `by-function` | By Function | Grouped by function tags (removal, ramp, draw, etc.). |
-
-**Extensibility:** Views should be defined in a way that makes adding new ones trivial - ideally a trait/interface with a render method that takes a Deck and returns a string.
+| `by-type` | By Type | Grouped by card type (Creature, Instant, etc.) with counts. |
+| `by-role` | By Role | Grouped by role. Cards with multiple roles appear in multiple groups. |
 
 ---
 
-### Tags
+### Roles
 
-#### `list_tags`
-List all available tags (global + deck-specific if deck_id provided).
+#### `list_roles`
+List all available roles (global + deck-specific if deck_id provided).
 
 **Input:**
-- `deck_id` (string, optional): Include deck's custom tags
+- `deck_id` (string, optional): Include deck's custom roles
 
-**Output:** List of tags with id, name, category, description.
+**Output:** List of roles with id, name, description, color.
 
 ---
 
-#### `add_custom_tag`
-Add a custom tag to a deck's tag definitions.
+#### `add_custom_role`
+Add a custom role to a deck's role definitions.
 
 **Input:**
 - `deck_id` (string, required)
-- `id` (string, required): Tag ID (lowercase, no spaces)
+- `id` (string, required): Role ID (lowercase, hyphenated, no spaces)
 - `name` (string, required): Display name
-- `description` (string, optional)
-- `color` (string, optional): Hex color
+- `description` (string, required): What this role means
+- `color` (string, optional): Hex color for UI
 
 **Output:** Confirmation.
 
 ---
 
-#### `add_global_tag`
-Add a new global tag to the taxonomy.
+#### `add_global_role`
+Add a new global role to the taxonomy.
 
 **Input:**
 - `id` (string, required)
 - `name` (string, required)
-- `category` (string, required): "function" | "strategy" | "theme" | "mechanic" | "meta"
 - `description` (string, required)
+- `color` (string, optional): Hex color
 
 **Output:** Confirmation.
 
@@ -265,6 +284,7 @@ Add a card to the interest list.
 - `collector_number` (string, optional)
 - `notes` (string, optional)
 - `potential_decks` (string[], optional): Deck IDs
+- `suggested_roles` (string[], optional): Role IDs this card might fill
 - `source` (string, optional): Where you found it
 
 **Output:** Confirmation.
@@ -297,11 +317,14 @@ Import a decklist from text.
 1. If source_format is "auto" or not provided, detect format from content
 2. Parse the decklist
 3. Resolve each card via Scryfall
-4. Map maybeboard entries to status="considering"
-5. Create new deck or merge into existing
-6. Report any cards that couldn't be resolved
+4. **For Commander format:** Detect commander(s) from import
+   - Look for `[Commander]` category, "Commander" section, or sideboard legendary creatures
+   - If no commander found, return error
+5. Map maybeboard entries to status="considering"
+6. Create new deck or merge into existing
+7. Report any cards that couldn't be resolved
 
-**Output:** Summary of imported cards, any errors.
+**Output:** Summary of imported cards, commander(s) found, any errors.
 
 ---
 
@@ -314,7 +337,7 @@ Export a deck to a specific format.
 - `include_maybeboard` (boolean, optional, default false)
 - `include_sideboard` (boolean, optional, default true)
 
-**Output:** Formatted decklist text.
+**Output:** Formatted decklist text (includes commander section for Commander format).
 
 ---
 
@@ -335,6 +358,12 @@ Check a deck against format rules.
 **Input:**
 - `deck_id` (string, required)
 
+**Checks:**
+- Card count requirements
+- Card copy limits
+- **Commander format:** Non-empty commanders list, color identity compliance
+- Sideboard size limits
+
 **Output:** Validation result with errors (rule violations) and warnings (suggestions).
 
 ---
@@ -347,7 +376,7 @@ Find which decks contain a specific card.
 **Input:**
 - `card_name` (string, required)
 
-**Output:** List of decks containing the card with quantity and role.
+**Output:** List of decks containing the card with quantity and roles.
 
 ---
 
@@ -362,9 +391,7 @@ Get all cards marked "need_to_buy" across all decks.
 
 ## Scryfall Integration
 
-### Minimal Integration
-The MCP server needs basic Scryfall lookups:
-
+### Endpoints Used
 1. **By set + collector number:** `GET /cards/{set}/{number}`
 2. **By name (fuzzy):** `GET /cards/named?fuzzy={name}`
 3. **By Scryfall ID:** `GET /cards/{id}`
@@ -372,10 +399,10 @@ The MCP server needs basic Scryfall lookups:
 ### Caching
 - Cache Scryfall responses to `cache/scryfall/{scryfall-id}.json`
 - Default cache expiry: 7 days
-- Include card data needed for views: name, mana_cost, cmc, type_line, oracle_text, colors, color_identity, image_uris
+- Cache fields needed: name, mana_cost, cmc, type_line, oracle_text, colors, color_identity, image_uris, keywords, legalities
 
 ### Rate Limiting
-- Respect Scryfall's rate limits (be polite)
+- Respect Scryfall's rate limits (50-100ms between requests)
 - Include proper User-Agent header: `MTGDeckbuilderMCP/1.0`
 
 ---
@@ -398,18 +425,42 @@ The MCP server needs basic Scryfall lookups:
 
 ---
 
-## Example MCP Tool Registration
+## Example Tool Usage
 
-```scala
-// Pseudocode for tool registration pattern
-val tools = List(
-  Tool("list_decks", "List all saved decks", Schema.empty)(listDecksHandler),
-  Tool("get_deck", "Get a deck by ID or name", getDeckSchema)(getDeckHandler),
-  Tool("add_card", "Add a card to a deck", addCardSchema)(addCardHandler),
-  // ... etc
-)
+### Creating a Commander Deck
 
-server.registerTools(tools)
+```
+User: Create a new Commander deck called "Doc Aurlock Flashback" with Doc Aurlock, Grizzled Genius as the commander
+
+Claude: [Uses create_deck tool with name="Doc Aurlock Flashback", format="commander", commanders=["Doc Aurlock, Grizzled Genius"]]
+Created deck: Doc Aurlock Flashback (ID: abc-123-def)
+Commander: Doc Aurlock, Grizzled Genius
+Color Identity: Green, Blue
 ```
 
-The MCP server should expose all tools via the standard MCP protocol, communicating over stdio.
+### Adding Cards with Roles
+
+```
+User: Add Dreams of Laguna to the deck. It's card advantage and also synergizes with our commander's graveyard casting.
+
+Claude: [Uses add_card tool, then add_custom_role for "casts-from-graveyard", then update_card to add roles]
+Added Dreams of Laguna with roles: card-advantage, casts-from-graveyard
+```
+
+### Importing a Deck
+
+```
+User: Import this deck:
+Commander
+1 Doc Aurlock, Grizzled Genius (OTJ) 205
+
+Deck
+1 Think Twice (ISD) 83
+1 Flashback (MH1) 84
+...
+
+Claude: [Uses import_deck tool]
+Imported deck with 100 cards.
+Commander detected: Doc Aurlock, Grizzled Genius
+All cards resolved successfully.
+```
