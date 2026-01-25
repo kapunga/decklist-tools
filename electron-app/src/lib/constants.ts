@@ -1,0 +1,16 @@
+export const SCRYFALL = {
+  MIN_REQUEST_INTERVAL_MS: 100,
+  IMPORT_DELAY_MS: 50,
+} as const
+
+export const AUTOCOMPLETE = {
+  DEBOUNCE_MS: 300,
+  MIN_QUERY_LENGTH: 2,
+  MAX_SUGGESTIONS: 8,
+} as const
+
+export const IMPORT_PREVIEW = {
+  MAX_CARDS_SHOWN: 15,
+  MAX_CARDS_SHOWN_LARGE: 20,
+  PROGRESS_UPDATE_INTERVAL: 5,
+} as const

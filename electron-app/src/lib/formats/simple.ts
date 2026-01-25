@@ -1,0 +1,70 @@
+import type { Deck } from '@/types'
+import type { DeckFormat, ParsedCard, RenderOptions } from './types'
+
+export const simpleFormat: DeckFormat = {
+  id: 'simple',
+  name: 'Simple Text',
+  description: 'Simple format: 4 Lightning Bolt',
+
+  parse(text: string): ParsedCard[] {
+    const cards: ParsedCard[] = []
+    const lines = text.split('\n').map(l => l.trim())
+
+    const cardPattern = /^(\d+)\s+(.+)$/
+    const cardNoQtyPattern = /^([A-Za-z].+)$/
+    let inSideboard = false
+
+    for (const line of lines) {
+      if (!line) continue
+
+      if (line.toLowerCase().startsWith('sideboard')) {
+        inSideboard = true
+        continue
+      }
+
+      let match = line.match(cardPattern)
+      if (match) {
+        cards.push({
+          name: match[2].trim(),
+          quantity: parseInt(match[1], 10),
+          isSideboard: inSideboard,
+          isMaybeboard: false,
+          tags: []
+        })
+        continue
+      }
+
+      match = line.match(cardNoQtyPattern)
+      if (match && !match[1].toLowerCase().includes('deck')) {
+        cards.push({
+          name: match[1].trim(),
+          quantity: 1,
+          isSideboard: inSideboard,
+          isMaybeboard: false,
+          tags: []
+        })
+      }
+    }
+
+    return cards
+  },
+
+  render(deck: Deck, options: RenderOptions): string {
+    const lines: string[] = []
+
+    deck.cards
+      .filter(c => c.inclusion === 'confirmed')
+      .forEach(c => {
+        lines.push(`${c.quantity} ${c.card.name}`)
+      })
+
+    if (options.includeSideboard && deck.sideboard.length > 0) {
+      lines.push('', 'Sideboard:')
+      deck.sideboard.forEach(c => {
+        lines.push(`${c.quantity} ${c.card.name}`)
+      })
+    }
+
+    return lines.join('\n')
+  }
+}
