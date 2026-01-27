@@ -1,11 +1,12 @@
 import { useEffect } from 'react'
-import { Library, Star, ShoppingCart } from 'lucide-react'
+import { Library, Star, ShoppingCart, Settings } from 'lucide-react'
 import { useStore, type AppView } from '@/hooks/useStore'
 import { Button } from '@/components/ui/button'
 import { DeckList } from '@/components/DeckList'
 import { DeckDetail } from '@/components/DeckDetail'
 import { InterestListView } from '@/components/InterestListView'
 import { BuyListView } from '@/components/BuyListView'
+import { SettingsPage } from '@/components/SettingsPage'
 
 export function App() {
   const loadData = useStore(state => state.loadData)
@@ -54,7 +55,7 @@ export function App() {
   return (
     <div className="h-screen bg-background text-foreground flex flex-col pt-12">
       {/* Top Navigation Bar */}
-      <header className="h-10 border-b flex items-center px-4 gap-2 shrink-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <header className="h-10 border-b flex items-center justify-between px-4 shrink-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <nav className="flex items-center gap-1">
           <NavButton
             view="decks"
@@ -78,6 +79,15 @@ export function App() {
             label="Buy List"
           />
         </nav>
+        <Button
+          variant={currentView === 'settings' ? 'secondary' : 'ghost'}
+          size="sm"
+          onClick={() => setView('settings')}
+          className="gap-2"
+        >
+          <Settings className="w-4 h-4" />
+          Settings
+        </Button>
       </header>
 
       {/* Main Content */}
@@ -86,6 +96,7 @@ export function App() {
         {currentView === 'deck-detail' && <DeckDetail />}
         {currentView === 'interest-list' && <InterestListView />}
         {currentView === 'buy-list' && <BuyListView />}
+        {currentView === 'settings' && <SettingsPage />}
       </div>
     </div>
   )

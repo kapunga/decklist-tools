@@ -89,7 +89,7 @@ export function ImportDialog({ deckId }: ImportDialogProps) {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-auto space-y-4">
+        <div className="flex-1 overflow-auto space-y-4 p-1 -m-1">
           {/* Format selector */}
           <div className="flex items-center gap-4">
             <label className="text-sm font-medium">Format:</label>

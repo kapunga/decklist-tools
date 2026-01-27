@@ -22,7 +22,7 @@ import { useStore } from '@/hooks/useStore'
 import { useImportCards } from '@/hooks/useImportCards'
 import { formats } from '@/lib/formats'
 import { getCardById } from '@/lib/scryfall'
-import type { FormatType, Deck, DeckCard } from '@/types'
+import type { FormatType, Deck, DeckCard, CardIdentifier } from '@/types'
 
 export function ImportNewDeckDialog() {
   const [open, setOpen] = useState(false)
@@ -92,31 +92,44 @@ export function ImportNewDeckDialog() {
         cardsByList[listType].push(card)
       }
 
-      // Auto-detect commander for commander format if none explicitly set
+      // Auto-detect commanders for commander format from parsed cards with isCommander flag
       let colorIdentity: string[] | undefined
+      let commanders: CardIdentifier[] = []
+
       if (deckFormat === 'commander') {
-        const hasCommander = cardsByList.cards.some(c => c.role === 'commander')
+        // Check if any parsed cards were marked as commanders
+        const commanderIndices: number[] = []
+        for (let i = 0; i < parsedCards.length; i++) {
+          if (parsedCards[i].isCommander) {
+            commanderIndices.push(i)
+          }
+        }
 
-        if (!hasCommander && cardsByList.cards.length > 0) {
-          // Set the first card as commander
-          const firstCard = cardsByList.cards[0]
-          firstCard.role = 'commander'
-
-          // Fetch color identity from Scryfall
-          if (firstCard.card.scryfallId) {
-            const scryfallCard = await getCardById(firstCard.card.scryfallId)
-            if (scryfallCard) {
-              colorIdentity = scryfallCard.color_identity
+        if (commanderIndices.length > 0) {
+          // Use detected commanders - find them in resolvedCards
+          for (const idx of commanderIndices) {
+            const parsed = parsedCards[idx]
+            const resolved = resolvedCards.find(r => r.card.card.name === parsed.name)
+            if (resolved) {
+              commanders.push(resolved.card.card)
+              // Remove from main deck since it's a commander
+              const cardIdx = cardsByList.cards.findIndex(c => c.card.name === parsed.name)
+              if (cardIdx >= 0) {
+                cardsByList.cards.splice(cardIdx, 1)
+              }
             }
           }
-        } else if (hasCommander) {
-          // Get color identity from the existing commander
-          const commander = cardsByList.cards.find(c => c.role === 'commander')
-          if (commander?.card.scryfallId) {
-            const scryfallCard = await getCardById(commander.card.scryfallId)
-            if (scryfallCard) {
-              colorIdentity = scryfallCard.color_identity
-            }
+        } else if (cardsByList.cards.length > 0) {
+          // No explicit commanders - use first card as commander
+          const firstCard = cardsByList.cards.shift()!
+          commanders.push(firstCard.card)
+        }
+
+        // Fetch color identity from commanders
+        if (commanders.length > 0 && commanders[0].scryfallId) {
+          const scryfallCard = await getCardById(commanders[0].scryfallId)
+          if (scryfallCard) {
+            colorIdentity = scryfallCard.color_identity
           }
         }
       }
@@ -127,6 +140,7 @@ export function ImportNewDeckDialog() {
         cards: [...deck.cards, ...cardsByList.cards],
         alternates: [...deck.alternates, ...cardsByList.alternates],
         sideboard: [...deck.sideboard, ...cardsByList.sideboard],
+        commanders,
         colorIdentity
       }
 
@@ -176,7 +190,7 @@ export function ImportNewDeckDialog() {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-auto space-y-4">
+        <div className="flex-1 overflow-auto space-y-4 p-1 -m-1">
           {/* Deck name and format */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">

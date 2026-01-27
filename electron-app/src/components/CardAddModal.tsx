@@ -9,29 +9,24 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { CardImage } from '@/components/CardImage'
-import type { ScryfallCard, CardRole, DeckFormat, CustomRoleDefinition, BuiltInCardRole } from '@/types'
-import { getCardLimit, BUILT_IN_ROLES } from '@/types'
+import type { ScryfallCard, DeckFormat, RoleDefinition } from '@/types'
+import { getCardLimit } from '@/types'
+import { getAllRoles } from '@/lib/constants'
 import { isLegalInFormat, matchesColorIdentity } from '@/lib/scryfall'
+import { useGlobalRoles } from '@/hooks/useStore'
 
 interface CardAddModalProps {
   card: ScryfallCard | null
   isOpen: boolean
   onClose: () => void
-  onConfirm: (quantity: number, role: CardRole) => void
+  onConfirm: (quantity: number, roles: string[]) => void
   format: DeckFormat
   colorIdentity?: string[]  // Commander's color identity for filtering
-  customRoles?: CustomRoleDefinition[]
+  customRoles?: RoleDefinition[]
   initialQuantity?: number
-  initialRole?: CardRole
+  initialRoles?: string[]
 }
 
 export function CardAddModal({
@@ -43,18 +38,19 @@ export function CardAddModal({
   colorIdentity,
   customRoles = [],
   initialQuantity = 1,
-  initialRole
+  initialRoles
 }: CardAddModalProps) {
   const [quantity, setQuantity] = useState(initialQuantity)
-  const [role, setRole] = useState<CardRole>(initialRole || 'support')
+  const [selectedRoles, setSelectedRoles] = useState<string[]>(initialRoles || [])
+  const globalRoles = useGlobalRoles()
 
   // Reset state when card changes
   useEffect(() => {
     if (card) {
       setQuantity(initialQuantity)
-      setRole(initialRole || inferRoleFromCard(card))
+      setSelectedRoles(initialRoles || inferRolesFromCard(card))
     }
-  }, [card, initialQuantity, initialRole])
+  }, [card, initialQuantity, initialRoles])
 
   // Calculate max quantity for this card
   const maxQuantity = card ? getCardLimit(card.name, format) : 1
@@ -62,10 +58,21 @@ export function CardAddModal({
   // Check legality warnings
   const legalityWarning = card ? getLegalityWarning(card, format, colorIdentity) : null
 
+  // Get all available roles
+  const allRoles = getAllRoles(globalRoles, customRoles)
+
+  const toggleRole = useCallback((roleId: string) => {
+    setSelectedRoles(prev =>
+      prev.includes(roleId)
+        ? prev.filter(r => r !== roleId)
+        : [...prev, roleId]
+    )
+  }, [])
+
   const handleConfirm = useCallback(() => {
     if (!card) return
-    onConfirm(quantity, role)
-  }, [card, quantity, role, onConfirm])
+    onConfirm(quantity, selectedRoles)
+  }, [card, quantity, selectedRoles, onConfirm])
 
   const handleClose = useCallback(() => {
     onClose()
@@ -132,28 +139,28 @@ export function CardAddModal({
               </div>
             </div>
 
-            {/* Role */}
+            {/* Roles */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Role</label>
-              <Select value={role} onValueChange={(v) => setRole(v as CardRole)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {/* Built-in roles */}
-                  {BUILT_IN_ROLES.map(builtInRole => (
-                    <SelectItem key={builtInRole} value={builtInRole}>
-                      {formatRoleName(builtInRole)}
-                    </SelectItem>
-                  ))}
-                  {/* Custom roles */}
-                  {customRoles.map(customRole => (
-                    <SelectItem key={customRole.id} value={customRole.id}>
-                      {customRole.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <label className="text-sm font-medium">Roles</label>
+              <div className="flex flex-wrap gap-2 max-h-32 overflow-auto p-2 border rounded-md">
+                {allRoles.map(role => (
+                  <button
+                    key={role.id}
+                    type="button"
+                    onClick={() => toggleRole(role.id)}
+                    className={`px-2 py-1 text-xs rounded-full transition-colors ${
+                      selectedRoles.includes(role.id)
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-secondary hover:bg-secondary/80'
+                    }`}
+                  >
+                    {role.name}
+                  </button>
+                ))}
+              </div>
+              {selectedRoles.length === 0 && (
+                <p className="text-xs text-muted-foreground">Click to select roles</p>
+              )}
             </div>
 
             {/* Card Info */}
@@ -183,20 +190,9 @@ export function CardAddModal({
 
 // Helper functions
 
-function inferRoleFromCard(card: ScryfallCard): CardRole {
-  const typeLine = card.type_line.toLowerCase()
-
-  if (typeLine.includes('land')) {
-    return 'land'
-  }
-  if (typeLine.includes('legendary creature')) {
-    return 'core'
-  }
-  return 'support'
-}
-
-function formatRoleName(role: BuiltInCardRole): string {
-  return role.charAt(0).toUpperCase() + role.slice(1)
+function inferRolesFromCard(_card: ScryfallCard): string[] {
+  // Don't auto-assign roles - let the user choose
+  return []
 }
 
 function getLegalityWarning(

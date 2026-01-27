@@ -1,4 +1,4 @@
-import { X, Trash2, DollarSign, Check, MoveRight } from 'lucide-react'
+import { X, Trash2, DollarSign, Check, MoveRight, Tag } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -8,7 +8,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel
 } from '@/components/ui/dropdown-menu'
-import { useStore } from '@/hooks/useStore'
+import { useStore, useGlobalRoles } from '@/hooks/useStore'
+import { getAllRoles, getRoleColor } from '@/lib/constants'
 import type { OwnershipStatus } from '@/types'
 
 interface BatchOperationsToolbarProps {
@@ -30,6 +31,12 @@ export function BatchOperationsToolbar({
   const batchUpdateOwnership = useStore(state => state.batchUpdateOwnership)
   const batchRemoveCards = useStore(state => state.batchRemoveCards)
   const batchMoveCards = useStore(state => state.batchMoveCards)
+  const batchAddRoleToCards = useStore(state => state.batchAddRoleToCards)
+  const decks = useStore(state => state.decks)
+  const globalRoles = useGlobalRoles()
+
+  const deck = decks.find(d => d.id === deckId)
+  const allRoles = deck ? getAllRoles(globalRoles, deck.customRoles) : []
 
   if (selectedCount === 0) return null
 
@@ -43,6 +50,10 @@ export function BatchOperationsToolbar({
 
   const handleMove = async (to: 'cards' | 'alternates' | 'sideboard') => {
     await batchMoveCards(deckId, selectedCardNames, currentListType, to)
+  }
+
+  const handleAddRole = async (roleId: string) => {
+    await batchAddRoleToCards(deckId, selectedCardNames, roleId)
   }
 
   // Determine available move targets (can't move to current list)
@@ -99,6 +110,34 @@ export function BatchOperationsToolbar({
               {moveTargets.map(target => (
                 <DropdownMenuItem key={target.value} onClick={() => handleMove(target.value)}>
                   {target.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+
+        {/* Add Role dropdown */}
+        {allRoles.length > 0 && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Tag className="w-4 h-4 mr-1" />
+                Add Role
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="max-h-64 overflow-auto">
+              <DropdownMenuLabel>Add Role</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {allRoles.map(role => (
+                <DropdownMenuItem
+                  key={role.id}
+                  onClick={() => handleAddRole(role.id)}
+                >
+                  <span
+                    className="w-2 h-2 rounded-full mr-2 flex-shrink-0"
+                    style={{ backgroundColor: role.color || getRoleColor(role.id, globalRoles, deck?.customRoles) }}
+                  />
+                  {role.name}
                 </DropdownMenuItem>
               ))}
             </DropdownMenuContent>

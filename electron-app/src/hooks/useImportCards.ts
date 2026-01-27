@@ -2,7 +2,7 @@ import { useState, useCallback, useRef } from 'react'
 import { formats, detectFormat, type ParsedCard } from '@/lib/formats'
 import { searchCardByName, getCardBySetAndNumber } from '@/lib/scryfall'
 import { SCRYFALL, IMPORT_PREVIEW } from '@/lib/constants'
-import type { DeckCard, CardRole } from '@/types'
+import type { DeckCard } from '@/types'
 import { generateDeckCardId } from '@/types'
 
 export interface ImportProgress {
@@ -126,14 +126,8 @@ export function useImportCards(): UseImportCardsResult {
           continue
         }
 
-        // Infer role from type
-        let role: CardRole = parsed.role as CardRole || 'support'
-        const typeLine = scryfallCard.type_line.toLowerCase()
-        if (typeLine.includes('land') && role === 'support') {
-          role = 'land'
-        } else if (typeLine.includes('legendary creature') && role === 'support') {
-          role = 'core'
-        }
+        // Use any roles from the parsed data
+        const roles = [...(parsed.roles || [])]
 
         const deckCard: DeckCard = {
           id: generateDeckCardId(),
@@ -146,9 +140,9 @@ export function useImportCards(): UseImportCardsResult {
           quantity: parsed.quantity,
           inclusion: parsed.isMaybeboard ? 'considering' : 'confirmed',
           ownership: 'owned',
-          role,
+          roles,
+          typeLine: scryfallCard.type_line,  // Store type line for grouping
           isPinned: false,
-          tags: parsed.tags || [],
           addedAt: new Date().toISOString(),
           addedBy: 'import'
         }

@@ -30,6 +30,10 @@ trait Storage[F[_]]:
   def getConfig: F[Config]
   def saveConfig(config: Config): F[Unit]
 
+  // Global Roles
+  def getGlobalRoles: F[GlobalRolesFile]
+  def saveGlobalRoles(globalRoles: GlobalRolesFile): F[Unit]
+
 object Storage:
   def apply[F[_]: Async: Files](baseDir: Path): F[Storage[F]] =
     for
@@ -37,22 +41,25 @@ object Storage:
       taxonomyMutex <- Mutex[F]
       interestMutex <- Mutex[F]
       configMutex <- Mutex[F]
+      globalRolesMutex <- Mutex[F]
       _ <- Files[F].createDirectories(baseDir / "decks")
       _ <- Files[F].createDirectories(baseDir / "cache" / "scryfall")
-    yield new StorageImpl[F](baseDir, decksMutex, taxonomyMutex, interestMutex, configMutex)
+    yield new StorageImpl[F](baseDir, decksMutex, taxonomyMutex, interestMutex, configMutex, globalRolesMutex)
 
   private class StorageImpl[F[_]: Async: Files](
     baseDir: Path,
     decksMutex: Mutex[F],
     taxonomyMutex: Mutex[F],
     interestMutex: Mutex[F],
-    configMutex: Mutex[F]
+    configMutex: Mutex[F],
+    globalRolesMutex: Mutex[F]
   ) extends Storage[F]:
 
     private val decksDir = baseDir / "decks"
     private val taxonomyPath = baseDir / "taxonomy.json"
     private val interestPath = baseDir / "interest-list.json"
     private val configPath = baseDir / "config.json"
+    private val globalRolesPath = baseDir / "global-roles.json"
 
     private def readJson[A: Decoder](path: Path): F[Option[A]] =
       Files[F].exists(path).flatMap { exists =>
@@ -133,4 +140,18 @@ object Storage:
 
     def saveConfig(config: Config): F[Unit] = configMutex.lock.surround {
       writeJson(configPath, config)
+    }
+
+    // Global Roles
+    def getGlobalRoles: F[GlobalRolesFile] = globalRolesMutex.lock.surround {
+      readJson[GlobalRolesFile](globalRolesPath).flatMap {
+        case Some(file) => Async[F].pure(file)
+        case None =>
+          // Write defaults if file doesn't exist
+          writeJson(globalRolesPath, GlobalRolesFile.default).as(GlobalRolesFile.default)
+      }
+    }
+
+    def saveGlobalRoles(globalRoles: GlobalRolesFile): F[Unit] = globalRolesMutex.lock.surround {
+      writeJson(globalRolesPath, globalRoles)
     }

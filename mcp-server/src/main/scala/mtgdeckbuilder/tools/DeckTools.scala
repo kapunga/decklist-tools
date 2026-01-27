@@ -110,8 +110,7 @@ class DeckTools[F[_]: Async](
     setCode: Option[String],
     collectorNumber: Option[String],
     quantity: Int,
-    roleStr: Option[String],
-    tags: List[String],
+    roles: List[String],
     statusStr: Option[String],
     ownershipStr: Option[String],
     toAlternates: Boolean,
@@ -127,7 +126,7 @@ class DeckTools[F[_]: Async](
         lookupF.flatMap {
           case Left(err) => Async[F].pure(Left(s"Card not found: $err"))
           case Right(scryfallCard) =>
-            val role = roleStr.flatMap(parseRole).getOrElse(inferRole(scryfallCard))
+            val inferredRoles = if roles.nonEmpty then roles else inferRoles(scryfallCard)
             val status = statusStr.flatMap(parseInclusion).getOrElse(InclusionStatus.Confirmed)
             val ownership = ownershipStr.flatMap(parseOwnership).getOrElse(OwnershipStatus.Owned)
 
@@ -141,9 +140,8 @@ class DeckTools[F[_]: Async](
               quantity = quantity,
               inclusion = status,
               ownership = ownership,
-              role = role,
+              roles = inferredRoles,
               isPinned = false,
-              tags = tags,
               notes = None,
               addedAt = Instant.now().toString,
               addedBy = AddedBy.User
@@ -207,20 +205,8 @@ class DeckTools[F[_]: Async](
         "Snow-Covered Plains", "Snow-Covered Island", "Snow-Covered Swamp",
         "Snow-Covered Mountain", "Snow-Covered Forest", "Wastes").contains(name)
 
-  private def inferRole(card: ScryfallCard): CardRole =
-    val typeLine = card.typeLine.toLowerCase
-    if typeLine.contains("land") then CardRole.Land
-    else if typeLine.contains("legendary creature") && card.colorIdentity.nonEmpty then CardRole.Core
-    else CardRole.Support
-
-  private def parseRole(s: String): Option[CardRole] = s.toLowerCase match
-    case "commander" => Some(CardRole.Commander)
-    case "core" => Some(CardRole.Core)
-    case "enabler" => Some(CardRole.Enabler)
-    case "support" => Some(CardRole.Support)
-    case "flex" => Some(CardRole.Flex)
-    case "land" => Some(CardRole.Land)
-    case _ => None
+  private def inferRoles(card: ScryfallCard): List[String] =
+    Nil // Don't auto-assign roles - let the user choose
 
   private def parseInclusion(s: String): Option[InclusionStatus] = s.toLowerCase match
     case "confirmed" => Some(InclusionStatus.Confirmed)
@@ -269,10 +255,9 @@ class DeckTools[F[_]: Async](
   def updateCard(
     deckId: String,
     name: String,
-    roleStr: Option[String],
-    tags: Option[List[String]],
-    addTags: Option[List[String]],
-    removeTags: Option[List[String]],
+    roles: Option[List[String]],
+    addRoles: Option[List[String]],
+    removeRoles: Option[List[String]],
     statusStr: Option[String],
     ownershipStr: Option[String],
     pinned: Option[Boolean],
@@ -285,10 +270,9 @@ class DeckTools[F[_]: Async](
           cards.map { c =>
             if c.card.name.toLowerCase == name.toLowerCase then
               var updated = c
-              roleStr.flatMap(parseRole).foreach(r => updated = updated.copy(role = r))
-              tags.foreach(t => updated = updated.copy(tags = t))
-              addTags.foreach(t => updated = updated.copy(tags = (updated.tags ++ t).distinct))
-              removeTags.foreach(t => updated = updated.copy(tags = updated.tags.filterNot(t.contains)))
+              roles.foreach(r => updated = updated.copy(roles = r))
+              addRoles.foreach(r => updated = updated.copy(roles = (updated.roles ++ r).distinct))
+              removeRoles.foreach(r => updated = updated.copy(roles = updated.roles.filterNot(r.contains)))
               statusStr.flatMap(parseInclusion).foreach(s => updated = updated.copy(inclusion = s))
               ownershipStr.flatMap(parseOwnership).foreach(o => updated = updated.copy(ownership = o))
               pinned.foreach(p => updated = updated.copy(isPinned = p))
@@ -410,38 +394,38 @@ class DeckTools[F[_]: Async](
       )
     }*))
 
-  // ============ Tags ============
+  // ============ Roles ============
 
-  def listTags(deckId: Option[String]): F[Json] =
+  def listRoles(deckId: Option[String]): F[Json] =
     for
-      taxonomy <- storage.getTaxonomy
-      deckTags <- deckId.fold(Async[F].pure(List.empty[CustomTagDefinition]))(id =>
-        storage.getDeck(id).map(_.map(_.customTags).getOrElse(Nil))
+      globalRolesFile <- storage.getGlobalRoles
+      deckRoles <- deckId.fold(Async[F].pure(List.empty[RoleDefinition]))(id =>
+        storage.getDeck(id).map(_.map(_.customRoles).getOrElse(Nil))
       )
     yield
-      val globalTags = taxonomy.globalTags.map { tag =>
+      val globalRoles = globalRolesFile.roles.map { role =>
         Json.obj(
-          "id" -> Json.fromString(tag.id),
-          "name" -> Json.fromString(tag.name),
-          "category" -> Json.fromString(tag.category.toString.toLowerCase),
-          "description" -> Json.fromString(tag.description),
+          "id" -> Json.fromString(role.id),
+          "name" -> Json.fromString(role.name),
+          "description" -> role.description.fold(Json.Null)(Json.fromString),
+          "color" -> role.color.fold(Json.Null)(Json.fromString),
           "scope" -> Json.fromString("global")
         )
       }
-      val customTags = deckTags.map { tag =>
+      val customRoles = deckRoles.map { role =>
         Json.obj(
-          "id" -> Json.fromString(tag.id),
-          "name" -> Json.fromString(tag.name),
-          "description" -> tag.description.fold(Json.Null)(Json.fromString),
-          "color" -> tag.color.fold(Json.Null)(Json.fromString),
+          "id" -> Json.fromString(role.id),
+          "name" -> Json.fromString(role.name),
+          "description" -> role.description.fold(Json.Null)(Json.fromString),
+          "color" -> role.color.fold(Json.Null)(Json.fromString),
           "scope" -> Json.fromString("deck")
         )
       }
-      Json.arr((globalTags ++ customTags)*)
+      Json.arr((globalRoles ++ customRoles)*)
 
-  def addCustomTag(
+  def addCustomRole(
     deckId: String,
-    tagId: String,
+    roleId: String,
     name: String,
     description: Option[String],
     color: Option[String]
@@ -449,40 +433,120 @@ class DeckTools[F[_]: Async](
     storage.getDeck(deckId).flatMap {
       case None => Async[F].pure(Left(s"Deck not found: $deckId"))
       case Some(deck) =>
-        val tag = CustomTagDefinition(tagId, name, description, color)
-        val updatedDeck = deck.copy(customTags = deck.customTags :+ tag)
+        val role = RoleDefinition(roleId, name, description, color)
+        val updatedDeck = deck.copy(customRoles = deck.customRoles :+ role)
         storage.saveDeck(updatedDeck).as(Right(Json.obj(
-          "message" -> Json.fromString(s"Added custom tag: $name")
+          "message" -> Json.fromString(s"Added custom role: $name")
         )))
     }
 
-  def addGlobalTag(
-    tagId: String,
+  def addGlobalRole(
+    roleId: String,
     name: String,
-    categoryStr: String,
-    description: String
+    description: Option[String],
+    color: Option[String]
   ): F[Either[String, Json]] =
-    val category = categoryStr.toLowerCase match
-      case "function" => Right(TagCategory.Function)
-      case "strategy" => Right(TagCategory.Strategy)
-      case "theme" => Right(TagCategory.Theme)
-      case "mechanic" => Right(TagCategory.Mechanic)
-      case "meta" => Right(TagCategory.Meta)
-      case other => Left(s"Unknown category: $other")
+    storage.getGlobalRoles.flatMap { globalRolesFile =>
+      val role = RoleDefinition(roleId, name, description, color)
+      val updated = globalRolesFile.copy(
+        roles = globalRolesFile.roles :+ role
+      )
+      storage.saveGlobalRoles(updated).as(Right(Json.obj(
+        "message" -> Json.fromString(s"Added global role: $name")
+      )))
+    }
 
-    category match
-      case Left(err) => Async[F].pure(Left(err))
-      case Right(cat) =>
-        storage.getTaxonomy.flatMap { taxonomy =>
-          val tag = GlobalTag(tagId, name, cat, description, None)
-          val updated = taxonomy.copy(
-            globalTags = taxonomy.globalTags :+ tag,
-            version = taxonomy.version + 1
+  def updateGlobalRole(
+    roleId: String,
+    name: Option[String],
+    description: Option[String],
+    color: Option[String]
+  ): F[Either[String, Json]] =
+    storage.getGlobalRoles.flatMap { globalRolesFile =>
+      globalRolesFile.roles.find(_.id == roleId) match
+        case None => Async[F].pure(Left(s"Global role not found: $roleId"))
+        case Some(existingRole) =>
+          val updatedRole = existingRole.copy(
+            name = name.getOrElse(existingRole.name),
+            description = description.orElse(existingRole.description),
+            color = color.orElse(existingRole.color)
           )
-          storage.saveTaxonomy(updated).as(Right(Json.obj(
-            "message" -> Json.fromString(s"Added global tag: $name")
+          val updated = globalRolesFile.copy(
+            roles = globalRolesFile.roles.map(r => if r.id == roleId then updatedRole else r)
+          )
+          storage.saveGlobalRoles(updated).as(Right(Json.obj(
+            "message" -> Json.fromString(s"Updated global role: ${updatedRole.name}")
           )))
-        }
+    }
+
+  def deleteGlobalRole(roleId: String): F[Either[String, Json]] =
+    storage.getGlobalRoles.flatMap { globalRolesFile =>
+      globalRolesFile.roles.find(_.id == roleId) match
+        case None => Async[F].pure(Left(s"Global role not found: $roleId"))
+        case Some(role) =>
+          val updated = globalRolesFile.copy(
+            roles = globalRolesFile.roles.filterNot(_.id == roleId)
+          )
+          storage.saveGlobalRoles(updated).as(Right(Json.obj(
+            "message" -> Json.fromString(s"Deleted global role: ${role.name}")
+          )))
+    }
+
+  // ============ Commanders ============
+
+  def setCommanders(
+    deckId: String,
+    commanders: List[CardIdentifier]
+  ): F[Either[String, Json]] =
+    storage.getDeck(deckId).flatMap {
+      case None => Async[F].pure(Left(s"Deck not found: $deckId"))
+      case Some(deck) =>
+        // Validate that it's a Commander format deck
+        if deck.format.`type` != FormatType.Commander then
+          Async[F].pure(Left("Commanders can only be set for Commander format decks"))
+        else if commanders.size > 2 then
+          Async[F].pure(Left("Maximum of 2 commanders allowed (with partner)"))
+        else
+          val updatedDeck = deck.copy(commanders = commanders)
+          storage.saveDeck(updatedDeck).as(Right(Json.obj(
+            "message" -> Json.fromString(s"Set ${commanders.size} commander(s)"),
+            "commanders" -> Json.arr(commanders.map(c => Json.fromString(c.name))*)
+          )))
+    }
+
+  def addCommander(
+    deckId: String,
+    name: String,
+    setCode: Option[String],
+    collectorNumber: Option[String]
+  ): F[Either[String, Json]] =
+    storage.getDeck(deckId).flatMap {
+      case None => Async[F].pure(Left(s"Deck not found: $deckId"))
+      case Some(deck) =>
+        if deck.format.`type` != FormatType.Commander then
+          Async[F].pure(Left("Commanders can only be set for Commander format decks"))
+        else if deck.commanders.size >= 2 then
+          Async[F].pure(Left("Maximum of 2 commanders allowed (with partner)"))
+        else
+          val lookupF = (setCode, collectorNumber) match
+            case (Some(set), Some(num)) => scryfall.lookupBySetAndNumber(set, num)
+            case _ => scryfall.lookupByName(name)
+
+          lookupF.flatMap {
+            case Left(err) => Async[F].pure(Left(s"Card not found: $err"))
+            case Right(card) =>
+              val commander = CardIdentifier(
+                scryfallId = Some(card.id),
+                name = card.name,
+                setCode = card.setCode,
+                collectorNumber = card.collectorNumber
+              )
+              val updatedDeck = deck.copy(commanders = deck.commanders :+ commander)
+              storage.saveDeck(updatedDeck).as(Right(Json.obj(
+                "message" -> Json.fromString(s"Added commander: ${card.name}")
+              )))
+          }
+    }
 
   // ============ Interest List ============
 
@@ -592,15 +656,27 @@ class DeckTools[F[_]: Async](
               quantity = pc.quantity,
               inclusion = if pc.isMaybeboard then InclusionStatus.Considering else InclusionStatus.Confirmed,
               ownership = OwnershipStatus.Owned,
-              role = pc.role.flatMap(parseRole).getOrElse(inferRole(sc)),
+              roles = if pc.roles.nonEmpty then pc.roles else inferRoles(sc),
               isPinned = false,
-              tags = pc.tags,
               notes = None,
               addedAt = Instant.now().toString,
               addedBy = AddedBy.Import
             )
 
-          val mainCards = resolved.filterNot { case (pc, _) => pc.isSideboard }.map { case (pc, sc) => toDeckCard(pc, sc) }
+          def toCommanderIdentifier(pc: ParsedCard, sc: ScryfallCard): CardIdentifier =
+            CardIdentifier(
+              scryfallId = Some(sc.id),
+              name = sc.name,
+              setCode = sc.setCode,
+              collectorNumber = sc.collectorNumber
+            )
+
+          // Extract commanders from parsed cards
+          val commanderCards = resolved.filter { case (pc, _) => pc.isCommander }
+          val commanders = commanderCards.map { case (pc, sc) => toCommanderIdentifier(pc, sc) }
+
+          // Main deck cards (excluding commanders)
+          val mainCards = resolved.filterNot { case (pc, _) => pc.isSideboard || pc.isCommander }.map { case (pc, sc) => toDeckCard(pc, sc) }
           val sideCards = resolved.filter { case (pc, _) => pc.isSideboard }.map { case (pc, sc) => toDeckCard(pc, sc) }
 
           deckId match
@@ -611,11 +687,13 @@ class DeckTools[F[_]: Async](
                 case Some(deck) =>
                   val updatedDeck = deck.copy(
                     cards = mainCards.foldLeft(deck.cards)(mergeCard),
-                    sideboard = sideCards.foldLeft(deck.sideboard)(mergeCard)
+                    sideboard = sideCards.foldLeft(deck.sideboard)(mergeCard),
+                    commanders = if commanders.nonEmpty then commanders else deck.commanders
                   )
                   storage.saveDeck(updatedDeck).as(Right(Json.obj(
                     "message" -> Json.fromString(s"Imported ${resolved.size} cards into ${deck.name}"),
                     "imported" -> Json.fromInt(resolved.size),
+                    "commanders" -> (if commanders.nonEmpty then Json.arr(commanders.map(c => Json.fromString(c.name))*) else Json.Null),
                     "failed" -> (if failed.isEmpty then Json.Null else Json.arr(failed.map(Json.fromString)*))
                   )))
               }
@@ -631,12 +709,21 @@ class DeckTools[F[_]: Async](
 
               val deck = Deck.empty(name.getOrElse("Imported Deck"), ft).copy(
                 cards = mainCards,
-                sideboard = sideCards
+                sideboard = sideCards,
+                commanders = commanders
               )
+
+              // Warning if Commander format but no commander found
+              val warnings = if ft == FormatType.Commander && commanders.isEmpty then
+                List("No commander detected in import. You may need to set the commander manually.")
+              else Nil
+
               storage.saveDeck(deck).as(Right(Json.obj(
                 "message" -> Json.fromString(s"Created deck '${deck.name}' with ${resolved.size} cards"),
                 "deckId" -> Json.fromString(deck.id),
                 "imported" -> Json.fromInt(resolved.size),
+                "commanders" -> (if commanders.nonEmpty then Json.arr(commanders.map(c => Json.fromString(c.name))*) else Json.Null),
+                "warnings" -> (if warnings.isEmpty then Json.Null else Json.arr(warnings.map(Json.fromString)*)),
                 "failed" -> (if failed.isEmpty then Json.Null else Json.arr(failed.map(Json.fromString)*))
               )))
         }
@@ -705,10 +792,9 @@ class DeckTools[F[_]: Async](
 
         // Commander-specific checks
         if format.`type` == FormatType.Commander then
-          val commanders = deck.cards.filter(_.role == CardRole.Commander)
-          if commanders.isEmpty then
+          if deck.commanders.isEmpty then
             warnings += "No commander designated"
-          else if commanders.size > 2 then
+          else if deck.commanders.size > 2 then
             errors += "Too many commanders (max 2 with partner)"
 
         Right(Json.obj(
@@ -729,7 +815,7 @@ class DeckTools[F[_]: Async](
             "deckId" -> Json.fromString(deck.id),
             "deckName" -> Json.fromString(deck.name),
             "quantity" -> Json.fromInt(card.quantity),
-            "role" -> Json.fromString(card.role.toString),
+            "roles" -> Json.arr(card.roles.map(Json.fromString)*),
             "location" -> Json.fromString(
               if deck.cards.exists(_.card.name.toLowerCase == cardName.toLowerCase) then "mainboard"
               else if deck.alternates.exists(_.card.name.toLowerCase == cardName.toLowerCase) then "alternates"

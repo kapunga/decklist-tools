@@ -19,16 +19,19 @@ export const archidektFormat: DeckFormat = {
       const match = line.match(cardPattern)
       if (match) {
         const tagStr = match[6] || ''
-        const tags: string[] = []
+        const roles: string[] = []
         let tagMatch
         while ((tagMatch = tagPattern.exec(tagStr)) !== null) {
-          tags.push(tagMatch[1])
+          roles.push(tagMatch[1].toLowerCase().replace(/\s+/g, '-'))
         }
 
         const category = match[5]?.toLowerCase()
-        let role: string | undefined
-        if (category === 'commander') role = 'commander'
-        else if (category === 'lands' || category === 'land') role = 'land'
+        const isCommander = category === 'commander'
+
+        // Add land role if in Lands category
+        if ((category === 'lands' || category === 'land') && !roles.includes('land')) {
+          roles.push('land')
+        }
 
         cards.push({
           name: match[2].trim(),
@@ -37,8 +40,8 @@ export const archidektFormat: DeckFormat = {
           quantity: parseInt(match[1], 10),
           isSideboard: category === 'sideboard',
           isMaybeboard: category === 'maybeboard' || category === 'considering',
-          role,
-          tags
+          isCommander,
+          roles
         })
       }
     }
@@ -50,25 +53,37 @@ export const archidektFormat: DeckFormat = {
     const lines: string[] = []
 
     const renderCard = (c: DeckCard, category: string) => {
-      const tagStr = c.tags.map(t => `^${t}^`).join(' ')
+      const roleStr = c.roles.map(r => `^${r}^`).join(' ')
       let line = `${c.quantity}x ${c.card.name} (${c.card.setCode.toUpperCase()}) ${c.card.collectorNumber} [${category}]`
-      if (tagStr) line += ` ${tagStr}`
+      if (roleStr) line += ` ${roleStr}`
       lines.push(line)
     }
 
-    const roleToCategory: Record<string, string> = {
-      commander: 'Commander',
+    const roleToCategoryMap: Record<string, string> = {
       land: 'Lands',
-      core: 'Core',
-      enabler: 'Enablers',
-      support: 'Support',
-      flex: 'Flex'
+      ramp: 'Ramp',
+      'card-draw': 'Card Draw',
+      removal: 'Removal',
+      'board-wipe': 'Board Wipes',
+      protection: 'Protection',
+      recursion: 'Recursion',
+      finisher: 'Finishers'
+    }
+
+    // Commanders section
+    if (deck.format.type === 'commander' && deck.commanders.length > 0) {
+      deck.commanders.forEach(c => {
+        lines.push(`1x ${c.name} (${c.setCode.toUpperCase()}) ${c.collectorNumber} [Commander]`)
+      })
     }
 
     deck.cards
       .filter(c => c.inclusion === 'confirmed')
       .forEach(c => {
-        renderCard(c, roleToCategory[c.role] || 'Other')
+        // Use first role for category, fallback to 'Other'
+        const primaryRole = c.roles[0]
+        const category = primaryRole ? (roleToCategoryMap[primaryRole] || 'Other') : 'Other'
+        renderCard(c, category)
       })
 
     if (options.includeSideboard && deck.sideboard.length > 0) {

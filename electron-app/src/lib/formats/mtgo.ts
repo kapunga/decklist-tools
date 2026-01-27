@@ -38,7 +38,8 @@ export const mtgoFormat: DeckFormat = {
           quantity: parseInt(match[1], 10),
           isSideboard: inSideboard,
           isMaybeboard: false,
-          tags: []
+          isCommander: false,
+          roles: []
         })
       }
     }
@@ -48,6 +49,15 @@ export const mtgoFormat: DeckFormat = {
 
   render(deck: Deck, options: RenderOptions): string {
     const lines: string[] = []
+
+    // Commander section for Commander format
+    if (deck.format.type === 'commander' && deck.commanders.length > 0) {
+      lines.push('Commander')
+      deck.commanders.forEach(c => {
+        lines.push(`1 ${c.name}`)
+      })
+      lines.push('')
+    }
 
     deck.cards
       .filter(c => c.inclusion === 'confirmed')

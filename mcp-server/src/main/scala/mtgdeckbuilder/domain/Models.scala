@@ -49,40 +49,16 @@ object OwnershipStatus:
     case other => Left(s"Unknown ownership status: $other")
   }
 
-// CardRole is now a string to support custom roles
-// Built-in roles are defined as constants
-opaque type CardRole = String
+// Role Definition - used for both global and deck-specific custom roles
+case class RoleDefinition(
+  id: String,
+  name: String,
+  description: Option[String] = None,
+  color: Option[String] = None
+)
 
-object CardRole:
-  // Built-in role values
-  val Commander: CardRole = "commander"
-  val Core: CardRole = "core"
-  val Enabler: CardRole = "enabler"
-  val Support: CardRole = "support"
-  val Flex: CardRole = "flex"
-  val Land: CardRole = "land"
-
-  // Built-in roles list for validation
-  val builtInRoles: Set[CardRole] = Set(Commander, Core, Enabler, Support, Flex, Land)
-
-  def apply(value: String): CardRole = value
-
-  def isBuiltIn(role: CardRole): Boolean = builtInRoles.contains(role)
-
-  def importanceScore(role: CardRole): Int = role match
-    case Commander => 10
-    case Core => 9
-    case Land => 8
-    case Enabler => 7
-    case Support => 5
-    case Flex => 3
-    case _ => 1 // Custom roles have lowest default importance
-
-  extension (role: CardRole)
-    def value: String = role
-
-  given Encoder[CardRole] = Encoder.encodeString.contramap(_.value)
-  given Decoder[CardRole] = Decoder.decodeString.map(CardRole.apply)
+object RoleDefinition:
+  given Codec[RoleDefinition] = deriveCodec
 
 enum AddedBy:
   case User, Import
@@ -171,27 +147,14 @@ object DeckFormat:
       unlimitedCards = Nil
     )
 
-// Custom Role Definition for user-defined roles
-case class CustomRoleDefinition(
-  id: String,
-  name: String,
-  description: Option[String] = None,
-  color: Option[String] = None,
-  sortOrder: Int = 0
-)
-
-object CustomRoleDefinition:
-  given Codec[CustomRoleDefinition] = deriveCodec
-
-// Deck Card
+// Deck Card - cards can have multiple roles
 case class DeckCard(
   card: CardIdentifier,
   quantity: Int,
   inclusion: InclusionStatus,
   ownership: OwnershipStatus,
-  role: CardRole,
+  roles: List[String],
   isPinned: Boolean,
-  tags: List[String],
   notes: Option[String],
   addedAt: String,
   addedBy: AddedBy
@@ -205,8 +168,7 @@ case class SynergyPackage(
   name: String,
   description: Option[String],
   cardNames: List[String],
-  priority: Int,
-  tags: List[String]
+  priority: Int
 )
 
 object SynergyPackage:
@@ -256,17 +218,6 @@ case class DeckStrategy(
 object DeckStrategy:
   given Codec[DeckStrategy] = deriveCodec
 
-// Custom Tags
-case class CustomTagDefinition(
-  id: String,
-  name: String,
-  description: Option[String],
-  color: Option[String]
-)
-
-object CustomTagDefinition:
-  given Codec[CustomTagDefinition] = deriveCodec
-
 // Deck Notes
 case class DeckNote(
   id: String,
@@ -293,12 +244,11 @@ case class Deck(
   cards: List[DeckCard],
   alternates: List[DeckCard],
   sideboard: List[DeckCard],
-  customTags: List[CustomTagDefinition],
+  commanders: List[CardIdentifier],
+  customRoles: List[RoleDefinition],
   notes: List[DeckNote],
-  // New fields
   artCardScryfallId: Option[String] = None,
-  colorIdentity: Option[List[String]] = None,
-  customRoles: List[CustomRoleDefinition] = Nil
+  colorIdentity: Option[List[String]] = None
 )
 
 object Deck:
@@ -319,49 +269,18 @@ object Deck:
       cards = Nil,
       alternates = Nil,
       sideboard = Nil,
-      customTags = Nil,
+      commanders = Nil,
+      customRoles = Nil,
       notes = Nil,
       artCardScryfallId = None,
-      colorIdentity = None,
-      customRoles = Nil
+      colorIdentity = None
     )
 
-// Taxonomy
-enum TagCategory:
-  case Function, Strategy, Theme, Mechanic, Meta
-
-object TagCategory:
-  given Encoder[TagCategory] = Encoder.encodeString.contramap {
-    case Function => "function"
-    case Strategy => "strategy"
-    case Theme => "theme"
-    case Mechanic => "mechanic"
-    case Meta => "meta"
-  }
-  given Decoder[TagCategory] = Decoder.decodeString.emap {
-    case "function" => Right(Function)
-    case "strategy" => Right(Strategy)
-    case "theme" => Right(Theme)
-    case "mechanic" => Right(Mechanic)
-    case "meta" => Right(Meta)
-    case other => Left(s"Unknown tag category: $other")
-  }
-
-case class GlobalTag(
-  id: String,
-  name: String,
-  category: TagCategory,
-  description: String,
-  aliases: Option[List[String]]
-)
-
-object GlobalTag:
-  given Codec[GlobalTag] = deriveCodec
-
+// Taxonomy - global role definitions shared across all decks
 case class Taxonomy(
   version: Int,
   updatedAt: String,
-  globalTags: List[GlobalTag]
+  globalRoles: List[RoleDefinition]
 )
 
 object Taxonomy:
@@ -370,31 +289,43 @@ object Taxonomy:
   val default: Taxonomy = Taxonomy(
     version = 1,
     updatedAt = Instant.now().toString,
-    globalTags = List(
-      // Function tags
-      GlobalTag("removal", "Removal", TagCategory.Function, "Removes permanents from the battlefield", None),
-      GlobalTag("removal-creature", "Creature Removal", TagCategory.Function, "Specifically removes creatures", None),
-      GlobalTag("removal-artifact", "Artifact Removal", TagCategory.Function, "Specifically removes artifacts", None),
-      GlobalTag("removal-enchantment", "Enchantment Removal", TagCategory.Function, "Specifically removes enchantments", None),
-      GlobalTag("board-wipe", "Board Wipe", TagCategory.Function, "Mass removal of permanents", None),
-      GlobalTag("ramp", "Ramp", TagCategory.Function, "Accelerates mana production", None),
-      GlobalTag("draw", "Card Draw", TagCategory.Function, "Draws additional cards", None),
-      GlobalTag("tutor", "Tutor", TagCategory.Function, "Searches library for specific cards", None),
-      GlobalTag("protection", "Protection", TagCategory.Function, "Protects permanents or players", None),
-      GlobalTag("recursion", "Recursion", TagCategory.Function, "Returns cards from graveyard", None),
-      GlobalTag("finisher", "Finisher", TagCategory.Function, "Wins the game or deals major damage", None),
-      // Mechanic tags
-      GlobalTag("tokens", "Tokens", TagCategory.Mechanic, "Creates or synergizes with tokens", None),
-      GlobalTag("blink", "Blink", TagCategory.Mechanic, "Exiles and returns permanents", None),
-      GlobalTag("sacrifice", "Sacrifice", TagCategory.Mechanic, "Sacrifices permanents for value", None),
-      GlobalTag("aristocrats", "Aristocrats", TagCategory.Mechanic, "Benefits from creatures dying", None),
-      GlobalTag("lifegain", "Lifegain", TagCategory.Mechanic, "Gains life or triggers on lifegain", None),
-      GlobalTag("counters", "Counters", TagCategory.Mechanic, "Uses +1/+1 or other counters", None),
-      GlobalTag("graveyard", "Graveyard", TagCategory.Mechanic, "Interacts with the graveyard", None),
-      // Theme tags
-      GlobalTag("theme", "Theme", TagCategory.Theme, "Central to deck identity, do not cut", None),
-      // Meta tags
-      GlobalTag("buy", "Buy", TagCategory.Meta, "Cards that need to be purchased", Some(List("need_to_buy")))
+    globalRoles = List(
+      // Special roles
+      RoleDefinition("engine", "Engine", Some("Essential to how the deck wins or functions"), Some("#ec4899")),
+      RoleDefinition("theme", "Theme", Some("Fits the deck flavor or identity"), Some("#a855f7")),
+
+      // Core strategic roles
+      RoleDefinition("ramp", "Ramp", Some("Accelerates mana production"), Some("#22c55e")),
+      RoleDefinition("card-draw", "Card Draw", Some("Draws additional cards"), Some("#3b82f6")),
+      RoleDefinition("removal", "Removal", Some("Removes permanents from the battlefield"), Some("#ef4444")),
+      RoleDefinition("board-wipe", "Board Wipe", Some("Mass removal of permanents"), Some("#dc2626")),
+      RoleDefinition("tutor", "Tutor", Some("Searches library for specific cards"), Some("#8b5cf6")),
+      RoleDefinition("protection", "Protection", Some("Protects permanents or players"), Some("#f59e0b")),
+      RoleDefinition("recursion", "Recursion", Some("Returns cards from graveyard"), Some("#10b981")),
+      RoleDefinition("finisher", "Finisher", Some("Wins the game or deals major damage"), Some("#f97316")),
+      RoleDefinition("win-condition", "Win Condition", Some("Directly enables victory"), Some("#eab308")),
+
+      // Creature/combat roles
+      RoleDefinition("beater", "Beater", Some("Efficient creature for combat damage"), Some("#84cc16")),
+      RoleDefinition("blocker", "Blocker", Some("Defensive creature"), Some("#64748b")),
+      RoleDefinition("evasion", "Evasion", Some("Creature with evasive abilities"), Some("#06b6d4")),
+      RoleDefinition("value-engine", "Value Engine", Some("Generates ongoing card advantage"), Some("#a855f7")),
+      RoleDefinition("utility", "Utility", Some("Provides useful abilities"), Some("#6366f1")),
+
+      // Archetype-specific roles
+      RoleDefinition("token-producer", "Token Producer", Some("Creates creature tokens"), Some("#14b8a6")),
+      RoleDefinition("sacrifice-fodder", "Sacrifice Fodder", Some("Meant to be sacrificed"), Some("#71717a")),
+      RoleDefinition("sacrifice-outlet", "Sacrifice Outlet", Some("Lets you sacrifice creatures"), Some("#525252")),
+      RoleDefinition("payoff", "Payoff", Some("Rewards deck strategy"), Some("#f472b6")),
+      RoleDefinition("enabler", "Enabler", Some("Enables deck strategy"), Some("#22d3ee")),
+      RoleDefinition("combo-piece", "Combo Piece", Some("Part of a game-winning combo"), Some("#fbbf24")),
+
+      // Mana
+      RoleDefinition("mana-fixer", "Mana Fixer", Some("Fixes mana colors"), Some("#4ade80")),
+
+      // Interaction
+      RoleDefinition("counterspell", "Counterspell", Some("Counters spells"), Some("#60a5fa")),
+      RoleDefinition("discard", "Discard", Some("Forces opponents to discard"), Some("#374151"))
     )
   )
 
@@ -436,3 +367,54 @@ object Config:
   given Codec[Config] = deriveCodec
 
   val default: Config = Config()
+
+// Global Roles File
+case class GlobalRolesFile(
+  version: Int,
+  roles: List[RoleDefinition]
+)
+
+object GlobalRolesFile:
+  given Codec[GlobalRolesFile] = deriveCodec
+
+  val default: GlobalRolesFile = GlobalRolesFile(
+    version = 1,
+    roles = List(
+      // Special roles
+      RoleDefinition("engine", "Engine", Some("Essential to how the deck wins or functions"), Some("#ec4899")),
+      RoleDefinition("theme", "Theme", Some("Fits the deck flavor or identity"), Some("#a855f7")),
+
+      // Core strategic roles
+      RoleDefinition("ramp", "Ramp", Some("Accelerates mana production"), Some("#22c55e")),
+      RoleDefinition("card-draw", "Card Draw", Some("Draws additional cards"), Some("#3b82f6")),
+      RoleDefinition("removal", "Removal", Some("Removes permanents from the battlefield"), Some("#ef4444")),
+      RoleDefinition("board-wipe", "Board Wipe", Some("Mass removal of permanents"), Some("#dc2626")),
+      RoleDefinition("tutor", "Tutor", Some("Searches library for specific cards"), Some("#8b5cf6")),
+      RoleDefinition("protection", "Protection", Some("Protects permanents or players"), Some("#f59e0b")),
+      RoleDefinition("recursion", "Recursion", Some("Returns cards from graveyard"), Some("#10b981")),
+      RoleDefinition("finisher", "Finisher", Some("Wins the game or deals major damage"), Some("#f97316")),
+      RoleDefinition("win-condition", "Win Condition", Some("Directly enables victory"), Some("#eab308")),
+
+      // Creature/combat roles
+      RoleDefinition("beater", "Beater", Some("Efficient creature for combat damage"), Some("#84cc16")),
+      RoleDefinition("blocker", "Blocker", Some("Defensive creature"), Some("#64748b")),
+      RoleDefinition("evasion", "Evasion", Some("Creature with evasive abilities"), Some("#06b6d4")),
+      RoleDefinition("value-engine", "Value Engine", Some("Generates ongoing card advantage"), Some("#a855f7")),
+      RoleDefinition("utility", "Utility", Some("Provides useful abilities"), Some("#6366f1")),
+
+      // Archetype-specific roles
+      RoleDefinition("token-producer", "Token Producer", Some("Creates creature tokens"), Some("#14b8a6")),
+      RoleDefinition("sacrifice-fodder", "Sacrifice Fodder", Some("Meant to be sacrificed"), Some("#71717a")),
+      RoleDefinition("sacrifice-outlet", "Sacrifice Outlet", Some("Lets you sacrifice creatures"), Some("#525252")),
+      RoleDefinition("payoff", "Payoff", Some("Rewards deck strategy"), Some("#f472b6")),
+      RoleDefinition("enabler", "Enabler", Some("Enables deck strategy"), Some("#22d3ee")),
+      RoleDefinition("combo-piece", "Combo Piece", Some("Part of a game-winning combo"), Some("#fbbf24")),
+
+      // Mana
+      RoleDefinition("mana-fixer", "Mana Fixer", Some("Fixes mana colors"), Some("#4ade80")),
+
+      // Interaction
+      RoleDefinition("counterspell", "Counterspell", Some("Counters spells"), Some("#60a5fa")),
+      RoleDefinition("discard", "Discard", Some("Forces opponents to discard"), Some("#374151"))
+    )
+  )

@@ -22,9 +22,6 @@ lazy val root = (project in file("."))
       // File I/O
       "co.fs2" %% "fs2-io" % "3.9.3",
 
-      // MCP
-      "ch.linkyard" %% "scala-mcp-server" % "0.1.1",
-
       // Logging
       "org.typelevel" %% "log4cats-slf4j" % "2.6.0",
       "ch.qos.logback" % "logback-classic" % "1.4.11",

@@ -7,8 +7,8 @@ export interface ParsedCard {
   quantity: number
   isSideboard: boolean
   isMaybeboard: boolean
-  role?: string
-  tags: string[]
+  isCommander: boolean
+  roles: string[]
 }
 
 export interface DeckFormat {

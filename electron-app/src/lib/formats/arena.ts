@@ -17,20 +17,34 @@ export const arenaFormat: DeckFormat = {
 
     let inSideboard = false
     let inMaybeboard = false
+    let inCommander = false
 
     for (const line of lines) {
       if (!line) continue
 
       const lower = line.toLowerCase()
-      if (lower === 'deck' || lower === 'commander') continue
+      if (lower === 'deck') {
+        inCommander = false
+        inSideboard = false
+        inMaybeboard = false
+        continue
+      }
+      if (lower === 'commander') {
+        inCommander = true
+        inSideboard = false
+        inMaybeboard = false
+        continue
+      }
       if (lower === 'sideboard') {
         inSideboard = true
         inMaybeboard = false
+        inCommander = false
         continue
       }
       if (lower === 'maybeboard' || lower === 'considering') {
         inMaybeboard = true
         inSideboard = false
+        inCommander = false
         continue
       }
 
@@ -43,7 +57,8 @@ export const arenaFormat: DeckFormat = {
           quantity: parseInt(match[1], 10),
           isSideboard: inSideboard,
           isMaybeboard: inMaybeboard,
-          tags: []
+          isCommander: inCommander,
+          roles: []
         })
         continue
       }
@@ -55,7 +70,8 @@ export const arenaFormat: DeckFormat = {
           quantity: parseInt(match[1], 10),
           isSideboard: inSideboard,
           isMaybeboard: inMaybeboard,
-          tags: []
+          isCommander: inCommander,
+          roles: []
         })
       }
     }
@@ -64,8 +80,20 @@ export const arenaFormat: DeckFormat = {
   },
 
   render(deck: Deck, options: RenderOptions): string {
-    const lines: string[] = ['Deck']
+    const lines: string[] = []
 
+    // Commander section for Commander format
+    if (deck.format.type === 'commander' && deck.commanders.length > 0) {
+      lines.push('Commander')
+      deck.commanders.forEach(c => {
+        lines.push(
+          `1 ${c.name} (${c.setCode.toUpperCase()}) ${c.collectorNumber}`
+        )
+      })
+      lines.push('')
+    }
+
+    lines.push('Deck')
     deck.cards
       .filter(c => c.inclusion === 'confirmed')
       .forEach(c => {

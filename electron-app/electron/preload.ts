@@ -21,6 +21,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getConfig: () => ipcRenderer.invoke('config:get'),
   saveConfig: (config: unknown) => ipcRenderer.invoke('config:save', config),
 
+  // Global Roles
+  getGlobalRoles: () => ipcRenderer.invoke('global-roles:get'),
+  saveGlobalRoles: (roles: unknown[]) => ipcRenderer.invoke('global-roles:save', roles),
+
   // File change events
   onStorageChanged: (callback: (data: { event: string; filename: string }) => void) => {
     ipcRenderer.on('storage:changed', (_, data) => callback(data))
@@ -42,6 +46,8 @@ export interface ElectronAPI {
   saveInterestList: (list: unknown) => Promise<void>
   getConfig: () => Promise<unknown>
   saveConfig: (config: unknown) => Promise<void>
+  getGlobalRoles: () => Promise<unknown[]>
+  saveGlobalRoles: (roles: unknown[]) => Promise<void>
   onStorageChanged: (callback: (data: { event: string; filename: string }) => void) => void
   removeStorageListener: () => void
 }

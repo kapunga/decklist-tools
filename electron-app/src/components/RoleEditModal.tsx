@@ -11,46 +11,25 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import type { CustomRoleDefinition, BuiltInCardRole, CardRole } from '@/types'
-import { BUILT_IN_ROLES, roleImportance } from '@/types'
+import type { RoleDefinition } from '@/types'
+import { getRoleColor } from '@/lib/constants'
+import { useGlobalRoles } from '@/hooks/useStore'
 
 interface RoleEditModalProps {
   isOpen: boolean
   onClose: () => void
-  customRoles: CustomRoleDefinition[]
-  onSave: (customRoles: CustomRoleDefinition[]) => void
-  // If provided, assigns role to this card on confirm
-  cardToAssign?: { name: string; currentRole: CardRole }
-  onAssignRole?: (role: CardRole) => void
-}
-
-const BUILT_IN_ROLE_DESCRIPTIONS: Record<BuiltInCardRole, string> = {
-  commander: 'The deck\'s commander(s)',
-  core: 'Essential cards that define the strategy',
-  enabler: 'Cards that make the strategy work',
-  support: 'Cards that enhance or protect the strategy',
-  flex: 'Flexible slots that can be swapped',
-  land: 'Mana-producing lands'
-}
-
-const BUILT_IN_ROLE_COLORS: Record<BuiltInCardRole, string> = {
-  commander: 'bg-purple-600',
-  core: 'bg-blue-600',
-  enabler: 'bg-green-600',
-  support: 'bg-yellow-600',
-  flex: 'bg-orange-600',
-  land: 'bg-stone-600'
+  customRoles: RoleDefinition[]
+  onSave: (customRoles: RoleDefinition[]) => void
 }
 
 export function RoleEditModal({
   isOpen,
   onClose,
   customRoles,
-  onSave,
-  cardToAssign,
-  onAssignRole
+  onSave
 }: RoleEditModalProps) {
-  const [editedRoles, setEditedRoles] = useState<CustomRoleDefinition[]>(customRoles || [])
+  const globalRoles = useGlobalRoles()
+  const [editedRoles, setEditedRoles] = useState<RoleDefinition[]>(customRoles || [])
   const [newRoleName, setNewRoleName] = useState('')
   const [editingRoleId, setEditingRoleId] = useState<string | null>(null)
   const [editingRoleName, setEditingRoleName] = useState('')
@@ -70,12 +49,9 @@ export function RoleEditModal({
     if (!newRoleName.trim()) return
 
     const roles = editedRoles || []
-    const newRole: CustomRoleDefinition = {
+    const newRole: RoleDefinition = {
       id: newRoleName.toLowerCase().replace(/\s+/g, '-'),
-      name: newRoleName.trim(),
-      sortOrder: roles.length > 0
-        ? Math.max(...roles.map(r => r.sortOrder)) + 1
-        : 1
+      name: newRoleName.trim()
     }
 
     setEditedRoles([...roles, newRole])
@@ -86,7 +62,7 @@ export function RoleEditModal({
     setEditedRoles((editedRoles || []).filter(r => r.id !== id))
   }, [editedRoles])
 
-  const handleStartEdit = useCallback((role: CustomRoleDefinition) => {
+  const handleStartEdit = useCallback((role: RoleDefinition) => {
     setEditingRoleId(role.id)
     setEditingRoleName(role.name)
   }, [])
@@ -106,54 +82,36 @@ export function RoleEditModal({
     onClose()
   }, [editedRoles, onSave, onClose])
 
-  const handleSelectRole = useCallback((role: CardRole) => {
-    if (onAssignRole) {
-      onAssignRole(role)
-      onClose()
-    }
-  }, [onAssignRole, onClose])
-
   // Sort roles for display
-  const sortedBuiltInRoles = [...BUILT_IN_ROLES].sort(
-    (a, b) => roleImportance[b] - roleImportance[a]
-  )
-  const sortedCustomRoles = [...(editedRoles || [])].sort(
-    (a, b) => b.sortOrder - a.sortOrder
-  )
+  const sortedGlobalRoles = [...globalRoles].sort((a, b) => a.name.localeCompare(b.name))
+  const sortedCustomRoles = [...(editedRoles || [])].sort((a, b) => a.name.localeCompare(b.name))
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-lg max-h-[80vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle>
-            {cardToAssign ? `Assign Role to ${cardToAssign.name}` : 'Manage Roles'}
-          </DialogTitle>
+          <DialogTitle>Manage Roles</DialogTitle>
           <DialogDescription>
-            {cardToAssign
-              ? 'Select a role for this card. You can also create custom roles.'
-              : 'Manage custom roles for your deck. Built-in roles cannot be modified.'}
+            Global roles are shared across all decks. You can add custom roles specific to this deck.
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex-1 overflow-auto py-4 space-y-4">
-          {/* Built-in roles */}
+          {/* Global roles (read-only) */}
           <div>
-            <h4 className="text-sm font-medium text-muted-foreground mb-2">Built-in Roles</h4>
-            <div className="space-y-2">
-              {sortedBuiltInRoles.map(role => (
+            <h4 className="text-sm font-medium text-muted-foreground mb-2">Global Roles</h4>
+            <div className="grid grid-cols-2 gap-2">
+              {sortedGlobalRoles.map(role => (
                 <div
-                  key={role}
-                  className={`flex items-center gap-3 p-2 rounded-md border ${
-                    cardToAssign ? 'cursor-pointer hover:bg-accent' : ''
-                  } ${cardToAssign?.currentRole === role ? 'bg-accent' : ''}`}
-                  onClick={() => cardToAssign && handleSelectRole(role)}
+                  key={role.id}
+                  className="flex items-center gap-2 p-2 rounded-md border"
                 >
-                  <Badge className={BUILT_IN_ROLE_COLORS[role]}>
-                    {role}
+                  <Badge
+                    style={{ backgroundColor: role.color || getRoleColor(role.id, globalRoles) }}
+                    className="text-white"
+                  >
+                    {role.name}
                   </Badge>
-                  <span className="text-sm text-muted-foreground flex-1">
-                    {BUILT_IN_ROLE_DESCRIPTIONS[role]}
-                  </span>
                 </div>
               ))}
             </div>
@@ -161,7 +119,7 @@ export function RoleEditModal({
 
           {/* Custom roles */}
           <div>
-            <h4 className="text-sm font-medium text-muted-foreground mb-2">Custom Roles</h4>
+            <h4 className="text-sm font-medium text-muted-foreground mb-2">Deck Custom Roles</h4>
             {sortedCustomRoles.length === 0 ? (
               <p className="text-sm text-muted-foreground py-2">
                 No custom roles defined yet.
@@ -171,10 +129,7 @@ export function RoleEditModal({
                 {sortedCustomRoles.map(role => (
                   <div
                     key={role.id}
-                    className={`flex items-center gap-3 p-2 rounded-md border ${
-                      cardToAssign ? 'cursor-pointer hover:bg-accent' : ''
-                    } ${cardToAssign?.currentRole === role.id ? 'bg-accent' : ''}`}
-                    onClick={() => cardToAssign && handleSelectRole(role.id)}
+                    className="flex items-center gap-3 p-2 rounded-md border"
                   >
                     <GripVertical className="w-4 h-4 text-muted-foreground cursor-grab" />
 
@@ -197,8 +152,8 @@ export function RoleEditModal({
                     ) : (
                       <>
                         <Badge
-                          variant="outline"
-                          style={role.color ? { backgroundColor: role.color } : undefined}
+                          style={{ backgroundColor: role.color || getRoleColor(role.id, globalRoles) }}
+                          className="text-white"
                         >
                           {role.name}
                         </Badge>
@@ -210,32 +165,30 @@ export function RoleEditModal({
                       </>
                     )}
 
-                    {!cardToAssign && (
-                      <div className="ml-auto flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7"
-                          onClick={e => {
-                            e.stopPropagation()
-                            handleStartEdit(role)
-                          }}
-                        >
-                          <Pencil className="w-3 h-3" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 text-destructive"
-                          onClick={e => {
-                            e.stopPropagation()
-                            handleDeleteRole(role.id)
-                          }}
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
-                      </div>
-                    )}
+                    <div className="ml-auto flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={e => {
+                          e.stopPropagation()
+                          handleStartEdit(role)
+                        }}
+                      >
+                        <Pencil className="w-3 h-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-destructive"
+                        onClick={e => {
+                          e.stopPropagation()
+                          handleDeleteRole(role.id)
+                        }}
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -266,11 +219,9 @@ export function RoleEditModal({
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          {!cardToAssign && (
-            <Button onClick={handleSave}>
-              Save Changes
-            </Button>
-          )}
+          <Button onClick={handleSave}>
+            Save Changes
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

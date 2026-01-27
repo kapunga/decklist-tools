@@ -95,6 +95,15 @@ function setupIpcHandlers() {
     return storage!.saveConfig(config)
   })
 
+  // Global Roles
+  ipcMain.handle('global-roles:get', async () => {
+    return storage!.getGlobalRoles()
+  })
+
+  ipcMain.handle('global-roles:save', async (_, roles: unknown[]) => {
+    return storage!.saveGlobalRoles(roles)
+  })
+
   // Watch for file changes
   storage.watchForChanges((event, filename) => {
     if (mainWindow) {

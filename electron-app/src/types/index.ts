@@ -9,48 +9,16 @@ export interface CardIdentifier {
 // Enums
 export type InclusionStatus = 'confirmed' | 'considering' | 'cut'
 export type OwnershipStatus = 'owned' | 'pulled' | 'need_to_buy'
-export type BuiltInCardRole = 'commander' | 'core' | 'enabler' | 'support' | 'flex' | 'land'
-export type CardRole = BuiltInCardRole | string // Allow custom roles
 export type AddedBy = 'user' | 'import'
 export type FormatType = 'commander' | 'standard' | 'modern' | 'kitchen_table'
-export type TagCategory = 'function' | 'strategy' | 'theme' | 'mechanic' | 'meta'
 export type InteractionCategory = 'combo' | 'synergy' | 'nonbo'
 
-// Built-in roles constant for type checking
-export const BUILT_IN_ROLES: BuiltInCardRole[] = ['commander', 'core', 'enabler', 'support', 'flex', 'land']
-
-export function isBuiltInRole(role: string): role is BuiltInCardRole {
-  return BUILT_IN_ROLES.includes(role as BuiltInCardRole)
-}
-
-// Role importance scores (built-in roles only, custom roles use sortOrder)
-export const roleImportance: Record<BuiltInCardRole, number> = {
-  commander: 10,
-  core: 9,
-  land: 8,
-  enabler: 7,
-  support: 5,
-  flex: 3
-}
-
-// Get importance score for any role (built-in or custom)
-// For custom roles, uses the customRoles array sortOrder or default of 1
-export function getRoleImportance(role: CardRole, customRoles?: CustomRoleDefinition[]): number {
-  if (isBuiltInRole(role)) {
-    return roleImportance[role]
-  }
-  // For custom roles, look up in customRoles array
-  const customRole = customRoles?.find(r => r.id === role)
-  return customRole?.sortOrder ?? 1
-}
-
-// Custom Role Definition for user-defined roles
-export interface CustomRoleDefinition {
+// Role Definition - used for both global and deck-specific custom roles
+export interface RoleDefinition {
   id: string           // e.g., "ramp", "card-draw"
   name: string         // e.g., "Ramp", "Card Draw"
   description?: string
-  color?: string       // For UI display
-  sortOrder: number    // Display priority (higher = more important)
+  color?: string       // For UI display (hex color)
 }
 
 // Deck Format
@@ -108,16 +76,16 @@ export const formatDefaults: Record<FormatType, DeckFormat> = {
   }
 }
 
-// Deck Card
+// Deck Card - cards can have multiple roles
 export interface DeckCard {
   id: string  // Unique identifier for this deck entry
   card: CardIdentifier
   quantity: number
   inclusion: InclusionStatus
   ownership: OwnershipStatus
-  role: CardRole
+  roles: string[]  // List of role IDs
+  typeLine?: string  // Card type line for grouping (e.g., "Creature — Human Wizard")
   isPinned: boolean
-  tags: string[]
   notes?: string
   addedAt: string
   addedBy: AddedBy
@@ -134,7 +102,6 @@ export interface SynergyPackage {
   description?: string
   cardNames: string[]
   priority: number
-  tags: string[]
 }
 
 export interface CardInteraction {
@@ -154,14 +121,6 @@ export interface DeckStrategy {
   packages: SynergyPackage[]
   interactions: CardInteraction[]
   requirements: DeckRequirements
-}
-
-// Custom Tags
-export interface CustomTagDefinition {
-  id: string
-  name: string
-  description?: string
-  color?: string
 }
 
 // Deck Notes
@@ -187,27 +146,18 @@ export interface Deck {
   cards: DeckCard[]
   alternates: DeckCard[]
   sideboard: DeckCard[]
-  customTags: CustomTagDefinition[]
+  commanders: CardIdentifier[]    // Commander(s) for Commander format
+  customRoles: RoleDefinition[]   // Deck-specific custom roles
   notes: DeckNote[]
-  // New fields
   artCardScryfallId?: string      // Scryfall ID for background art
   colorIdentity?: string[]        // Color identity (for commander, derived from commander card)
-  customRoles: CustomRoleDefinition[] // User-defined roles beyond the 6 built-in
 }
 
-// Taxonomy
-export interface GlobalTag {
-  id: string
-  name: string
-  category: TagCategory
-  description: string
-  aliases?: string[]
-}
-
+// Taxonomy - global role definitions shared across all decks
 export interface Taxonomy {
   version: number
   updatedAt: string
-  globalTags: GlobalTag[]
+  globalRoles: RoleDefinition[]
 }
 
 // Interest List
@@ -304,9 +254,9 @@ export function createEmptyDeck(name: string, formatType: FormatType): Deck {
     cards: [],
     alternates: [],
     sideboard: [],
-    customTags: [],
-    notes: [],
-    customRoles: []
+    commanders: [],
+    customRoles: [],
+    notes: []
   }
 }
 
@@ -325,9 +275,14 @@ export function getCardLimit(cardName: string, format: DeckFormat): number {
 }
 
 export function getCardCount(deck: Deck): number {
-  return deck.cards
+  const mainDeckCount = deck.cards
     .filter(c => c.inclusion === 'confirmed')
     .reduce((sum, c) => sum + c.quantity, 0)
+
+  // Commanders count towards deck size in Commander format
+  const commanderCount = deck.commanders?.length || 0
+
+  return mainDeckCount + commanderCount
 }
 
 export function isBasicLand(name: string): boolean {

@@ -11,8 +11,6 @@ import mtgdeckbuilder.domain.*
 import mtgdeckbuilder.storage.Storage
 import mtgdeckbuilder.scryfall.ScryfallClient
 import mtgdeckbuilder.tools.DeckTools
-import ch.linkyard.mcp.server.*
-import ch.linkyard.mcp.server.tools.*
 
 object Main extends IOApp.Simple:
 
@@ -30,7 +28,7 @@ object Main extends IOApp.Simple:
       yield ()
     }
 
-  def createServer(tools: DeckTools[IO]): IO[McpServer[IO]] =
+  def createServer(tools: DeckTools[IO]): IO[McpServer] =
     val toolDefs = List(
       // Deck Management
       ToolDef(
@@ -149,15 +147,7 @@ object Main extends IOApp.Simple:
             "set_code" -> Json.obj("type" -> Json.fromString("string")),
             "collector_number" -> Json.obj("type" -> Json.fromString("string")),
             "quantity" -> Json.obj("type" -> Json.fromString("number"), "default" -> Json.fromInt(1)),
-            "role" -> Json.obj(
-              "type" -> Json.fromString("string"),
-              "enum" -> Json.arr(
-                Json.fromString("commander"), Json.fromString("core"),
-                Json.fromString("enabler"), Json.fromString("support"),
-                Json.fromString("flex"), Json.fromString("land")
-              )
-            ),
-            "tags" -> Json.obj("type" -> Json.fromString("array"), "items" -> Json.obj("type" -> Json.fromString("string"))),
+            "roles" -> Json.obj("type" -> Json.fromString("array"), "items" -> Json.obj("type" -> Json.fromString("string")), "description" -> Json.fromString("List of role IDs for the card")),
             "status" -> Json.obj("type" -> Json.fromString("string"), "enum" -> Json.arr(Json.fromString("confirmed"), Json.fromString("considering"))),
             "ownership" -> Json.obj("type" -> Json.fromString("string"), "enum" -> Json.arr(Json.fromString("owned"), Json.fromString("pulled"), Json.fromString("need_to_buy"))),
             "to_alternates" -> Json.obj("type" -> Json.fromString("boolean")),
@@ -171,13 +161,12 @@ object Main extends IOApp.Simple:
           val setCode = params.hcursor.get[String]("set_code").toOption
           val collectorNumber = params.hcursor.get[String]("collector_number").toOption
           val quantity = params.hcursor.get[Int]("quantity").getOrElse(1)
-          val role = params.hcursor.get[String]("role").toOption
-          val tags = params.hcursor.get[List[String]]("tags").getOrElse(Nil)
+          val roles = params.hcursor.get[List[String]]("roles").getOrElse(Nil)
           val status = params.hcursor.get[String]("status").toOption
           val ownership = params.hcursor.get[String]("ownership").toOption
           val toAlternates = params.hcursor.get[Boolean]("to_alternates").getOrElse(false)
           val toSideboard = params.hcursor.get[Boolean]("to_sideboard").getOrElse(false)
-          tools.addCard(deckId, name, setCode, collectorNumber, quantity, role, tags, status, ownership, toAlternates, toSideboard).map {
+          tools.addCard(deckId, name, setCode, collectorNumber, quantity, roles, status, ownership, toAlternates, toSideboard).map {
             case Right(j) => ToolResult(j.spaces2)
             case Left(err) => ToolResult(err, isError = true)
           }
@@ -217,10 +206,9 @@ object Main extends IOApp.Simple:
           "properties" -> Json.obj(
             "deck_id" -> Json.obj("type" -> Json.fromString("string")),
             "name" -> Json.obj("type" -> Json.fromString("string")),
-            "role" -> Json.obj("type" -> Json.fromString("string")),
-            "tags" -> Json.obj("type" -> Json.fromString("array"), "items" -> Json.obj("type" -> Json.fromString("string"))),
-            "add_tags" -> Json.obj("type" -> Json.fromString("array"), "items" -> Json.obj("type" -> Json.fromString("string"))),
-            "remove_tags" -> Json.obj("type" -> Json.fromString("array"), "items" -> Json.obj("type" -> Json.fromString("string"))),
+            "roles" -> Json.obj("type" -> Json.fromString("array"), "items" -> Json.obj("type" -> Json.fromString("string")), "description" -> Json.fromString("Replace all roles with this list")),
+            "add_roles" -> Json.obj("type" -> Json.fromString("array"), "items" -> Json.obj("type" -> Json.fromString("string")), "description" -> Json.fromString("Add these roles to existing roles")),
+            "remove_roles" -> Json.obj("type" -> Json.fromString("array"), "items" -> Json.obj("type" -> Json.fromString("string")), "description" -> Json.fromString("Remove these roles from existing roles")),
             "status" -> Json.obj("type" -> Json.fromString("string")),
             "ownership" -> Json.obj("type" -> Json.fromString("string")),
             "pinned" -> Json.obj("type" -> Json.fromString("boolean")),
@@ -231,15 +219,14 @@ object Main extends IOApp.Simple:
         handler = params =>
           val deckId = params.hcursor.get[String]("deck_id").getOrElse("")
           val name = params.hcursor.get[String]("name").getOrElse("")
-          val role = params.hcursor.get[String]("role").toOption
-          val tags = params.hcursor.get[List[String]]("tags").toOption
-          val addTags = params.hcursor.get[List[String]]("add_tags").toOption
-          val removeTags = params.hcursor.get[List[String]]("remove_tags").toOption
+          val roles = params.hcursor.get[List[String]]("roles").toOption
+          val addRoles = params.hcursor.get[List[String]]("add_roles").toOption
+          val removeRoles = params.hcursor.get[List[String]]("remove_roles").toOption
           val status = params.hcursor.get[String]("status").toOption
           val ownership = params.hcursor.get[String]("ownership").toOption
           val pinned = params.hcursor.get[Boolean]("pinned").toOption
           val notes = params.hcursor.get[String]("notes").toOption
-          tools.updateCard(deckId, name, role, tags, addTags, removeTags, status, ownership, pinned, notes).map {
+          tools.updateCard(deckId, name, roles, addRoles, removeRoles, status, ownership, pinned, notes).map {
             case Right(j) => ToolResult(j.spaces2)
             case Left(err) => ToolResult(err, isError = true)
           }
@@ -323,10 +310,10 @@ object Main extends IOApp.Simple:
         handler = _ => tools.listViews.map(j => ToolResult(j.spaces2))
       ),
 
-      // Tags
+      // Roles
       ToolDef(
-        name = "list_tags",
-        description = "List all available tags (global + deck-specific if deck_id provided)",
+        name = "list_roles",
+        description = "List all available roles (global + deck-specific if deck_id provided)",
         inputSchema = Json.obj(
           "type" -> Json.fromString("object"),
           "properties" -> Json.obj(
@@ -335,12 +322,12 @@ object Main extends IOApp.Simple:
         ),
         handler = params =>
           val deckId = params.hcursor.get[String]("deck_id").toOption
-          tools.listTags(deckId).map(j => ToolResult(j.spaces2))
+          tools.listRoles(deckId).map(j => ToolResult(j.spaces2))
       ),
 
       ToolDef(
-        name = "add_custom_tag",
-        description = "Add a custom tag to a deck's tag definitions",
+        name = "add_custom_role",
+        description = "Add a custom role to a deck's role definitions",
         inputSchema = Json.obj(
           "type" -> Json.fromString("object"),
           "properties" -> Json.obj(
@@ -358,34 +345,98 @@ object Main extends IOApp.Simple:
           val name = params.hcursor.get[String]("name").getOrElse("")
           val description = params.hcursor.get[String]("description").toOption
           val color = params.hcursor.get[String]("color").toOption
-          tools.addCustomTag(deckId, id, name, description, color).map {
+          tools.addCustomRole(deckId, id, name, description, color).map {
             case Right(j) => ToolResult(j.spaces2)
             case Left(err) => ToolResult(err, isError = true)
           }
       ),
 
       ToolDef(
-        name = "add_global_tag",
-        description = "Add a new global tag to the taxonomy",
+        name = "add_global_role",
+        description = "Add a new global role",
         inputSchema = Json.obj(
           "type" -> Json.fromString("object"),
           "properties" -> Json.obj(
-            "id" -> Json.obj("type" -> Json.fromString("string")),
-            "name" -> Json.obj("type" -> Json.fromString("string")),
-            "category" -> Json.obj("type" -> Json.fromString("string"), "enum" -> Json.arr(
-              Json.fromString("function"), Json.fromString("strategy"),
-              Json.fromString("theme"), Json.fromString("mechanic"), Json.fromString("meta")
-            )),
-            "description" -> Json.obj("type" -> Json.fromString("string"))
+            "id" -> Json.obj("type" -> Json.fromString("string"), "description" -> Json.fromString("Unique role ID (lowercase with hyphens)")),
+            "name" -> Json.obj("type" -> Json.fromString("string"), "description" -> Json.fromString("Display name for the role")),
+            "description" -> Json.obj("type" -> Json.fromString("string"), "description" -> Json.fromString("Description of what this role represents")),
+            "color" -> Json.obj("type" -> Json.fromString("string"), "description" -> Json.fromString("Hex color code (e.g., #ef4444)"))
           ),
-          "required" -> Json.arr(Json.fromString("id"), Json.fromString("name"), Json.fromString("category"), Json.fromString("description"))
+          "required" -> Json.arr(Json.fromString("id"), Json.fromString("name"))
         ),
         handler = params =>
           val id = params.hcursor.get[String]("id").getOrElse("")
           val name = params.hcursor.get[String]("name").getOrElse("")
-          val category = params.hcursor.get[String]("category").getOrElse("")
-          val description = params.hcursor.get[String]("description").getOrElse("")
-          tools.addGlobalTag(id, name, category, description).map {
+          val description = params.hcursor.get[String]("description").toOption
+          val color = params.hcursor.get[String]("color").toOption
+          tools.addGlobalRole(id, name, description, color).map {
+            case Right(j) => ToolResult(j.spaces2)
+            case Left(err) => ToolResult(err, isError = true)
+          }
+      ),
+
+      ToolDef(
+        name = "update_global_role",
+        description = "Update an existing global role",
+        inputSchema = Json.obj(
+          "type" -> Json.fromString("object"),
+          "properties" -> Json.obj(
+            "id" -> Json.obj("type" -> Json.fromString("string"), "description" -> Json.fromString("Role ID to update")),
+            "name" -> Json.obj("type" -> Json.fromString("string"), "description" -> Json.fromString("New display name")),
+            "description" -> Json.obj("type" -> Json.fromString("string"), "description" -> Json.fromString("New description")),
+            "color" -> Json.obj("type" -> Json.fromString("string"), "description" -> Json.fromString("New hex color code"))
+          ),
+          "required" -> Json.arr(Json.fromString("id"))
+        ),
+        handler = params =>
+          val id = params.hcursor.get[String]("id").getOrElse("")
+          val name = params.hcursor.get[String]("name").toOption
+          val description = params.hcursor.get[String]("description").toOption
+          val color = params.hcursor.get[String]("color").toOption
+          tools.updateGlobalRole(id, name, description, color).map {
+            case Right(j) => ToolResult(j.spaces2)
+            case Left(err) => ToolResult(err, isError = true)
+          }
+      ),
+
+      ToolDef(
+        name = "delete_global_role",
+        description = "Delete a global role",
+        inputSchema = Json.obj(
+          "type" -> Json.fromString("object"),
+          "properties" -> Json.obj(
+            "id" -> Json.obj("type" -> Json.fromString("string"), "description" -> Json.fromString("Role ID to delete"))
+          ),
+          "required" -> Json.arr(Json.fromString("id"))
+        ),
+        handler = params =>
+          val id = params.hcursor.get[String]("id").getOrElse("")
+          tools.deleteGlobalRole(id).map {
+            case Right(j) => ToolResult(j.spaces2)
+            case Left(err) => ToolResult(err, isError = true)
+          }
+      ),
+
+      // Commanders
+      ToolDef(
+        name = "set_commanders",
+        description = "Set the commanders for a Commander format deck",
+        inputSchema = Json.obj(
+          "type" -> Json.fromString("object"),
+          "properties" -> Json.obj(
+            "deck_id" -> Json.obj("type" -> Json.fromString("string")),
+            "commander_name" -> Json.obj("type" -> Json.fromString("string"), "description" -> Json.fromString("Name of the commander card")),
+            "set_code" -> Json.obj("type" -> Json.fromString("string")),
+            "collector_number" -> Json.obj("type" -> Json.fromString("string"))
+          ),
+          "required" -> Json.arr(Json.fromString("deck_id"), Json.fromString("commander_name"))
+        ),
+        handler = params =>
+          val deckId = params.hcursor.get[String]("deck_id").getOrElse("")
+          val commanderName = params.hcursor.get[String]("commander_name").getOrElse("")
+          val setCode = params.hcursor.get[String]("set_code").toOption
+          val collectorNumber = params.hcursor.get[String]("collector_number").toOption
+          tools.addCommander(deckId, commanderName, setCode, collectorNumber).map {
             case Right(j) => ToolResult(j.spaces2)
             case Left(err) => ToolResult(err, isError = true)
           }
@@ -553,7 +604,7 @@ object Main extends IOApp.Simple:
       )
     )
 
-    McpServer.stdio[IO](
+    McpServer.stdio(
       ServerInfo("mtg-deckbuilder-mcp", "0.1.0"),
       toolDefs
     )
@@ -570,33 +621,29 @@ case class ToolResult(content: String, isError: Boolean = false)
 
 // McpServer abstraction
 object McpServer:
-  def stdio[F[_]: Async](serverInfo: ServerInfo, tools: List[ToolDef]): F[McpServer[F]] =
-    Async[F].pure(new McpServer[F]:
-      def run: F[Unit] =
-        // Simplified stdio implementation
-        // In a real implementation, this would use the scala-mcp library properly
-        val handler = new StdioHandler[F](serverInfo, tools)
+  def stdio(serverInfo: ServerInfo, tools: List[ToolDef]): IO[McpServer] =
+    IO.pure(new McpServer:
+      def run: IO[Unit] =
+        val handler = new StdioHandler(serverInfo, tools)
         handler.run
     )
 
-trait McpServer[F[_]]:
-  def run: F[Unit]
+trait McpServer:
+  def run: IO[Unit]
 
 case class ServerInfo(name: String, version: String)
 
-class StdioHandler[F[_]: Async](serverInfo: ServerInfo, tools: List[ToolDef]):
-  import fs2.{Stream, text}
-  import fs2.io.{stdin, stdout}
+class StdioHandler(serverInfo: ServerInfo, tools: List[ToolDef]):
   import cats.effect.std.Console
 
-  def run: F[Unit] =
-    given Console[F] = Console.make[F]
+  def run: IO[Unit] =
+    given Console[IO] = Console.make[IO]
 
-    val processLine: String => F[Option[String]] = line =>
-      if line.trim.isEmpty then Async[F].pure(None)
+    val processLine: String => IO[Option[String]] = line =>
+      if line.trim.isEmpty then IO.pure(None)
       else
         parse(line) match
-          case Left(_) => Async[F].pure(Some(errorResponse("parse_error", "Invalid JSON")))
+          case Left(_) => IO.pure(Some(errorResponse("parse_error", "Invalid JSON")))
           case Right(json) =>
             val method = json.hcursor.get[String]("method").getOrElse("")
             val id = json.hcursor.get[Json]("id").getOrElse(Json.Null)
@@ -604,7 +651,7 @@ class StdioHandler[F[_]: Async](serverInfo: ServerInfo, tools: List[ToolDef]):
 
             method match
               case "initialize" =>
-                Async[F].pure(Some(response(id, Json.obj(
+                IO.pure(Some(response(id, Json.obj(
                   "protocolVersion" -> Json.fromString("2024-11-05"),
                   "capabilities" -> Json.obj(
                     "tools" -> Json.obj()
@@ -616,7 +663,7 @@ class StdioHandler[F[_]: Async](serverInfo: ServerInfo, tools: List[ToolDef]):
                 ))))
 
               case "notifications/initialized" =>
-                Async[F].pure(None)
+                IO.pure(None)
 
               case "tools/list" =>
                 val toolList = tools.map { t =>
@@ -626,14 +673,14 @@ class StdioHandler[F[_]: Async](serverInfo: ServerInfo, tools: List[ToolDef]):
                     "inputSchema" -> t.inputSchema
                   )
                 }
-                Async[F].pure(Some(response(id, Json.obj("tools" -> Json.arr(toolList*)))))
+                IO.pure(Some(response(id, Json.obj("tools" -> Json.arr(toolList*)))))
 
               case "tools/call" =>
                 val toolName = params.hcursor.get[String]("name").getOrElse("")
                 val arguments = params.hcursor.get[Json]("arguments").getOrElse(Json.obj())
                 tools.find(_.name == toolName) match
                   case None =>
-                    Async[F].pure(Some(errorResponse("tool_not_found", s"Unknown tool: $toolName", Some(id))))
+                    IO.pure(Some(errorResponse("tool_not_found", s"Unknown tool: $toolName", Some(id))))
                   case Some(tool) =>
                     tool.handler(arguments).map { result =>
                       val content = Json.arr(Json.obj(
@@ -644,19 +691,20 @@ class StdioHandler[F[_]: Async](serverInfo: ServerInfo, tools: List[ToolDef]):
                         "content" -> content,
                         "isError" -> Json.fromBoolean(result.isError)
                       )))
-                    }.handleError { err =>
-                      Some(errorResponse("tool_error", err.getMessage, Some(id)))
+                    }.handleErrorWith { err =>
+                      IO.pure(Some(errorResponse("tool_error", err.getMessage, Some(id))))
                     }
 
               case _ =>
-                Async[F].pure(Some(errorResponse("method_not_found", s"Unknown method: $method", Some(id))))
+                IO.pure(Some(errorResponse("method_not_found", s"Unknown method: $method", Some(id))))
 
     // Read lines from stdin and process
-    Stream.repeatEval(Console[F].readLine)
-      .unNoneTerminate
+    fs2.io.stdin[IO](1024)
+      .through(fs2.text.utf8.decode)
+      .through(fs2.text.lines)
       .evalMap(processLine)
       .unNone
-      .evalMap(line => Console[F].println(line))
+      .evalMap(line => Console[IO].println(line))
       .compile
       .drain
 

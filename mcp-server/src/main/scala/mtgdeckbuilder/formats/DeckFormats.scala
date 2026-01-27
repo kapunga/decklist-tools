@@ -12,8 +12,8 @@ case class ParsedCard(
   quantity: Int,
   isSideboard: Boolean,
   isMaybeboard: Boolean,
-  role: Option[String],
-  tags: List[String]
+  isCommander: Boolean,
+  roles: List[String]
 )
 
 trait DeckFormatParser:
@@ -67,13 +67,15 @@ object DeckFormats:
       val lines = text.linesIterator.map(_.trim).toList
       var inSideboard = false
       var inMaybeboard = false
+      var inCommander = false
       val cards = scala.collection.mutable.ListBuffer[ParsedCard]()
 
       for line <- lines if line.nonEmpty do
         line.toLowerCase match
-          case "deck" | "commander" => // skip headers
-          case "sideboard" => inSideboard = true; inMaybeboard = false
-          case "maybeboard" | "considering" => inMaybeboard = true; inSideboard = false
+          case "deck" => inCommander = false; inSideboard = false; inMaybeboard = false
+          case "commander" => inCommander = true; inSideboard = false; inMaybeboard = false
+          case "sideboard" => inSideboard = true; inMaybeboard = false; inCommander = false
+          case "maybeboard" | "considering" => inMaybeboard = true; inSideboard = false; inCommander = false
           case _ =>
             line match
               case cardPattern(qty, name, set, num) =>
@@ -84,8 +86,8 @@ object DeckFormats:
                   quantity = qty.toInt,
                   isSideboard = inSideboard,
                   isMaybeboard = inMaybeboard,
-                  role = None,
-                  tags = Nil
+                  isCommander = inCommander,
+                  roles = Nil
                 )
               case simplePattern(qty, name) =>
                 cards += ParsedCard(
@@ -95,8 +97,8 @@ object DeckFormats:
                   quantity = qty.toInt,
                   isSideboard = inSideboard,
                   isMaybeboard = inMaybeboard,
-                  role = None,
-                  tags = Nil
+                  isCommander = inCommander,
+                  roles = Nil
                 )
               case _ => // skip unrecognized lines
 
@@ -104,8 +106,16 @@ object DeckFormats:
 
     def render(deck: Deck, includeMaybeboard: Boolean, includeSideboard: Boolean): String =
       val sb = new StringBuilder
-      sb.append("Deck\n")
 
+      // Commander section for Commander format
+      if deck.format.`type` == FormatType.Commander && deck.commanders.nonEmpty then
+        sb.append("Commander\n")
+        deck.commanders.foreach { cmd =>
+          sb.append(s"1 ${cmd.name} (${cmd.setCode.toUpperCase}) ${cmd.collectorNumber}\n")
+        }
+        sb.append("\n")
+
+      sb.append("Deck\n")
       deck.cards.filter(_.inclusion == InclusionStatus.Confirmed).foreach { c =>
         sb.append(s"${c.quantity} ${c.card.name} (${c.card.setCode.toUpperCase}) ${c.card.collectorNumber}\n")
       }
@@ -136,9 +146,14 @@ object DeckFormats:
       val lines = text.linesIterator.toList
       if lines.isEmpty then return Right(Nil)
 
-      // Skip header
-      val dataLines = if lines.head.toLowerCase.startsWith("count") then lines.tail else lines
+      // Find header to determine column indexes
+      val headerOpt = lines.headOption.filter(_.toLowerCase.startsWith("count"))
+      val dataLines = if headerOpt.isDefined then lines.tail else lines
       val cards = scala.collection.mutable.ListBuffer[ParsedCard]()
+
+      // Try to find Category column for commander detection
+      val headerLower = headerOpt.map(_.toLowerCase.split(",").map(_.trim.stripPrefix("\"").stripSuffix("\"")))
+      val categoryIdx = headerLower.flatMap(h => h.zipWithIndex.find(_._1 == "category").map(_._2))
 
       for line <- dataLines if line.trim.nonEmpty do
         val parts = line.split(",").map(_.trim.stripPrefix("\"").stripSuffix("\""))
@@ -147,30 +162,49 @@ object DeckFormats:
           val name = parts(1)
           val set = parts(2).toLowerCase
           val num = parts(3)
+          val category = categoryIdx.flatMap(idx => parts.lift(idx))
+          val isCommander = category.exists(_.toLowerCase == "commander")
+
           cards += ParsedCard(
             name = name,
             setCode = Some(set),
             collectorNumber = Some(num),
             quantity = qty,
-            isSideboard = false,
-            isMaybeboard = false,
-            role = None,
-            tags = Nil
+            isSideboard = category.exists(_.toLowerCase == "sideboard"),
+            isMaybeboard = category.exists(c => c.toLowerCase == "maybeboard" || c.toLowerCase == "considering"),
+            isCommander = isCommander,
+            roles = Nil
           )
 
       Right(cards.toList)
 
     def render(deck: Deck, includeMaybeboard: Boolean, includeSideboard: Boolean): String =
       val sb = new StringBuilder
-      sb.append("Count,Name,Edition,Collector Number,Foil,Condition,Language\n")
+      sb.append("Count,Name,Edition,Collector Number,Foil,Condition,Language,Category\n")
 
-      val allCards = deck.cards.filter(_.inclusion == InclusionStatus.Confirmed) ++
-        (if includeSideboard then deck.sideboard else Nil) ++
-        (if includeMaybeboard then deck.cards.filter(_.inclusion == InclusionStatus.Considering) ++ deck.alternates else Nil)
+      // Commanders first
+      if deck.commanders.nonEmpty then
+        deck.commanders.foreach { cmd =>
+          sb.append(s"1,${cmd.name},${cmd.setCode},${cmd.collectorNumber},,,English,Commander\n")
+        }
 
-      allCards.foreach { c =>
-        sb.append(s"${c.quantity},${c.card.name},${c.card.setCode},${c.card.collectorNumber},,,English\n")
+      // Main deck
+      deck.cards.filter(_.inclusion == InclusionStatus.Confirmed).foreach { c =>
+        sb.append(s"${c.quantity},${c.card.name},${c.card.setCode},${c.card.collectorNumber},,,English,Mainboard\n")
       }
+
+      // Sideboard
+      if includeSideboard then
+        deck.sideboard.foreach { c =>
+          sb.append(s"${c.quantity},${c.card.name},${c.card.setCode},${c.card.collectorNumber},,,English,Sideboard\n")
+        }
+
+      // Maybeboard
+      if includeMaybeboard then
+        val maybe = deck.cards.filter(_.inclusion == InclusionStatus.Considering) ++ deck.alternates
+        maybe.foreach { c =>
+          sb.append(s"${c.quantity},${c.card.name},${c.card.setCode},${c.card.collectorNumber},,,English,Maybeboard\n")
+        }
 
       sb.toString
 
@@ -178,11 +212,10 @@ object DeckFormats:
   object ArchidektFormat extends DeckFormatParser:
     val id = "archidekt"
     val name = "Archidekt"
-    val description = "Archidekt format: 1x Card Name (SET) 123 [Category] ^tag^"
+    val description = "Archidekt format: 1x Card Name (SET) 123 [Category]"
 
-    // Pattern: 1x Card Name (SET) 123 [Category] ^tag^ ^tag2^
-    private val cardPattern = """^(\d+)x?\s+(.+?)\s+\(([A-Za-z0-9]+)\)\s+(\S+)\s*(?:\[([^\]]+)\])?\s*(.*)$""".r
-    private val tagPattern = """\^([^^]+)\^""".r
+    // Pattern: 1x Card Name (SET) 123 [Category]
+    private val cardPattern = """^(\d+)x?\s+(.+?)\s+\(([A-Za-z0-9]+)\)\s+(\S+)\s*(?:\[([^\]]+)\])?.*$""".r
 
     def parse(text: String): Either[String, List[ParsedCard]] =
       val lines = text.linesIterator.map(_.trim).toList
@@ -190,46 +223,54 @@ object DeckFormats:
 
       for line <- lines if line.nonEmpty do
         line match
-          case cardPattern(qty, name, set, num, category, tagStr) =>
-            val tags = tagPattern.findAllMatchIn(Option(tagStr).getOrElse("")).map(_.group(1)).toList
-            val role = Option(category).flatMap(c => categoryToRole(c.trim))
+          case cardPattern(qty, name, set, num, category) =>
+            val categoryLower = Option(category).map(_.toLowerCase).getOrElse("")
+            val isCommander = categoryLower == "commander"
+            val roles = categoryToRoles(Option(category).getOrElse(""))
             cards += ParsedCard(
               name = name.trim,
               setCode = Some(set.toLowerCase),
               collectorNumber = Some(num),
               quantity = qty.toInt,
-              isSideboard = Option(category).exists(_.toLowerCase == "sideboard"),
-              isMaybeboard = Option(category).exists(c => c.toLowerCase == "maybeboard" || c.toLowerCase == "considering"),
-              role = role,
-              tags = tags
+              isSideboard = categoryLower == "sideboard",
+              isMaybeboard = categoryLower == "maybeboard" || categoryLower == "considering",
+              isCommander = isCommander,
+              roles = roles
             )
           case _ => // skip
 
       Right(cards.toList)
 
-    private def categoryToRole(category: String): Option[String] = category.toLowerCase match
-      case "commander" => Some("commander")
-      case "lands" | "land" => Some("land")
-      case _ => None
+    private def categoryToRoles(category: String): List[String] = category.toLowerCase match
+      case "lands" | "land" => List("land")
+      case "ramp" => List("ramp")
+      case "draw" | "card draw" => List("card-draw")
+      case "removal" => List("removal")
+      case _ => Nil
 
     def render(deck: Deck, includeMaybeboard: Boolean, includeSideboard: Boolean): String =
       val sb = new StringBuilder
 
       def renderCard(c: DeckCard, category: String): Unit =
-        val tagStr = c.tags.map(t => s"^$t^").mkString(" ")
-        sb.append(s"${c.quantity}x ${c.card.name} (${c.card.setCode.toUpperCase}) ${c.card.collectorNumber} [$category]")
-        if tagStr.nonEmpty then sb.append(s" $tagStr")
-        sb.append("\n")
+        sb.append(s"${c.quantity}x ${c.card.name} (${c.card.setCode.toUpperCase}) ${c.card.collectorNumber} [$category]\n")
 
-      deck.cards.filter(_.inclusion == InclusionStatus.Confirmed).groupBy(_.role).foreach { case (role, cards) =>
-        val cat = role match
-          case CardRole.Commander => "Commander"
-          case CardRole.Land => "Lands"
-          case CardRole.Core => "Core"
-          case CardRole.Enabler => "Enablers"
-          case CardRole.Support => "Support"
-          case CardRole.Flex => "Flex"
-        cards.foreach(c => renderCard(c, cat))
+      // Commanders first
+      if deck.commanders.nonEmpty then
+        deck.commanders.foreach { cmd =>
+          sb.append(s"1x ${cmd.name} (${cmd.setCode.toUpperCase}) ${cmd.collectorNumber} [Commander]\n")
+        }
+
+      // Group cards by first role for category
+      val confirmedCards = deck.cards.filter(_.inclusion == InclusionStatus.Confirmed)
+      confirmedCards.foreach { c =>
+        val category = c.roles.headOption match
+          case Some("land") => "Lands"
+          case Some("ramp") => "Ramp"
+          case Some("card-draw") => "Card Draw"
+          case Some("removal") => "Removal"
+          case Some(role) => role.capitalize
+          case None => "Other"
+        renderCard(c, category)
       }
 
       if includeSideboard && deck.sideboard.nonEmpty then
@@ -274,8 +315,8 @@ object DeckFormats:
                 quantity = qty.toInt,
                 isSideboard = inSideboard,
                 isMaybeboard = false,
-                role = None,
-                tags = Nil
+                isCommander = false,
+                roles = Nil
               )
             case _ => // skip
 
@@ -283,6 +324,12 @@ object DeckFormats:
 
     def render(deck: Deck, includeMaybeboard: Boolean, includeSideboard: Boolean): String =
       val sb = new StringBuilder
+
+      // Commanders first for Commander format
+      if deck.format.`type` == FormatType.Commander && deck.commanders.nonEmpty then
+        deck.commanders.foreach { cmd =>
+          sb.append(s"1 ${cmd.name}\n")
+        }
 
       deck.cards.filter(_.inclusion == InclusionStatus.Confirmed).foreach { c =>
         sb.append(s"${c.quantity} ${c.card.name}\n")
@@ -308,11 +355,20 @@ object DeckFormats:
     def parse(text: String): Either[String, List[ParsedCard]] =
       val lines = text.linesIterator.map(_.trim).toList
       var inSideboard = false
+      var inCommander = false
       val cards = scala.collection.mutable.ListBuffer[ParsedCard]()
 
       for line <- lines if line.nonEmpty do
-        if line.toLowerCase.startsWith("sideboard") then
+        val lower = line.toLowerCase
+        if lower.startsWith("sideboard") then
           inSideboard = true
+          inCommander = false
+        else if lower.startsWith("commander") then
+          inCommander = true
+          inSideboard = false
+        else if lower == "deck" || lower == "mainboard" then
+          inCommander = false
+          inSideboard = false
         else
           line match
             case cardPattern(qty, name) =>
@@ -323,8 +379,8 @@ object DeckFormats:
                 quantity = qty.toInt,
                 isSideboard = inSideboard,
                 isMaybeboard = false,
-                role = None,
-                tags = Nil
+                isCommander = inCommander,
+                roles = Nil
               )
             case cardNoQtyPattern(name) if !name.toLowerCase.contains("deck") =>
               cards += ParsedCard(
@@ -334,8 +390,8 @@ object DeckFormats:
                 quantity = 1,
                 isSideboard = inSideboard,
                 isMaybeboard = false,
-                role = None,
-                tags = Nil
+                isCommander = inCommander,
+                roles = Nil
               )
             case _ => // skip
 
@@ -343,6 +399,14 @@ object DeckFormats:
 
     def render(deck: Deck, includeMaybeboard: Boolean, includeSideboard: Boolean): String =
       val sb = new StringBuilder
+
+      // Commander section for Commander format
+      if deck.format.`type` == FormatType.Commander && deck.commanders.nonEmpty then
+        sb.append("Commander:\n")
+        deck.commanders.foreach { cmd =>
+          sb.append(s"1 ${cmd.name}\n")
+        }
+        sb.append("\nDeck:\n")
 
       deck.cards.filter(_.inclusion == InclusionStatus.Confirmed).foreach { c =>
         sb.append(s"${c.quantity} ${c.card.name}\n")

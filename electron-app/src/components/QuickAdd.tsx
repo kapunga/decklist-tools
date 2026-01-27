@@ -5,14 +5,14 @@ import { useStore } from '@/hooks/useStore'
 import { autocomplete, searchCardByName } from '@/lib/scryfall'
 import { AUTOCOMPLETE } from '@/lib/constants'
 import { CardAddModal } from '@/components/CardAddModal'
-import type { DeckCard, CardRole, ScryfallCard, DeckFormat, CustomRoleDefinition } from '@/types'
+import type { DeckCard, ScryfallCard, DeckFormat, RoleDefinition } from '@/types'
 import { generateDeckCardId } from '@/types'
 
 interface QuickAddProps {
   deckId: string
   format: DeckFormat
   colorIdentity?: string[]  // For commander format filtering
-  customRoles?: CustomRoleDefinition[]
+  customRoles?: RoleDefinition[]
 }
 
 interface DropdownState {
@@ -103,7 +103,7 @@ export function QuickAdd({ deckId, format, colorIdentity, customRoles }: QuickAd
   }, [])
 
   // Confirm adding the card from modal
-  const handleConfirmAdd = useCallback(async (quantity: number, role: CardRole) => {
+  const handleConfirmAdd = useCallback(async (quantity: number, roles: string[]) => {
     if (!pendingCard) return
 
     const deckCard: DeckCard = {
@@ -117,9 +117,9 @@ export function QuickAdd({ deckId, format, colorIdentity, customRoles }: QuickAd
       quantity,
       inclusion: 'confirmed',
       ownership: 'owned',
-      role,
+      roles,
+      typeLine: pendingCard.type_line,
       isPinned: false,
-      tags: [],
       addedAt: new Date().toISOString(),
       addedBy: 'user'
     }

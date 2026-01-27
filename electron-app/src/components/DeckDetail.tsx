@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { ArrowLeft, Check, AlertTriangle, Settings } from 'lucide-react'
+import { ArrowLeft, Check, AlertTriangle, Settings, Crown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -12,6 +12,7 @@ import { DeckStats } from '@/components/DeckStats'
 import { RoleEditModal } from '@/components/RoleEditModal'
 import { ColorPips } from '@/components/ColorPips'
 import { getCardCount } from '@/types'
+import type { RoleDefinition } from '@/types'
 
 export function DeckDetail() {
   const deck = useSelectedDeck()
@@ -29,7 +30,7 @@ export function DeckDetail() {
     clearSelection() // Clear selection when switching tabs
   }, [clearSelection])
 
-  const handleSaveCustomRoles = useCallback(async (customRoles: NonNullable<typeof deck>['customRoles']) => {
+  const handleSaveCustomRoles = useCallback(async (customRoles: RoleDefinition[]) => {
     if (deck) {
       await updateDeck({ ...deck, customRoles })
     }
@@ -101,6 +102,16 @@ export function DeckDetail() {
             <ColorPips colors={deck.colorIdentity} size="sm" showColorless={false} />
           )}
 
+          {/* Commander display for Commander format */}
+          {deck.format.type === 'commander' && deck.commanders.length > 0 && (
+            <div className="flex items-center gap-1">
+              <Crown className="w-4 h-4 text-yellow-500" />
+              <span className="text-sm">
+                {deck.commanders.map(c => c.name).join(' & ')}
+              </span>
+            </div>
+          )}
+
           {deck.archetype && (
             <Badge variant="secondary">{deck.archetype}</Badge>
           )}
@@ -164,7 +175,7 @@ export function DeckDetail() {
         <div className="border-b px-4 flex-shrink-0">
           <TabsList>
             <TabsTrigger value="cards">
-              Cards ({deck.cards.filter(c => c.inclusion === 'confirmed').length})
+              Cards ({getCardCount(deck)})
             </TabsTrigger>
             <TabsTrigger value="alternates">
               Alternates ({deck.alternates.length})
