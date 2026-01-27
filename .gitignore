@@ -1,18 +1,21 @@
-# MCP Server (Scala)
+# MCP Server (Scala) - archived
 mcp-server/target/
 mcp-server/project/target/
 mcp-server/project/project/
 mcp-server/.bsp/
 mcp-server/.metals/
 mcp-server/.bloop/
-mcp-server/.idea/
 
-# Electron App
-electron-app/node_modules/
-electron-app/dist/
-electron-app/dist-electron/
-electron-app/release/
-electron-app/.vite/
+# Node.js
+node_modules/
+.pnpm-store/
+pnpm-lock.yaml
+
+# Build outputs
+packages/*/dist/
+packages/electron-app/dist-electron/
+packages/electron-app/release/
+packages/mcp-server/bin/
 
 # IDE
 .idea/
@@ -31,3 +34,9 @@ npm-debug.log*
 .env
 .env.local
 .env.*.local
+
+# TypeScript
+*.tsbuildinfo
+
+# Vite
+packages/electron-app/.vite/

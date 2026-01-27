@@ -1,0 +1,33 @@
+{
+  "name": "@mtg-deckbuilder/mcp-server",
+  "version": "0.1.0",
+  "description": "MCP Server for MTG Deckbuilder - enables Claude to help build and manage decks",
+  "type": "module",
+  "main": "dist/main.js",
+  "bin": {
+    "mtg-deckbuilder-mcp": "./dist/main.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/main.js",
+    "dev": "tsx src/main.ts",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit",
+    "pkg": "pkg . --targets node18-macos-arm64,node18-macos-x64 --output bin/mtg-deckbuilder-mcp"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@mtg-deckbuilder/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "pkg": "^5.8.1",
+    "tsx": "^4.7.0",
+    "typescript": "^5.2.2"
+  },
+  "pkg": {
+    "scripts": "dist/**/*.js",
+    "targets": ["node18-macos-arm64", "node18-macos-x64"],
+    "outputPath": "bin"
+  }
+}
