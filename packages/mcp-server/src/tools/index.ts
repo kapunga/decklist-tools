@@ -3,6 +3,9 @@ import {
   Storage,
   type Deck,
   type DeckCard,
+  type DeckNote,
+  type NoteType,
+  type NoteCardRef,
   type RoleDefinition,
   type CardIdentifier,
   type FormatType,
@@ -13,6 +16,7 @@ import {
   formatDefaults,
   getCardLimit,
   getCardCount,
+  propagateNoteRole,
   searchCardByName,
   getCardBySetAndNumber,
   formats,
@@ -67,7 +71,7 @@ export function getToolDefinitions(): Tool[] {
     },
     {
       name: 'update_deck_metadata',
-      description: 'Update deck name, description, archetype, or strategy',
+      description: 'Update deck name, description, or archetype',
       inputSchema: {
         type: 'object',
         properties: {
@@ -408,6 +412,80 @@ export function getToolDefinitions(): Tool[] {
       },
     },
 
+    // Notes
+    {
+      name: 'add_deck_note',
+      description: 'Add a note to a deck documenting combos, synergies, or strategy',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          deck_id: { type: 'string' },
+          title: { type: 'string' },
+          content: { type: 'string', description: 'Markdown description' },
+          note_type: {
+            type: 'string',
+            enum: ['combo', 'synergy', 'theme', 'strategy', 'general'],
+          },
+          card_names: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Card names ordered by relevance',
+          },
+          role_id: { type: 'string', description: 'Optional role to propagate to associated cards' },
+        },
+        required: ['deck_id', 'title', 'content', 'note_type'],
+      },
+    },
+    {
+      name: 'update_deck_note',
+      description: 'Update an existing deck note',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          deck_id: { type: 'string' },
+          note_id: { type: 'string' },
+          title: { type: 'string' },
+          content: { type: 'string' },
+          note_type: {
+            type: 'string',
+            enum: ['combo', 'synergy', 'theme', 'strategy', 'general'],
+          },
+          card_names: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Replace card refs with this ordered list',
+          },
+          role_id: { type: 'string' },
+          remove_role: { type: 'boolean', description: 'Remove the note role from associated cards' },
+        },
+        required: ['deck_id', 'note_id'],
+      },
+    },
+    {
+      name: 'delete_deck_note',
+      description: 'Delete a deck note',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          deck_id: { type: 'string' },
+          note_id: { type: 'string' },
+          remove_role: { type: 'boolean', description: 'Remove the note role from associated cards (default false)' },
+        },
+        required: ['deck_id', 'note_id'],
+      },
+    },
+    {
+      name: 'list_deck_notes',
+      description: 'List all notes for a deck',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          deck_id: { type: 'string' },
+        },
+        required: ['deck_id'],
+      },
+    },
+
     // Validation
     {
       name: 'validate_deck',
@@ -493,6 +571,14 @@ export async function handleToolCall(
       return addToInterestList(storage, args as unknown as AddToInterestListArgs)
     case 'remove_from_interest_list':
       return removeFromInterestList(storage, args.card_name as string)
+    case 'add_deck_note':
+      return addDeckNote(storage, args as unknown as AddDeckNoteArgs)
+    case 'update_deck_note':
+      return updateDeckNote(storage, args as unknown as UpdateDeckNoteArgs)
+    case 'delete_deck_note':
+      return deleteDeckNote(storage, args as unknown as DeleteDeckNoteArgs)
+    case 'list_deck_notes':
+      return listDeckNotes(storage, args.deck_id as string)
     case 'import_deck':
       return importDeck(storage, args as unknown as ImportDeckArgs)
     case 'export_deck':
@@ -629,6 +715,32 @@ interface ExportDeckArgs {
   format: string
   include_maybeboard?: boolean
   include_sideboard?: boolean
+}
+
+interface AddDeckNoteArgs {
+  deck_id: string
+  title: string
+  content: string
+  note_type: NoteType
+  card_names?: string[]
+  role_id?: string
+}
+
+interface UpdateDeckNoteArgs {
+  deck_id: string
+  note_id: string
+  title?: string
+  content?: string
+  note_type?: NoteType
+  card_names?: string[]
+  role_id?: string
+  remove_role?: boolean
+}
+
+interface DeleteDeckNoteArgs {
+  deck_id: string
+  note_id: string
+  remove_role?: boolean
 }
 
 // Tool implementations
@@ -1107,6 +1219,110 @@ function removeFromInterestList(storage: Storage, cardName: string) {
   storage.saveInterestList(interestList)
 
   return { success: true, message: `Removed ${cardName} from interest list` }
+}
+
+function addDeckNote(storage: Storage, args: AddDeckNoteArgs) {
+  const deck = storage.getDeck(args.deck_id)
+  if (!deck) throw new Error(`Deck not found: ${args.deck_id}`)
+
+  const now = new Date().toISOString()
+  const cardRefs: NoteCardRef[] = (args.card_names || []).map((name, i) => ({
+    cardName: name,
+    ordinal: i + 1,
+  }))
+
+  const note: DeckNote = {
+    id: generateDeckCardId(),
+    title: args.title,
+    content: args.content,
+    noteType: args.note_type,
+    cardRefs,
+    roleId: args.role_id,
+    createdAt: now,
+    updatedAt: now,
+  }
+
+  deck.notes.push(note)
+  propagateNoteRole(deck, note)
+  storage.saveDeck(deck)
+
+  return { success: true, note }
+}
+
+function updateDeckNote(storage: Storage, args: UpdateDeckNoteArgs) {
+  const deck = storage.getDeck(args.deck_id)
+  if (!deck) throw new Error(`Deck not found: ${args.deck_id}`)
+
+  const note = deck.notes.find(n => n.id === args.note_id)
+  if (!note) throw new Error(`Note not found: ${args.note_id}`)
+
+  // If removing role, remove it from associated cards first
+  if (args.remove_role && note.roleId) {
+    removeRoleFromNoteCards(deck, note)
+  }
+
+  if (args.title !== undefined) note.title = args.title
+  if (args.content !== undefined) note.content = args.content
+  if (args.note_type !== undefined) note.noteType = args.note_type
+  if (args.card_names !== undefined) {
+    note.cardRefs = args.card_names.map((name, i) => ({ cardName: name, ordinal: i + 1 }))
+  }
+  if (args.role_id !== undefined) note.roleId = args.role_id || undefined
+  note.updatedAt = new Date().toISOString()
+
+  propagateNoteRole(deck, note)
+  storage.saveDeck(deck)
+
+  return { success: true, note }
+}
+
+function deleteDeckNote(storage: Storage, args: DeleteDeckNoteArgs) {
+  const deck = storage.getDeck(args.deck_id)
+  if (!deck) throw new Error(`Deck not found: ${args.deck_id}`)
+
+  const noteIndex = deck.notes.findIndex(n => n.id === args.note_id)
+  if (noteIndex === -1) throw new Error(`Note not found: ${args.note_id}`)
+
+  const note = deck.notes[noteIndex]
+  if (args.remove_role && note.roleId) {
+    removeRoleFromNoteCards(deck, note)
+  }
+
+  deck.notes.splice(noteIndex, 1)
+  storage.saveDeck(deck)
+
+  return { success: true, message: `Note "${note.title}" deleted` }
+}
+
+function listDeckNotes(storage: Storage, deckId: string) {
+  const deck = storage.getDeck(deckId)
+  if (!deck) throw new Error(`Deck not found: ${deckId}`)
+
+  return deck.notes.map(n => ({
+    id: n.id,
+    title: n.title,
+    noteType: n.noteType,
+    cardRefs: n.cardRefs,
+    roleId: n.roleId,
+    content: n.content,
+    createdAt: n.createdAt,
+    updatedAt: n.updatedAt,
+  }))
+}
+
+function removeRoleFromNoteCards(deck: Deck, note: DeckNote): void {
+  if (!note.roleId) return
+  const refNames = new Set(note.cardRefs.map(r => r.cardName.toLowerCase()))
+  const removeRole = (cards: DeckCard[]) => {
+    for (const card of cards) {
+      if (refNames.has(card.card.name.toLowerCase())) {
+        card.roles = card.roles.filter(r => r !== note.roleId)
+      }
+    }
+  }
+  removeRole(deck.cards)
+  removeRole(deck.alternates)
+  removeRole(deck.sideboard)
 }
 
 async function importDeck(storage: Storage, args: ImportDeckArgs) {

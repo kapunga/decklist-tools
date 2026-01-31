@@ -1,6 +1,6 @@
 import { create } from 'zustand'
-import type { Deck, Taxonomy, InterestList, Config, DeckCard, CardIdentifier, RoleDefinition } from '@/types'
-import { createEmptyDeck, formatDefaults } from '@/types'
+import type { Deck, Taxonomy, InterestList, Config, DeckCard, DeckNote, CardIdentifier, RoleDefinition } from '@/types'
+import { createEmptyDeck, formatDefaults, propagateNoteRole } from '@/types'
 
 export type AppView = 'decks' | 'deck-detail' | 'interest-list' | 'buy-list' | 'settings'
 
@@ -52,6 +52,11 @@ interface AppState {
   addCustomRole: (deckId: string, role: RoleDefinition) => Promise<void>
   updateCustomRole: (deckId: string, roleId: string, updates: Partial<RoleDefinition>) => Promise<void>
   removeCustomRole: (deckId: string, roleId: string) => Promise<void>
+
+  // Note actions
+  addNote: (deckId: string, note: Omit<DeckNote, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>
+  updateNote: (deckId: string, noteId: string, updates: Partial<Pick<DeckNote, 'title' | 'content' | 'noteType' | 'cardRefs' | 'roleId'>>) => Promise<void>
+  deleteNote: (deckId: string, noteId: string, removeRole?: boolean) => Promise<void>
 
   // Interest list actions
   addToInterestList: (card: CardIdentifier, notes?: string, source?: string) => Promise<void>
@@ -392,6 +397,70 @@ export const useStore = create<AppState>((set, get) => ({
       ...deck,
       customRoles: deck.customRoles.filter(r => r.id !== roleId)
     }
+    await get().updateDeck(updatedDeck)
+  },
+
+  addNote: async (deckId, noteData) => {
+    const state = get()
+    const deck = state.decks.find(d => d.id === deckId)
+    if (!deck) return
+
+    const now = new Date().toISOString()
+    const note: DeckNote = {
+      ...noteData,
+      id: crypto.randomUUID(),
+      createdAt: now,
+      updatedAt: now,
+    }
+
+    const updatedDeck = { ...deck, notes: [...deck.notes, note] }
+    propagateNoteRole(updatedDeck, note)
+    await get().updateDeck(updatedDeck)
+  },
+
+  updateNote: async (deckId, noteId, updates) => {
+    const state = get()
+    const deck = state.decks.find(d => d.id === deckId)
+    if (!deck) return
+
+    const updatedNotes = deck.notes.map(n =>
+      n.id === noteId ? { ...n, ...updates, updatedAt: new Date().toISOString() } : n
+    )
+    const updatedDeck = { ...deck, notes: updatedNotes }
+
+    // Re-propagate role for the updated note
+    const updatedNote = updatedDeck.notes.find(n => n.id === noteId)
+    if (updatedNote) {
+      propagateNoteRole(updatedDeck, updatedNote)
+    }
+
+    await get().updateDeck(updatedDeck)
+  },
+
+  deleteNote: async (deckId, noteId, removeRole = false) => {
+    const state = get()
+    const deck = state.decks.find(d => d.id === deckId)
+    if (!deck) return
+
+    const note = deck.notes.find(n => n.id === noteId)
+    let updatedDeck = { ...deck, notes: deck.notes.filter(n => n.id !== noteId) }
+
+    if (removeRole && note?.roleId) {
+      const refNames = new Set(note.cardRefs.map(r => r.cardName.toLowerCase()))
+      const removeRoleFromList = (cards: DeckCard[]): DeckCard[] =>
+        cards.map(c =>
+          refNames.has(c.card.name.toLowerCase())
+            ? { ...c, roles: c.roles.filter(r => r !== note.roleId) }
+            : c
+        )
+      updatedDeck = {
+        ...updatedDeck,
+        cards: removeRoleFromList(updatedDeck.cards),
+        alternates: removeRoleFromList(updatedDeck.alternates),
+        sideboard: removeRoleFromList(updatedDeck.sideboard),
+      }
+    }
+
     await get().updateDeck(updatedDeck)
   },
 

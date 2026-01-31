@@ -1,8 +1,6 @@
 import { useState, useCallback, useEffect } from 'react'
-import { ArrowLeft, Plus, MoreVertical, Pencil, Trash2, Plug, PlugZap, Loader2, ExternalLink } from 'lucide-react'
+import { ArrowLeft, Plus, MoreVertical, Pencil, Trash2, Plug, PlugZap, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
 import {
   Dialog,
   DialogContent,
@@ -19,6 +17,8 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useStore, useGlobalRoles } from '@/hooks/useStore'
 import { ROLE_COLOR_PALETTE } from '@/lib/constants'
+import { CreateRoleDialog } from '@/components/CreateRoleDialog'
+import { RoleFormFields } from '@/components/RoleFormFields'
 import type { RoleDefinition } from '@/types'
 
 export function SettingsPage() {
@@ -35,7 +35,7 @@ export function SettingsPage() {
   const [editingRole, setEditingRole] = useState<RoleDefinition | null>(null)
   const [roleToDelete, setRoleToDelete] = useState<RoleDefinition | null>(null)
 
-  // Form state
+  // Edit form state
   const [roleName, setRoleName] = useState('')
   const [roleDescription, setRoleDescription] = useState('')
   const [roleColor, setRoleColor] = useState<string>(ROLE_COLOR_PALETTE[0])
@@ -101,21 +101,9 @@ export function SettingsPage() {
     setEditingRole(null)
   }, [])
 
-  const handleAddRole = useCallback(async () => {
-    if (!roleName.trim()) return
-
-    const roleId = roleName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
-    const newRole: RoleDefinition = {
-      id: roleId,
-      name: roleName.trim(),
-      description: roleDescription.trim() || undefined,
-      color: roleColor
-    }
-
-    await addGlobalRole(newRole)
-    resetForm()
-    setShowAddDialog(false)
-  }, [roleName, roleDescription, roleColor, addGlobalRole, resetForm])
+  const handleAddRole = useCallback(async (role: RoleDefinition) => {
+    await addGlobalRole(role)
+  }, [addGlobalRole])
 
   const handleEditRole = useCallback(async () => {
     if (!editingRole || !roleName.trim()) return
@@ -330,67 +318,13 @@ export function SettingsPage() {
       </div>
 
       {/* Add Role Dialog */}
-      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add Global Role</DialogTitle>
-            <DialogDescription>
-              Create a new role that will be available across all decks.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Name</label>
-              <Input
-                placeholder="e.g., Card Draw"
-                value={roleName}
-                onChange={e => setRoleName(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleAddRole()}
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Description</label>
-              <Input
-                placeholder="e.g., Draws additional cards"
-                value={roleDescription}
-                onChange={e => setRoleDescription(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Color</label>
-              <div className="flex flex-wrap gap-2">
-                {ROLE_COLOR_PALETTE.map(color => (
-                  <button
-                    key={color}
-                    type="button"
-                    className={`w-8 h-8 rounded-full border-2 transition-transform ${
-                      roleColor === color ? 'border-foreground scale-110' : 'border-transparent'
-                    }`}
-                    style={{ backgroundColor: color }}
-                    onClick={() => setRoleColor(color)}
-                  />
-                ))}
-              </div>
-            </div>
-            <div className="pt-2">
-              <label className="text-sm font-medium">Preview</label>
-              <div className="mt-2">
-                <Badge style={{ backgroundColor: roleColor }} className="text-white">
-                  {roleName || 'Role Name'}
-                </Badge>
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAddDialog(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleAddRole} disabled={!roleName.trim()}>
-              Add Role
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <CreateRoleDialog
+        open={showAddDialog}
+        onOpenChange={setShowAddDialog}
+        onCreated={handleAddRole}
+        title="Add Global Role"
+        description="Create a new role that will be available across all decks."
+      />
 
       {/* Edit Role Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
@@ -401,48 +335,16 @@ export function SettingsPage() {
               Update the role definition.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Name</label>
-              <Input
-                placeholder="e.g., Card Draw"
-                value={roleName}
-                onChange={e => setRoleName(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleEditRole()}
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Description</label>
-              <Input
-                placeholder="e.g., Draws additional cards"
-                value={roleDescription}
-                onChange={e => setRoleDescription(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Color</label>
-              <div className="flex flex-wrap gap-2">
-                {ROLE_COLOR_PALETTE.map(color => (
-                  <button
-                    key={color}
-                    type="button"
-                    className={`w-8 h-8 rounded-full border-2 transition-transform ${
-                      roleColor === color ? 'border-foreground scale-110' : 'border-transparent'
-                    }`}
-                    style={{ backgroundColor: color }}
-                    onClick={() => setRoleColor(color)}
-                  />
-                ))}
-              </div>
-            </div>
-            <div className="pt-2">
-              <label className="text-sm font-medium">Preview</label>
-              <div className="mt-2">
-                <Badge style={{ backgroundColor: roleColor }} className="text-white">
-                  {roleName || 'Role Name'}
-                </Badge>
-              </div>
-            </div>
+          <div className="py-4">
+            <RoleFormFields
+              roleName={roleName}
+              onRoleNameChange={setRoleName}
+              roleDescription={roleDescription}
+              onRoleDescriptionChange={setRoleDescription}
+              roleColor={roleColor}
+              onRoleColorChange={setRoleColor}
+              onSubmit={handleEditRole}
+            />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowEditDialog(false)}>

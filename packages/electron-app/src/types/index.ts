@@ -11,7 +11,7 @@ export type InclusionStatus = 'confirmed' | 'considering' | 'cut'
 export type OwnershipStatus = 'owned' | 'pulled' | 'need_to_buy'
 export type AddedBy = 'user' | 'import'
 export type FormatType = 'commander' | 'standard' | 'modern' | 'kitchen_table'
-export type InteractionCategory = 'combo' | 'synergy' | 'nonbo'
+export type NoteType = 'combo' | 'synergy' | 'theme' | 'strategy' | 'general'
 
 // Role Definition - used for both global and deck-specific custom roles
 export interface RoleDefinition {
@@ -96,40 +96,48 @@ export function generateDeckCardId(): string {
   return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
 }
 
-// Strategy types
-export interface SynergyPackage {
-  name: string
-  description?: string
-  cardNames: string[]
-  priority: number
-}
-
-export interface CardInteraction {
-  cards: string[]
-  description: string
-  category: InteractionCategory
-}
-
-export interface DeckRequirements {
-  minLands: number
-  maxLands: number
-  neededEffects: string[]
-}
-
-export interface DeckStrategy {
-  description: string
-  packages: SynergyPackage[]
-  interactions: CardInteraction[]
-  requirements: DeckRequirements
+// Note Card Reference
+export interface NoteCardRef {
+  cardName: string   // matches DeckCard.card.name
+  ordinal: number    // 1-based rank (lower = more relevant)
 }
 
 // Deck Notes
 export interface DeckNote {
   id: string
   title: string
-  content: string
+  content: string           // markdown description
+  noteType: NoteType
+  cardRefs: NoteCardRef[]   // ordered associated cards
+  roleId?: string           // optional role to propagate to cards
   createdAt: string
   updatedAt: string
+}
+
+// Migration helper for old DeckNote format
+export function migrateDeckNote(note: Partial<DeckNote> & { id: string; title: string; content: string; createdAt: string; updatedAt: string }): DeckNote {
+  return {
+    ...note,
+    noteType: note.noteType ?? 'general',
+    cardRefs: note.cardRefs ?? [],
+    roleId: note.roleId ?? undefined,
+  }
+}
+
+// Propagate a note's role to all referenced cards in the deck
+export function propagateNoteRole(deck: Deck, note: DeckNote): void {
+  if (!note.roleId) return
+  const refNames = new Set(note.cardRefs.map(r => r.cardName.toLowerCase()))
+  const addRole = (cards: DeckCard[]) => {
+    for (const card of cards) {
+      if (refNames.has(card.card.name.toLowerCase()) && !card.roles.includes(note.roleId!)) {
+        card.roles.push(note.roleId!)
+      }
+    }
+  }
+  addRole(deck.cards)
+  addRole(deck.alternates)
+  addRole(deck.sideboard)
 }
 
 // Deck
@@ -142,7 +150,6 @@ export interface Deck {
   version: number
   description?: string
   archetype?: string
-  strategy?: DeckStrategy
   cards: DeckCard[]
   alternates: DeckCard[]
   sideboard: DeckCard[]

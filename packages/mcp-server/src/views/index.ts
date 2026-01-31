@@ -1,5 +1,5 @@
 import type { Deck, DeckCard, RoleDefinition } from '@mtg-deckbuilder/shared'
-import { getPrimaryType, getCardCount, getRoleById, CARD_TYPE_ORDER } from '@mtg-deckbuilder/shared'
+import { getPrimaryType, getCardCount, getRoleById, CARD_TYPE_ORDER, migrateDeckNote } from '@mtg-deckbuilder/shared'
 
 export interface ViewDescription {
   id: string
@@ -16,6 +16,7 @@ export function getViewDescriptions(): ViewDescription[] {
     { id: 'buy-list', name: 'Buy List', description: 'Only cards marked need_to_buy' },
     { id: 'by-role', name: 'By Role', description: 'Grouped by role' },
     { id: 'by-type', name: 'By Type', description: 'Grouped by card type' },
+    { id: 'notes', name: 'Notes', description: 'Deck notes documenting combos, synergies, and strategy' },
   ]
 }
 
@@ -41,6 +42,8 @@ export function renderDeckView(
       return renderByRoleView(deck, globalRoles)
     case 'by-type':
       return renderByTypeView(deck)
+    case 'notes':
+      return renderNotesView(deck, globalRoles)
     default:
       return renderFullView(deck, globalRoles)
   }
@@ -376,6 +379,43 @@ function renderByTypeView(deck: Deck): string {
       lines.push(`- ${c.quantity}x ${c.card.name}`)
     }
     lines.push('')
+  }
+
+  return lines.join('\n')
+}
+
+function renderNotesView(deck: Deck, globalRoles: RoleDefinition[]): string {
+  const lines: string[] = []
+  lines.push(`# ${deck.name} (Notes)`)
+  lines.push('')
+
+  const notes = deck.notes.map(n => migrateDeckNote(n))
+
+  if (notes.length === 0) {
+    lines.push('*No notes yet*')
+    return lines.join('\n')
+  }
+
+  for (const note of notes) {
+    const typeBadge = `[${note.noteType.toUpperCase()}]`
+    lines.push(`## ${typeBadge} ${note.title}`)
+
+    if (note.roleId) {
+      const role = getRoleById(note.roleId, globalRoles, deck.customRoles)
+      lines.push(`**Role:** ${role?.name || note.roleId}`)
+    }
+
+    lines.push('')
+    lines.push(note.content)
+    lines.push('')
+
+    if (note.cardRefs.length > 0) {
+      lines.push('**Cards:**')
+      for (const ref of note.cardRefs) {
+        lines.push(`  ${ref.ordinal}. ${ref.cardName}`)
+      }
+      lines.push('')
+    }
   }
 
   return lines.join('\n')
