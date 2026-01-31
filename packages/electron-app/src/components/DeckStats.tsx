@@ -1,6 +1,10 @@
+import { useMemo } from 'react'
+import { Loader2 } from 'lucide-react'
 import type { Deck } from '@/types'
 import { getAllRoles } from '@/lib/constants'
 import { useGlobalRoles } from '@/hooks/useStore'
+import { useScryfallCache } from '@/hooks/useScryfallCache'
+import { ManaCurve } from '@/components/ManaCurve'
 
 interface DeckStatsProps {
   deck: Deck
@@ -8,7 +12,11 @@ interface DeckStatsProps {
 
 export function DeckStats({ deck }: DeckStatsProps) {
   const globalRoles = useGlobalRoles()
-  const confirmedCards = deck.cards.filter(c => c.inclusion === 'confirmed')
+  const confirmedCards = useMemo(
+    () => deck.cards.filter(c => c.inclusion === 'confirmed'),
+    [deck.cards]
+  )
+  const { cache: scryfallCache, isLoading: scryfallLoading } = useScryfallCache(confirmedCards)
 
   // Group by role - cards with multiple roles appear in multiple groups
   const byRole = confirmedCards.reduce((acc, card) => {
@@ -47,6 +55,16 @@ export function DeckStats({ deck }: DeckStatsProps) {
 
   return (
     <div className="space-y-6">
+      {/* Mana Curve */}
+      {scryfallLoading ? (
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Loader2 className="w-4 h-4 animate-spin" />
+          <span className="text-sm">Loading card data...</span>
+        </div>
+      ) : (
+        <ManaCurve deck={deck} scryfallCache={scryfallCache} />
+      )}
+
       <div>
         <h3 className="text-lg font-semibold mb-4">Cards by Role</h3>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">

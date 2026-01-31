@@ -8,11 +8,15 @@ import { CollapsibleSection } from '@/components/CollapsibleSection'
 import { BatchOperationsToolbar } from '@/components/BatchOperationsToolbar'
 import { RolePill } from '@/components/RolePill'
 import { RoleAutocomplete } from '@/components/RoleAutocomplete'
+import { CardFilterBar } from '@/components/CardFilterBar'
 import { useStore, useGlobalRoles } from '@/hooks/useStore'
+import { useScryfallCache } from '@/hooks/useScryfallCache'
 import { getCardById } from '@/lib/scryfall'
 import type { DeckCard, ScryfallCard, Deck } from '@/types'
 import { getCardLimit } from '@/types'
 import { getPrimaryType, CARD_TYPE_SORT_ORDER } from '@/lib/constants'
+import type { CardFilter } from '@mtg-deckbuilder/shared'
+import { enrichCards, applyFilters } from '@mtg-deckbuilder/shared'
 
 interface DeckListViewProps {
   deck: Deck
@@ -20,6 +24,7 @@ interface DeckListViewProps {
 }
 
 export function DeckListView({ deck, listType }: DeckListViewProps) {
+  const [filters, setFilters] = useState<CardFilter[]>([])
   const selectedCards = useStore(state => state.selectedCards)
   const focusedCardId = useStore(state => state.focusedCardId)
   const toggleCardSelection = useStore(state => state.toggleCardSelection)
@@ -60,10 +65,26 @@ export function DeckListView({ deck, listType }: DeckListViewProps) {
     return deck[listType]
   }, [listType, deck.cards, deck.alternates, deck.sideboard, commanderCards])
 
+  // Scryfall cache for filter enrichment
+  const { cache: scryfallCache } = useScryfallCache(cards)
+
+  // Enrich cards once for both filtering and passing to CardFilterBar
+  const enriched = useMemo(
+    () => enrichCards(cards, scryfallCache),
+    [cards, scryfallCache]
+  )
+
+  // Apply filters
+  const filteredCards = useMemo(() => {
+    if (filters.length === 0) return cards
+    const filtered = applyFilters(enriched, filters)
+    return filtered.map(e => e.deckCard)
+  }, [cards, enriched, filters])
+
   // Group cards by primary type (Creature, Instant, etc.), with Commander as special group
   const groupedCards = useMemo(() => {
     const groups: Record<string, DeckCard[]> = {}
-    for (const card of cards) {
+    for (const card of filteredCards) {
       // Commanders get their own group (identified by ID prefix)
       if (card.id.startsWith('commander-')) {
         if (!groups['Commander']) groups['Commander'] = []
@@ -76,7 +97,7 @@ export function DeckListView({ deck, listType }: DeckListViewProps) {
       }
     }
     return groups
-  }, [cards])
+  }, [filteredCards])
 
   // Sort groups by type order, with Commander first
   const sortedGroups = useMemo(() => {
@@ -220,6 +241,13 @@ export function DeckListView({ deck, listType }: DeckListViewProps) {
 
       {/* Right column - Card list */}
       <div className="flex-1 overflow-auto p-4">
+        <CardFilterBar
+          filters={filters}
+          onChange={setFilters}
+          allowedGroups={['mana', 'type', 'role']}
+          deck={deck}
+          enrichedCards={enriched}
+        />
         <div className="space-y-4">
           {sortedGroups.map(([typeName, groupCards]) => {
             const groupCount = groupCards.reduce((sum, c) => sum + c.quantity, 0)

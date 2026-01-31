@@ -209,7 +209,7 @@ export function getToolDefinitions(): Tool[] {
     // Views
     {
       name: 'view_deck',
-      description: 'Render a deck using a specific view format',
+      description: 'Render a deck using a specific view format. Optionally filter cards.',
       inputSchema: {
         type: 'object',
         properties: {
@@ -217,6 +217,19 @@ export function getToolDefinitions(): Tool[] {
           view: { type: 'string', default: 'full' },
           sort_by: { type: 'string' },
           group_by: { type: 'string' },
+          filters: {
+            type: 'array',
+            description: 'Optional card filters to apply',
+            items: {
+              type: 'object',
+              properties: {
+                type: { type: 'string', enum: ['cmc', 'color', 'card-type', 'role'] },
+                mode: { type: 'string', enum: ['include', 'exclude'] },
+                values: { type: 'array', items: {} },
+              },
+              required: ['type', 'mode', 'values'],
+            },
+          },
         },
         required: ['deck_id'],
       },
@@ -662,6 +675,7 @@ interface ViewDeckArgs {
   view?: string
   sort_by?: string
   group_by?: string
+  filters?: import('@mtg-deckbuilder/shared').CardFilter[]
 }
 
 interface AddCustomRoleArgs {
@@ -1018,7 +1032,20 @@ function viewDeck(storage: Storage, args: ViewDeckArgs) {
   }
 
   const globalRoles = storage.getGlobalRoles()
-  return renderDeckView(deck, args.view || 'full', globalRoles, args.sort_by, args.group_by)
+
+  // Build scryfall cache from file cache for curve view or when filters are present
+  let scryfallCache: Map<string, import('@mtg-deckbuilder/shared').ScryfallCard> | undefined
+  if (args.view === 'curve' || (args.filters && args.filters.length > 0)) {
+    scryfallCache = new Map()
+    for (const card of deck.cards) {
+      if (card.card.scryfallId) {
+        const cached = storage.getCachedCard(card.card.scryfallId) as import('@mtg-deckbuilder/shared').ScryfallCard | null
+        if (cached) scryfallCache.set(card.card.scryfallId, cached)
+      }
+    }
+  }
+
+  return renderDeckView(deck, args.view || 'full', globalRoles, args.sort_by, args.group_by, args.filters, scryfallCache)
 }
 
 function listViews() {

@@ -358,6 +358,22 @@ describe('Views', () => {
     it('throws when deck not found', async () => {
       await expect(call('view_deck', { deck_id: 'nope' })).rejects.toThrow('Deck not found')
     })
+
+    it('accepts filter parameters', async () => {
+      const deck = makeDeck({ name: 'Filter Test' })
+      deck.cards.push(makeDeckCard('Elf', { typeLine: 'Creature — Elf', roles: ['ramp'] }))
+      deck.cards.push(makeDeckCard('Bolt', { typeLine: 'Instant', roles: ['removal'] }))
+      mock._decks.set(deck.id, deck)
+      mock._setGlobalRoles([])
+
+      // Should not throw with filters
+      const result = await call('view_deck', {
+        deck_id: deck.id,
+        view: 'curve',
+        filters: [{ type: 'card-type', mode: 'include', values: ['Creature'] }],
+      }) as string
+      expect(result).toContain('Filter Test')
+    })
   })
 
   describe('list_views', () => {
