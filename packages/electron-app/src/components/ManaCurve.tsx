@@ -4,6 +4,7 @@ import type { Deck, ScryfallCard } from '@/types'
 import type { CardFilter } from '@mtg-deckbuilder/shared'
 import { enrichCards, applyFilters, getCmcDistribution, countManaPips } from '@mtg-deckbuilder/shared'
 import { CardFilterBar } from '@/components/CardFilterBar'
+import { ManaSymbol } from '@/components/ManaCost'
 
 interface ManaCurveProps {
   deck: Deck
@@ -94,11 +95,11 @@ export function ManaCurve({ deck, scryfallCache }: ManaCurveProps) {
           </ResponsiveContainer>
         </div>
 
-        {/* Pie chart */}
+        {/* Pie chart with pip legend */}
         {totalPips > 0 && (
-          <div className="w-[250px]">
+          <div className="w-[280px]">
             <h4 className="text-sm font-medium text-muted-foreground mb-2">Mana Pips ({totalPips})</h4>
-            <ResponsiveContainer width="100%" height={200}>
+            <ResponsiveContainer width="100%" height={180}>
               <PieChart>
                 <Pie
                   data={pipData}
@@ -106,8 +107,11 @@ export function ManaCurve({ deck, scryfallCache }: ManaCurveProps) {
                   nameKey="name"
                   cx="50%"
                   cy="50%"
-                  outerRadius={80}
-                  label={({ name, value }) => `${name}: ${value}`}
+                  outerRadius={70}
+                  label={({ value, percent }) =>
+                    `${value} (${(percent * 100).toFixed(0)}%)`
+                  }
+                  labelLine={false}
                 >
                   {pipData.map((entry) => (
                     <Cell
@@ -121,6 +125,15 @@ export function ManaCurve({ deck, scryfallCache }: ManaCurveProps) {
                 <Tooltip />
               </PieChart>
             </ResponsiveContainer>
+            {/* Legend with mana pips */}
+            <div className="flex items-center justify-center gap-3 mt-2">
+              {pipData.map((entry) => (
+                <div key={entry.name} className="flex items-center gap-1">
+                  <ManaSymbol symbol={entry.name} size="sm" />
+                  <span className="text-xs text-muted-foreground">{entry.value}</span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>

@@ -9,6 +9,7 @@ import {
   DialogFooter,
   DialogDescription,
 } from '@/components/ui/dialog'
+import { ManaSymbol } from '@/components/ManaCost'
 import type { CardFilter, FilterGroup, FilterMode, EnrichedDeckCard } from '@mtg-deckbuilder/shared'
 import { FILTER_GROUP_TYPES } from '@mtg-deckbuilder/shared'
 import { getPrimaryType } from '@mtg-deckbuilder/shared'
@@ -31,14 +32,7 @@ const FILTER_TYPE_LABELS: Record<CardFilter['type'], string> = {
   role: 'Role',
 }
 
-const COLOR_VALUES = [
-  { id: 'W', label: 'W', className: 'bg-amber-100 text-amber-900' },
-  { id: 'U', label: 'U', className: 'bg-blue-200 text-blue-900' },
-  { id: 'B', label: 'B', className: 'bg-gray-700 text-white' },
-  { id: 'R', label: 'R', className: 'bg-red-200 text-red-900' },
-  { id: 'G', label: 'G', className: 'bg-green-200 text-green-900' },
-  { id: 'C', label: 'C', className: 'bg-gray-200 text-gray-700' },
-]
+const COLOR_ORDER = ['W', 'U', 'B', 'R', 'G', 'C']
 
 interface AvailableValues {
   cmcBuckets: number[]
@@ -54,7 +48,6 @@ function computeAvailableValues(cards: EnrichedDeckCard[]): AvailableValues {
   const roleSet = new Set<string>()
 
   for (const { deckCard, scryfallCard } of cards) {
-    // CMC buckets (exclude lands)
     const typeLine = scryfallCard?.type_line || deckCard.typeLine || ''
     const isLand = typeLine.toLowerCase().includes('land')
 
@@ -62,7 +55,6 @@ function computeAvailableValues(cards: EnrichedDeckCard[]): AvailableValues {
       cmcSet.add(Math.min(Math.floor(scryfallCard.cmc), 7))
     }
 
-    // Colors
     if (scryfallCard) {
       const colors = scryfallCard.colors || scryfallCard.color_identity
       if (colors.length === 0) {
@@ -72,19 +64,14 @@ function computeAvailableValues(cards: EnrichedDeckCard[]): AvailableValues {
       }
     }
 
-    // Card types
     const primaryType = getPrimaryType(typeLine || 'Other')
     typeSet.add(primaryType)
 
-    // Roles
     for (const r of deckCard.roles) roleSet.add(r)
   }
 
   const cmcBuckets = [...cmcSet].sort((a, b) => a - b)
-  // Keep WUBRGC order
-  const colorOrder = ['W', 'U', 'B', 'R', 'G', 'C']
-  const colors = colorOrder.filter(c => colorSet.has(c))
-  // Keep standard type order
+  const colors = COLOR_ORDER.filter(c => colorSet.has(c))
   const typeOrder = ['Creature', 'Planeswalker', 'Battle', 'Instant', 'Sorcery', 'Artifact', 'Enchantment', 'Land', 'Other']
   const cardTypes = typeOrder.filter(t => typeSet.has(t))
   const roleIds = [...roleSet]
@@ -92,34 +79,44 @@ function computeAvailableValues(cards: EnrichedDeckCard[]): AvailableValues {
   return { cmcBuckets, colors, cardTypes, roleIds }
 }
 
-function summarizeFilter(
-  filter: CardFilter,
+// Render a filter summary with inline mana pips for color/cmc filters
+function FilterPillContent({
+  filter,
+  allRoles,
+}: {
+  filter: CardFilter
   allRoles: { id: string; name: string }[]
-): string {
+}) {
   const label = FILTER_TYPE_LABELS[filter.type]
   const mode = filter.mode === 'include' ? 'is' : 'is not'
 
-  if (filter.values.length === 0) return `${label}: (none selected)`
-
-  let valuesStr: string
-  switch (filter.type) {
-    case 'cmc':
-      valuesStr = filter.values.map(v => v === 7 ? '7+' : String(v)).join(', ')
-      break
-    case 'color':
-      valuesStr = filter.values.join(', ')
-      break
-    case 'card-type':
-      valuesStr = filter.values.join(', ')
-      break
-    case 'role':
-      valuesStr = filter.values
-        .map(id => allRoles.find(r => r.id === id)?.name ?? id)
-        .join(', ')
-      break
+  if (filter.values.length === 0) {
+    return <span>{label}: (none selected)</span>
   }
 
-  return `${label} ${mode} ${valuesStr}`
+  switch (filter.type) {
+    case 'cmc': {
+      const valuesStr = filter.values.map(v => v === 7 ? '7+' : String(v)).join(', ')
+      return <span>{label} {mode} {valuesStr}</span>
+    }
+    case 'color':
+      return (
+        <span className="inline-flex items-center gap-1">
+          {label} {mode}{' '}
+          {filter.values.map((v) => (
+            <ManaSymbol key={v} symbol={v} size="sm" />
+          ))}
+        </span>
+      )
+    case 'card-type':
+      return <span>{label} {mode} {filter.values.join(', ')}</span>
+    case 'role': {
+      const names = filter.values
+        .map(id => allRoles.find(r => r.id === id)?.name ?? id)
+        .join(', ')
+      return <span>{label} {mode} {names}</span>
+    }
+  }
 }
 
 export function CardFilterBar({ filters, onChange, allowedGroups, deck, enrichedCards }: CardFilterBarProps) {
@@ -209,7 +206,7 @@ export function CardFilterBar({ filters, onChange, allowedGroups, deck, enriched
           className="flex items-center gap-1 bg-secondary rounded-full pl-3 pr-1 py-1 text-xs cursor-pointer hover:bg-secondary/80"
           onClick={() => openEditFilter(index)}
         >
-          <span>{summarizeFilter(filter, allRoles)}</span>
+          <FilterPillContent filter={filter} allRoles={allRoles} />
           <Button
             variant="ghost"
             size="icon"
@@ -306,17 +303,17 @@ export function CardFilterBar({ filters, onChange, allowedGroups, deck, enriched
                   </Button>
                 ))}
 
-                {editingType === 'color' && COLOR_VALUES
-                  .filter(c => available.colors.includes(c.id))
+                {editingType === 'color' && COLOR_ORDER
+                  .filter(c => available.colors.includes(c))
                   .map(c => (
                     <Button
-                      key={c.id}
-                      variant={editingValues.includes(c.id) ? 'default' : 'outline'}
+                      key={c}
+                      variant={editingValues.includes(c) ? 'default' : 'outline'}
                       size="sm"
-                      className={`h-8 w-8 p-0 ${editingValues.includes(c.id) ? c.className : ''}`}
-                      onClick={() => toggleValue(c.id)}
+                      className="h-9 w-9 p-0"
+                      onClick={() => toggleValue(c)}
                     >
-                      {c.label}
+                      <ManaSymbol symbol={c} size="lg" />
                     </Button>
                   ))}
 
