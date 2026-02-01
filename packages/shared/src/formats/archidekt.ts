@@ -1,5 +1,6 @@
 import type { Deck, DeckCard } from '../types/index.js'
 import type { DeckExportFormat, ParsedCard, RenderOptions } from './types.js'
+import { prepareLines, getConfirmedCards, getMaybeboardCards } from './utils.js'
 
 export const archidektFormat: DeckExportFormat = {
   id: 'archidekt',
@@ -8,7 +9,7 @@ export const archidektFormat: DeckExportFormat = {
 
   parse(text: string): ParsedCard[] {
     const cards: ParsedCard[] = []
-    const lines = text.split('\n').map(l => l.trim())
+    const lines = prepareLines(text)
 
     const cardPattern = /^(\d+)x?\s+(.+?)\s+\(([A-Za-z0-9]+)\)\s+(\S+)\s*(?:\[([^\]]+)\])?\s*(.*)$/
     const tagPattern = /\^([^^]+)\^/g
@@ -77,9 +78,7 @@ export const archidektFormat: DeckExportFormat = {
       })
     }
 
-    deck.cards
-      .filter(c => c.inclusion === 'confirmed')
-      .forEach(c => {
+    getConfirmedCards(deck).forEach(c => {
         // Use first role for category, fallback to 'Other'
         const primaryRole = c.roles[0]
         const category = primaryRole ? (roleToCategoryMap[primaryRole] || 'Other') : 'Other'
@@ -91,11 +90,7 @@ export const archidektFormat: DeckExportFormat = {
     }
 
     if (options.includeMaybeboard) {
-      const maybe = [
-        ...deck.cards.filter(c => c.inclusion === 'considering'),
-        ...deck.alternates
-      ]
-      maybe.forEach(c => renderCard(c, 'Maybeboard'))
+      getMaybeboardCards(deck).forEach(c => renderCard(c, 'Maybeboard'))
     }
 
     return lines.join('\n')

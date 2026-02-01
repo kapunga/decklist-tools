@@ -1,90 +1,16 @@
 import { create } from 'zustand'
-import type { Deck, Taxonomy, InterestList, Config, DeckCard, DeckNote, CardIdentifier, RoleDefinition } from '@/types'
-import { createEmptyDeck, formatDefaults, propagateNoteRole } from '@/types'
+import type { Deck, Taxonomy, InterestList, Config, RoleDefinition } from '@/types'
+import type { AppState } from '@/stores/types'
+import { createDeckSlice } from '@/stores/deckSlice'
+import { createCardSlice } from '@/stores/cardSlice'
+import { createCommanderSlice } from '@/stores/commanderSlice'
+import { createRoleSlice } from '@/stores/roleSlice'
+import { createNoteSlice } from '@/stores/noteSlice'
+import { createInterestListSlice } from '@/stores/interestListSlice'
+import { createConfigSlice } from '@/stores/configSlice'
+import { createSelectionSlice } from '@/stores/selectionSlice'
 
-export type AppView = 'decks' | 'deck-detail' | 'interest-list' | 'buy-list' | 'settings'
-
-interface AppState {
-  // Data
-  decks: Deck[]
-  taxonomy: Taxonomy | null
-  interestList: InterestList | null
-  config: Config | null
-  globalRoles: RoleDefinition[]
-
-  // UI State
-  selectedDeckId: string | null
-  currentView: AppView
-  isLoading: boolean
-  hasInitialized: boolean
-  error: string | null
-  // Selection state for batch operations
-  selectedCards: Set<string>  // Card names
-  focusedCardId: string | null  // Scryfall ID of focused card
-
-  // Actions
-  loadData: () => Promise<void>
-  selectDeck: (id: string | null) => void
-  setView: (view: AppView) => void
-
-  // Deck actions
-  createDeck: (name: string, formatType: string) => Promise<Deck>
-  updateDeck: (deck: Deck) => Promise<void>
-  deleteDeck: (id: string) => Promise<void>
-  setDeckArtCard: (deckId: string, scryfallId: string | undefined) => Promise<void>
-  setDeckColorIdentity: (deckId: string, colors: string[]) => Promise<void>
-
-  // Card actions
-  addCardToDeck: (deckId: string, card: DeckCard, target?: 'cards' | 'alternates' | 'sideboard') => Promise<void>
-  removeCardFromDeck: (deckId: string, cardName: string, target?: 'cards' | 'alternates' | 'sideboard') => Promise<void>
-  updateCardInDeck: (deckId: string, cardName: string, updates: Partial<DeckCard>) => Promise<void>
-  moveCard: (deckId: string, cardName: string, from: 'cards' | 'alternates' | 'sideboard', to: 'cards' | 'alternates' | 'sideboard') => Promise<void>
-
-  // Commander actions
-  setCommanders: (deckId: string, commanders: CardIdentifier[]) => Promise<void>
-  addCommander: (deckId: string, commander: CardIdentifier) => Promise<void>
-  removeCommander: (deckId: string, commanderName: string) => Promise<void>
-
-  // Role actions
-  addRoleToCard: (deckId: string, cardName: string, roleId: string) => Promise<void>
-  removeRoleFromCard: (deckId: string, cardName: string, roleId: string) => Promise<void>
-  setCardRoles: (deckId: string, cardName: string, roles: string[]) => Promise<void>
-  addCustomRole: (deckId: string, role: RoleDefinition) => Promise<void>
-  updateCustomRole: (deckId: string, roleId: string, updates: Partial<RoleDefinition>) => Promise<void>
-  removeCustomRole: (deckId: string, roleId: string) => Promise<void>
-
-  // Note actions
-  addNote: (deckId: string, note: Omit<DeckNote, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>
-  updateNote: (deckId: string, noteId: string, updates: Partial<Pick<DeckNote, 'title' | 'content' | 'noteType' | 'cardRefs' | 'roleId'>>) => Promise<void>
-  deleteNote: (deckId: string, noteId: string, removeRole?: boolean) => Promise<void>
-
-  // Interest list actions
-  addToInterestList: (card: CardIdentifier, notes?: string, source?: string) => Promise<void>
-  removeFromInterestList: (cardName: string) => Promise<void>
-  updateInterestItem: (cardName: string, updates: { notes?: string; potentialDecks?: string[] }) => Promise<void>
-
-  // Config actions
-  updateConfig: (config: Partial<Config>) => Promise<void>
-
-  // Global role actions
-  addGlobalRole: (role: RoleDefinition) => Promise<void>
-  updateGlobalRole: (roleId: string, updates: Partial<RoleDefinition>) => Promise<void>
-  deleteGlobalRole: (roleId: string) => Promise<void>
-
-  // Selection actions
-  selectCard: (cardName: string) => void
-  deselectCard: (cardName: string) => void
-  toggleCardSelection: (cardName: string) => void
-  selectAllCards: (cardNames: string[]) => void
-  clearSelection: () => void
-  setFocusedCard: (cardId: string | null) => void
-
-  // Batch actions
-  batchUpdateOwnership: (deckId: string, cardNames: string[], ownership: DeckCard['ownership']) => Promise<void>
-  batchRemoveCards: (deckId: string, cardNames: string[], listType: 'cards' | 'alternates' | 'sideboard') => Promise<void>
-  batchMoveCards: (deckId: string, cardNames: string[], from: 'cards' | 'alternates' | 'sideboard', to: 'cards' | 'alternates' | 'sideboard') => Promise<void>
-  batchAddRoleToCards: (deckId: string, cardNames: string[], roleId: string) => Promise<void>
-}
+export type { AppView } from '@/stores/types'
 
 export const useStore = create<AppState>((set, get) => ({
   // Initial state
@@ -96,13 +22,11 @@ export const useStore = create<AppState>((set, get) => ({
   selectedDeckId: null,
   currentView: 'decks',
   isLoading: false,
-  hasInitialized: false,  // Track if initial load is complete
+  hasInitialized: false,
   error: null,
-  selectedCards: new Set<string>(),
-  focusedCardId: null,
 
+  // Core actions
   loadData: async () => {
-    // Only show loading spinner on very first app load, never on refreshes
     const { hasInitialized } = get()
     if (!hasInitialized) {
       set({ isLoading: true, error: null })
@@ -133,7 +57,6 @@ export const useStore = create<AppState>((set, get) => ({
     set({
       selectedDeckId: id,
       currentView: id ? 'deck-detail' : 'decks',
-      // Clear selection when changing decks
       selectedCards: new Set<string>(),
       focusedCardId: null
     })
@@ -142,538 +65,24 @@ export const useStore = create<AppState>((set, get) => ({
   setView: (view) => {
     set({
       currentView: view,
-      // Clear deck selection when navigating away from deck views
       selectedDeckId: view === 'deck-detail' ? get().selectedDeckId : null,
-      // Clear selection when changing views
       selectedCards: new Set<string>(),
       focusedCardId: null
     })
   },
 
-  createDeck: async (name, formatType) => {
-    const deck = createEmptyDeck(name, formatType as keyof typeof formatDefaults)
-    await window.electronAPI.saveDeck(deck)
-    set(state => ({ decks: [...state.decks, deck] }))
-    return deck
-  },
-
-  updateDeck: async (deck) => {
-    await window.electronAPI.saveDeck(deck)
-    set(state => ({
-      decks: state.decks.map(d => d.id === deck.id ? deck : d)
-    }))
-  },
-
-  deleteDeck: async (id) => {
-    await window.electronAPI.deleteDeck(id)
-    set(state => ({
-      decks: state.decks.filter(d => d.id !== id),
-      selectedDeckId: state.selectedDeckId === id ? null : state.selectedDeckId
-    }))
-  },
-
-  setDeckArtCard: async (deckId, scryfallId) => {
-    const state = get()
-    const deck = state.decks.find(d => d.id === deckId)
-    if (!deck) return
-
-    const updatedDeck = { ...deck, artCardScryfallId: scryfallId }
-    await get().updateDeck(updatedDeck)
-  },
-
-  setDeckColorIdentity: async (deckId, colors) => {
-    const state = get()
-    const deck = state.decks.find(d => d.id === deckId)
-    if (!deck) return
-
-    const updatedDeck = { ...deck, colorIdentity: colors }
-    await get().updateDeck(updatedDeck)
-  },
-
-  addCardToDeck: async (deckId, card, target = 'cards') => {
-    const state = get()
-    const deck = state.decks.find(d => d.id === deckId)
-    if (!deck) return
-
-    const targetList = deck[target]
-    const existingIndex = targetList.findIndex(
-      c => c.card.name.toLowerCase() === card.card.name.toLowerCase()
-    )
-
-    let updatedList: DeckCard[]
-    if (existingIndex >= 0) {
-      updatedList = targetList.map((c, i) =>
-        i === existingIndex
-          ? { ...c, quantity: c.quantity + card.quantity }
-          : c
-      )
-    } else {
-      updatedList = [...targetList, card]
-    }
-
-    const updatedDeck = { ...deck, [target]: updatedList }
-    await get().updateDeck(updatedDeck)
-  },
-
-  removeCardFromDeck: async (deckId, cardName, target = 'cards') => {
-    const state = get()
-    const deck = state.decks.find(d => d.id === deckId)
-    if (!deck) return
-
-    const updatedDeck = {
-      ...deck,
-      [target]: deck[target].filter(
-        c => c.card.name.toLowerCase() !== cardName.toLowerCase()
-      )
-    }
-    await get().updateDeck(updatedDeck)
-  },
-
-  updateCardInDeck: async (deckId, cardName, updates) => {
-    const state = get()
-    const deck = state.decks.find(d => d.id === deckId)
-    if (!deck) return
-
-    const updateList = (list: DeckCard[]): DeckCard[] =>
-      list.map(c =>
-        c.card.name.toLowerCase() === cardName.toLowerCase()
-          ? { ...c, ...updates }
-          : c
-      )
-
-    const updatedDeck = {
-      ...deck,
-      cards: updateList(deck.cards),
-      alternates: updateList(deck.alternates),
-      sideboard: updateList(deck.sideboard)
-    }
-    await get().updateDeck(updatedDeck)
-  },
-
-  moveCard: async (deckId, cardName, from, to) => {
-    const state = get()
-    const deck = state.decks.find(d => d.id === deckId)
-    if (!deck) return
-
-    const card = deck[from].find(
-      c => c.card.name.toLowerCase() === cardName.toLowerCase()
-    )
-    if (!card) return
-
-    const updatedDeck = {
-      ...deck,
-      [from]: deck[from].filter(
-        c => c.card.name.toLowerCase() !== cardName.toLowerCase()
-      ),
-      [to]: [...deck[to], card]
-    }
-    await get().updateDeck(updatedDeck)
-  },
-
-  // Commander actions
-  setCommanders: async (deckId, commanders) => {
-    const state = get()
-    const deck = state.decks.find(d => d.id === deckId)
-    if (!deck) return
-
-    const updatedDeck = { ...deck, commanders }
-    await get().updateDeck(updatedDeck)
-  },
-
-  addCommander: async (deckId, commander) => {
-    const state = get()
-    const deck = state.decks.find(d => d.id === deckId)
-    if (!deck || deck.commanders.length >= 2) return
-
-    const updatedDeck = { ...deck, commanders: [...deck.commanders, commander] }
-    await get().updateDeck(updatedDeck)
-  },
-
-  removeCommander: async (deckId, commanderName) => {
-    const state = get()
-    const deck = state.decks.find(d => d.id === deckId)
-    if (!deck) return
-
-    const updatedDeck = {
-      ...deck,
-      commanders: deck.commanders.filter(c => c.name.toLowerCase() !== commanderName.toLowerCase())
-    }
-    await get().updateDeck(updatedDeck)
-  },
-
-  // Role actions
-  addRoleToCard: async (deckId, cardName, roleId) => {
-    const state = get()
-    const deck = state.decks.find(d => d.id === deckId)
-    if (!deck) return
-
-    const updateList = (list: DeckCard[]): DeckCard[] =>
-      list.map(c =>
-        c.card.name.toLowerCase() === cardName.toLowerCase()
-          ? { ...c, roles: [...new Set([...c.roles, roleId])] }
-          : c
-      )
-
-    const updatedDeck = {
-      ...deck,
-      cards: updateList(deck.cards),
-      alternates: updateList(deck.alternates),
-      sideboard: updateList(deck.sideboard)
-    }
-    await get().updateDeck(updatedDeck)
-  },
-
-  removeRoleFromCard: async (deckId, cardName, roleId) => {
-    const state = get()
-    const deck = state.decks.find(d => d.id === deckId)
-    if (!deck) return
-
-    const updateList = (list: DeckCard[]): DeckCard[] =>
-      list.map(c =>
-        c.card.name.toLowerCase() === cardName.toLowerCase()
-          ? { ...c, roles: c.roles.filter(r => r !== roleId) }
-          : c
-      )
-
-    const updatedDeck = {
-      ...deck,
-      cards: updateList(deck.cards),
-      alternates: updateList(deck.alternates),
-      sideboard: updateList(deck.sideboard)
-    }
-    await get().updateDeck(updatedDeck)
-  },
-
-  setCardRoles: async (deckId, cardName, roles) => {
-    const state = get()
-    const deck = state.decks.find(d => d.id === deckId)
-    if (!deck) return
-
-    const updateList = (list: DeckCard[]): DeckCard[] =>
-      list.map(c =>
-        c.card.name.toLowerCase() === cardName.toLowerCase()
-          ? { ...c, roles }
-          : c
-      )
-
-    const updatedDeck = {
-      ...deck,
-      cards: updateList(deck.cards),
-      alternates: updateList(deck.alternates),
-      sideboard: updateList(deck.sideboard)
-    }
-    await get().updateDeck(updatedDeck)
-  },
-
-  addCustomRole: async (deckId, role) => {
-    const state = get()
-    const deck = state.decks.find(d => d.id === deckId)
-    if (!deck) return
-
-    const updatedDeck = { ...deck, customRoles: [...deck.customRoles, role] }
-    await get().updateDeck(updatedDeck)
-  },
-
-  updateCustomRole: async (deckId, roleId, updates) => {
-    const state = get()
-    const deck = state.decks.find(d => d.id === deckId)
-    if (!deck) return
-
-    const updatedDeck = {
-      ...deck,
-      customRoles: deck.customRoles.map(r =>
-        r.id === roleId ? { ...r, ...updates } : r
-      )
-    }
-    await get().updateDeck(updatedDeck)
-  },
-
-  removeCustomRole: async (deckId, roleId) => {
-    const state = get()
-    const deck = state.decks.find(d => d.id === deckId)
-    if (!deck) return
-
-    const updatedDeck = {
-      ...deck,
-      customRoles: deck.customRoles.filter(r => r.id !== roleId)
-    }
-    await get().updateDeck(updatedDeck)
-  },
-
-  addNote: async (deckId, noteData) => {
-    const state = get()
-    const deck = state.decks.find(d => d.id === deckId)
-    if (!deck) return
-
-    const now = new Date().toISOString()
-    const note: DeckNote = {
-      ...noteData,
-      id: crypto.randomUUID(),
-      createdAt: now,
-      updatedAt: now,
-    }
-
-    const updatedDeck = { ...deck, notes: [...deck.notes, note] }
-    propagateNoteRole(updatedDeck, note)
-    await get().updateDeck(updatedDeck)
-  },
-
-  updateNote: async (deckId, noteId, updates) => {
-    const state = get()
-    const deck = state.decks.find(d => d.id === deckId)
-    if (!deck) return
-
-    const updatedNotes = deck.notes.map(n =>
-      n.id === noteId ? { ...n, ...updates, updatedAt: new Date().toISOString() } : n
-    )
-    const updatedDeck = { ...deck, notes: updatedNotes }
-
-    // Re-propagate role for the updated note
-    const updatedNote = updatedDeck.notes.find(n => n.id === noteId)
-    if (updatedNote) {
-      propagateNoteRole(updatedDeck, updatedNote)
-    }
-
-    await get().updateDeck(updatedDeck)
-  },
-
-  deleteNote: async (deckId, noteId, removeRole = false) => {
-    const state = get()
-    const deck = state.decks.find(d => d.id === deckId)
-    if (!deck) return
-
-    const note = deck.notes.find(n => n.id === noteId)
-    let updatedDeck = { ...deck, notes: deck.notes.filter(n => n.id !== noteId) }
-
-    if (removeRole && note?.roleId) {
-      const refNames = new Set(note.cardRefs.map(r => r.cardName.toLowerCase()))
-      const removeRoleFromList = (cards: DeckCard[]): DeckCard[] =>
-        cards.map(c =>
-          refNames.has(c.card.name.toLowerCase())
-            ? { ...c, roles: c.roles.filter(r => r !== note.roleId) }
-            : c
-        )
-      updatedDeck = {
-        ...updatedDeck,
-        cards: removeRoleFromList(updatedDeck.cards),
-        alternates: removeRoleFromList(updatedDeck.alternates),
-        sideboard: removeRoleFromList(updatedDeck.sideboard),
-      }
-    }
-
-    await get().updateDeck(updatedDeck)
-  },
-
-  addToInterestList: async (card, notes, source) => {
-    const state = get()
-    if (!state.interestList) return
-
-    const item = {
-      id: crypto.randomUUID(),
-      card,
-      notes,
-      source,
-      addedAt: new Date().toISOString()
-    }
-
-    const updatedList = {
-      ...state.interestList,
-      items: [...state.interestList.items, item],
-      version: state.interestList.version + 1
-    }
-
-    await window.electronAPI.saveInterestList(updatedList)
-    set({ interestList: updatedList })
-  },
-
-  removeFromInterestList: async (cardName) => {
-    const state = get()
-    if (!state.interestList) return
-
-    const updatedList = {
-      ...state.interestList,
-      items: state.interestList.items.filter(
-        i => i.card.name.toLowerCase() !== cardName.toLowerCase()
-      ),
-      version: state.interestList.version + 1
-    }
-
-    await window.electronAPI.saveInterestList(updatedList)
-    set({ interestList: updatedList })
-  },
-
-  updateInterestItem: async (cardName, updates) => {
-    const state = get()
-    if (!state.interestList) return
-
-    const updatedList = {
-      ...state.interestList,
-      items: state.interestList.items.map(item =>
-        item.card.name.toLowerCase() === cardName.toLowerCase()
-          ? { ...item, ...updates }
-          : item
-      ),
-      version: state.interestList.version + 1,
-      updatedAt: new Date().toISOString()
-    }
-
-    await window.electronAPI.saveInterestList(updatedList)
-    set({ interestList: updatedList })
-  },
-
-  updateConfig: async (updates) => {
-    const state = get()
-    if (!state.config) return
-
-    const updatedConfig = { ...state.config, ...updates }
-    await window.electronAPI.saveConfig(updatedConfig)
-    set({ config: updatedConfig })
-  },
-
-  // Global role actions
-  addGlobalRole: async (role) => {
-    const state = get()
-    const updatedRoles = [...state.globalRoles, role]
-    await window.electronAPI.saveGlobalRoles(updatedRoles)
-    set({ globalRoles: updatedRoles })
-  },
-
-  updateGlobalRole: async (roleId, updates) => {
-    const state = get()
-    const updatedRoles = state.globalRoles.map(r =>
-      r.id === roleId ? { ...r, ...updates } : r
-    )
-    await window.electronAPI.saveGlobalRoles(updatedRoles)
-    set({ globalRoles: updatedRoles })
-  },
-
-  deleteGlobalRole: async (roleId) => {
-    const state = get()
-    const updatedRoles = state.globalRoles.filter(r => r.id !== roleId)
-    await window.electronAPI.saveGlobalRoles(updatedRoles)
-    set({ globalRoles: updatedRoles })
-  },
-
-  // Selection actions
-  selectCard: (cardName) => {
-    const newSet = new Set(get().selectedCards)
-    newSet.add(cardName)
-    set({ selectedCards: newSet })
-  },
-
-  deselectCard: (cardName) => {
-    const newSet = new Set(get().selectedCards)
-    newSet.delete(cardName)
-    set({ selectedCards: newSet })
-  },
-
-  toggleCardSelection: (cardName) => {
-    const newSet = new Set(get().selectedCards)
-    if (newSet.has(cardName)) {
-      newSet.delete(cardName)
-    } else {
-      newSet.add(cardName)
-    }
-    set({ selectedCards: newSet })
-  },
-
-  selectAllCards: (cardNames) => {
-    set({ selectedCards: new Set(cardNames) })
-  },
-
-  clearSelection: () => {
-    set({ selectedCards: new Set<string>() })
-  },
-
-  setFocusedCard: (cardId) => {
-    set({ focusedCardId: cardId })
-  },
-
-  // Batch actions
-  batchUpdateOwnership: async (deckId, cardNames, ownership) => {
-    const state = get()
-    const deck = state.decks.find(d => d.id === deckId)
-    if (!deck) return
-
-    const updateList = (list: DeckCard[]): DeckCard[] =>
-      list.map(c =>
-        cardNames.includes(c.card.name)
-          ? { ...c, ownership }
-          : c
-      )
-
-    const updatedDeck = {
-      ...deck,
-      cards: updateList(deck.cards),
-      alternates: updateList(deck.alternates),
-      sideboard: updateList(deck.sideboard)
-    }
-    await get().updateDeck(updatedDeck)
-  },
-
-  batchRemoveCards: async (deckId, cardNames, listType) => {
-    const state = get()
-    const deck = state.decks.find(d => d.id === deckId)
-    if (!deck) return
-
-    const cardNamesLower = cardNames.map(n => n.toLowerCase())
-    const updatedDeck = {
-      ...deck,
-      [listType]: deck[listType].filter(
-        c => !cardNamesLower.includes(c.card.name.toLowerCase())
-      )
-    }
-    await get().updateDeck(updatedDeck)
-    // Clear selection after batch remove
-    set({ selectedCards: new Set<string>() })
-  },
-
-  batchMoveCards: async (deckId, cardNames, from, to) => {
-    const state = get()
-    const deck = state.decks.find(d => d.id === deckId)
-    if (!deck) return
-
-    const cardNamesLower = cardNames.map(n => n.toLowerCase())
-    const cardsToMove = deck[from].filter(
-      c => cardNamesLower.includes(c.card.name.toLowerCase())
-    )
-    const remainingCards = deck[from].filter(
-      c => !cardNamesLower.includes(c.card.name.toLowerCase())
-    )
-
-    const updatedDeck = {
-      ...deck,
-      [from]: remainingCards,
-      [to]: [...deck[to], ...cardsToMove]
-    }
-    await get().updateDeck(updatedDeck)
-    // Clear selection after batch move
-    set({ selectedCards: new Set<string>() })
-  },
-
-  batchAddRoleToCards: async (deckId, cardNames, roleId) => {
-    const state = get()
-    const deck = state.decks.find(d => d.id === deckId)
-    if (!deck) return
-
-    const updateList = (list: DeckCard[]): DeckCard[] =>
-      list.map(c =>
-        cardNames.includes(c.card.name)
-          ? { ...c, roles: [...new Set([...c.roles, roleId])] }
-          : c
-      )
-
-    const updatedDeck = {
-      ...deck,
-      cards: updateList(deck.cards),
-      alternates: updateList(deck.alternates),
-      sideboard: updateList(deck.sideboard)
-    }
-    await get().updateDeck(updatedDeck)
-  }
+  // Slices
+  ...createDeckSlice(set, get),
+  ...createCardSlice(set, get),
+  ...createCommanderSlice(set, get),
+  ...createRoleSlice(set, get),
+  ...createNoteSlice(set, get),
+  ...createInterestListSlice(set, get),
+  ...createConfigSlice(set, get),
+  ...createSelectionSlice(set, get),
 }))
 
-// Selector hooks for better performance
+// Selector hooks
 export const useSelectedDeck = () => {
   const selectedDeckId = useStore(state => state.selectedDeckId)
   const decks = useStore(state => state.decks)
@@ -698,7 +107,6 @@ export interface BuyListItem {
 export const useBuyList = (): BuyListItem[] => {
   const decks = useStore(state => state.decks)
 
-  // Aggregate all need_to_buy cards across decks
   const buyMap = new Map<string, BuyListItem>()
 
   for (const deck of decks) {
@@ -754,5 +162,4 @@ export const useRoleById = (deckId: string | null, roleId: string): RoleDefiniti
   return getRoleByIdHelper(roleId, globalRoles, deck?.customRoles)
 }
 
-// Export globalRoles selector for components that need it
 export const useGlobalRoles = () => useStore(state => state.globalRoles)
