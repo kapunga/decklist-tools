@@ -8,7 +8,7 @@ export interface CardIdentifier {
 
 // Enums
 export type InclusionStatus = 'confirmed' | 'considering' | 'cut'
-export type OwnershipStatus = 'owned' | 'pulled' | 'need_to_buy'
+export type OwnershipStatus = 'unknown' | 'owned' | 'pulled' | 'need_to_buy'
 export type AddedBy = 'user' | 'import'
 export type FormatType = 'commander' | 'standard' | 'modern' | 'kitchen_table'
 export type NoteType = 'combo' | 'synergy' | 'theme' | 'strategy' | 'general'

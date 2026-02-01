@@ -47,7 +47,7 @@ export function DeckListView({ deck, listType }: DeckListViewProps) {
       card: commander,
       quantity: 1,
       inclusion: 'confirmed',
-      ownership: 'owned',
+      ownership: 'unknown',
       roles: [],
       isPinned: true,
       addedAt: deck.createdAt,

@@ -86,7 +86,7 @@ export function getToolDefinitions(): Tool[] {
           },
           ownership: {
             type: 'string',
-            enum: ['owned', 'pulled', 'need_to_buy'],
+            enum: ['unknown', 'owned', 'pulled', 'need_to_buy'],
           },
           to_alternates: { type: 'boolean' },
           to_sideboard: { type: 'boolean' },

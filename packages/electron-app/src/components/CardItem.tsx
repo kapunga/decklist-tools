@@ -24,6 +24,7 @@ import { getRoleColor } from '@/lib/constants'
 import type { DeckCard, OwnershipStatus, RoleDefinition } from '@/types'
 
 const ownershipLabels: Record<OwnershipStatus, string> = {
+  unknown: 'Unknown',
   owned: 'Owned',
   pulled: 'Pulled',
   need_to_buy: 'Need to Buy'
@@ -212,7 +213,7 @@ export function CardItem({ card, deckId, listType }: CardItemProps) {
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>Ownership</DropdownMenuSubTrigger>
               <DropdownMenuSubContent>
-                {(['owned', 'pulled', 'need_to_buy'] as OwnershipStatus[]).map(status => (
+                {(['unknown', 'owned', 'pulled', 'need_to_buy'] as OwnershipStatus[]).map(status => (
                   <DropdownMenuItem
                     key={status}
                     onClick={() => handleOwnershipChange(status)}

@@ -21,7 +21,7 @@ Each filter object:
 |-------|------|-------------|
 | `type` | string | `cmc`, `color`, `card-type`, `role`, or `ownership` |
 | `mode` | string | `include` or `exclude` |
-| `values` | any[] | Values to match (ownership values: `owned`, `pulled`, `need_to_buy`) |
+| `values` | any[] | Values to match (ownership values: `unknown`, `owned`, `pulled`, `need_to_buy`) |
 
 **Response:** Markdown-formatted string of the rendered deck view.
 
