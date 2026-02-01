@@ -146,6 +146,74 @@ describe('curve view', () => {
     expect(result).toContain('Lands: 1')
     expect(result).toContain('Nonlands:')
   })
+
+  it('shows mana curve with scryfall data', () => {
+    const deck = makeDeck()
+    const card1 = makeDeckCard('Sol Ring', { typeLine: 'Artifact' })
+    const card2 = makeDeckCard('Creature X', { typeLine: 'Creature — Human', quantity: 3 })
+    deck.cards.push(card1, card2)
+
+    const cache = new Map<string, import('@mtg-deckbuilder/shared').ScryfallCard>()
+    cache.set(card1.card.scryfallId!, {
+      id: card1.card.scryfallId!, name: 'Sol Ring', cmc: 1, type_line: 'Artifact',
+      color_identity: [], set: 'test', collector_number: '1', rarity: 'uncommon',
+      mana_cost: '{1}', legalities: {},
+    })
+    cache.set(card2.card.scryfallId!, {
+      id: card2.card.scryfallId!, name: 'Creature X', cmc: 3, type_line: 'Creature — Human',
+      color_identity: ['R'], colors: ['R'], set: 'test', collector_number: '2', rarity: 'common',
+      mana_cost: '{2}{R}', legalities: {},
+    })
+
+    const result = renderDeckView(deck, 'curve', globalRoles, undefined, undefined, undefined, cache)
+    expect(result).toContain('## Mana Curve')
+    expect(result).toContain('1    █ 1')
+    expect(result).toContain('3    ███ 3')
+  })
+
+  it('shows mana pip distribution', () => {
+    const deck = makeDeck()
+    const card = makeDeckCard('Lightning Bolt', { typeLine: 'Instant', quantity: 2 })
+    deck.cards.push(card)
+
+    const cache = new Map<string, import('@mtg-deckbuilder/shared').ScryfallCard>()
+    cache.set(card.card.scryfallId!, {
+      id: card.card.scryfallId!, name: 'Lightning Bolt', cmc: 1, type_line: 'Instant',
+      color_identity: ['R'], colors: ['R'], set: 'test', collector_number: '1', rarity: 'common',
+      mana_cost: '{R}', legalities: {},
+    })
+
+    const result = renderDeckView(deck, 'curve', globalRoles, undefined, undefined, undefined, cache)
+    expect(result).toContain('## Mana Pips')
+    expect(result).toContain('Red: 2')
+  })
+
+  it('applies filters to curve view', () => {
+    const deck = makeDeck()
+    const creature = makeDeckCard('Elf', { typeLine: 'Creature — Elf' })
+    const instant = makeDeckCard('Bolt', { typeLine: 'Instant' })
+    deck.cards.push(creature, instant)
+
+    const cache = new Map<string, import('@mtg-deckbuilder/shared').ScryfallCard>()
+    cache.set(creature.card.scryfallId!, {
+      id: creature.card.scryfallId!, name: 'Elf', cmc: 1, type_line: 'Creature — Elf',
+      color_identity: ['G'], colors: ['G'], set: 'test', collector_number: '1', rarity: 'common',
+      mana_cost: '{G}', legalities: {},
+    })
+    cache.set(instant.card.scryfallId!, {
+      id: instant.card.scryfallId!, name: 'Bolt', cmc: 1, type_line: 'Instant',
+      color_identity: ['R'], colors: ['R'], set: 'test', collector_number: '2', rarity: 'common',
+      mana_cost: '{R}', legalities: {},
+    })
+
+    const filters = [{ type: 'card-type' as const, mode: 'include' as const, values: ['Creature'] }]
+    const result = renderDeckView(deck, 'curve', globalRoles, undefined, undefined, filters, cache)
+    // Should show only creature in type distribution
+    expect(result).toContain('Creature')
+    // Instant should not appear in type distribution (it's filtered out)
+    const typeDistSection = result.split('## Type Distribution')[1]?.split('##')[0] || ''
+    expect(typeDistSection).not.toContain('Instant')
+  })
 })
 
 describe('buy-list view', () => {

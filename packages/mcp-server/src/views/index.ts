@@ -1,5 +1,5 @@
-import type { Deck, DeckCard, RoleDefinition } from '@mtg-deckbuilder/shared'
-import { getPrimaryType, getCardCount, getRoleById, CARD_TYPE_ORDER, migrateDeckNote } from '@mtg-deckbuilder/shared'
+import type { Deck, DeckCard, RoleDefinition, ScryfallCard, CardFilter } from '@mtg-deckbuilder/shared'
+import { getPrimaryType, getCardCount, getRoleById, CARD_TYPE_ORDER, migrateDeckNote, enrichCards, applyFilters, getCmcDistribution, countManaPips } from '@mtg-deckbuilder/shared'
 
 export interface ViewDescription {
   id: string
@@ -25,8 +25,19 @@ export function renderDeckView(
   viewType: string,
   globalRoles: RoleDefinition[],
   _sortBy?: string,
-  _groupBy?: string
+  _groupBy?: string,
+  filters?: CardFilter[],
+  scryfallCache?: Map<string, ScryfallCard>
 ): string {
+  // If filters are provided, apply them to get filtered card names
+  let filteredCardNames: Set<string> | undefined
+  if (filters && filters.length > 0) {
+    const cache = scryfallCache || new Map<string, ScryfallCard>()
+    const enriched = enrichCards(deck.cards.filter(c => c.inclusion === 'confirmed'), cache)
+    const filtered = applyFilters(enriched, filters)
+    filteredCardNames = new Set(filtered.map(e => e.deckCard.id))
+  }
+
   switch (viewType) {
     case 'full':
       return renderFullView(deck, globalRoles)
@@ -35,7 +46,7 @@ export function renderDeckView(
     case 'checklist':
       return renderChecklistView(deck)
     case 'curve':
-      return renderCurveView(deck)
+      return renderCurveView(deck, scryfallCache, filteredCardNames)
     case 'buy-list':
       return renderBuyListView(deck)
     case 'by-role':
@@ -224,33 +235,60 @@ function renderChecklistView(deck: Deck): string {
   return lines.join('\n')
 }
 
-function renderCurveView(deck: Deck): string {
+function renderCurveView(deck: Deck, scryfallCache?: Map<string, ScryfallCard>, filteredCardIds?: Set<string>): string {
   const lines: string[] = []
   lines.push(`# ${deck.name} (Mana Curve)`)
   lines.push('')
 
-  // Group non-land cards by CMC
-  const byCmc = new Map<number, DeckCard[]>()
-  let landCount = 0
+  const confirmedCards = deck.cards.filter((c) => c.inclusion === 'confirmed')
+  const activeCards = filteredCardIds
+    ? confirmedCards.filter(c => filteredCardIds.has(c.id))
+    : confirmedCards
 
-  for (const card of deck.cards.filter((c) => c.inclusion === 'confirmed')) {
-    const typeLine = card.typeLine || ''
-    if (typeLine.toLowerCase().includes('land')) {
-      landCount += card.quantity
-    } else {
-      // Extract CMC from card (we don't have it stored, so we'll estimate from type)
-      // In a real implementation, we'd have CMC stored
-      const cmc = 0 // Placeholder
-      if (!byCmc.has(cmc)) {
-        byCmc.set(cmc, [])
+  const cache = scryfallCache || new Map<string, ScryfallCard>()
+  const enriched = enrichCards(activeCards, cache)
+
+  // CMC Distribution
+  const cmcDist = getCmcDistribution(enriched)
+  const hasCmcData = Object.values(cmcDist).some(v => v > 0)
+
+  if (hasCmcData) {
+    lines.push('## Mana Curve')
+    for (let cmc = 0; cmc <= 7; cmc++) {
+      const count = cmcDist[cmc] || 0
+      if (count > 0) {
+        const label = cmc === 7 ? '7+' : String(cmc)
+        const bar = '█'.repeat(Math.min(count, 20))
+        lines.push(`${label.padEnd(4)} ${bar} ${count}`)
       }
-      byCmc.get(cmc)!.push(card)
     }
+    lines.push('')
+  }
+
+  // Mana Pip Distribution
+  const pips = countManaPips(enriched)
+  const totalPips = pips.W + pips.U + pips.B + pips.R + pips.G + pips.C
+  if (totalPips > 0) {
+    lines.push('## Mana Pips')
+    const colors = [
+      { key: 'W' as const, name: 'White' },
+      { key: 'U' as const, name: 'Blue' },
+      { key: 'B' as const, name: 'Black' },
+      { key: 'R' as const, name: 'Red' },
+      { key: 'G' as const, name: 'Green' },
+      { key: 'C' as const, name: 'Colorless' },
+    ]
+    for (const { key, name } of colors) {
+      if (pips[key] > 0) {
+        lines.push(`- ${name}: ${pips[key]}`)
+      }
+    }
+    lines.push('')
   }
 
   // Type distribution
   const byType = new Map<string, number>()
-  for (const card of deck.cards.filter((c) => c.inclusion === 'confirmed')) {
+  for (const card of activeCards) {
     const type = getPrimaryType(card.typeLine || 'Unknown')
     byType.set(type, (byType.get(type) || 0) + card.quantity)
   }
@@ -264,6 +302,14 @@ function renderCurveView(deck: Deck): string {
     }
   }
   lines.push('')
+
+  // Card counts
+  let landCount = 0
+  for (const card of activeCards) {
+    if ((card.typeLine || '').toLowerCase().includes('land')) {
+      landCount += card.quantity
+    }
+  }
 
   lines.push('## Card Counts')
   lines.push(`- Lands: ${landCount}`)
