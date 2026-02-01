@@ -1,0 +1,24 @@
+{
+  "name": "mtg-deckbuilder-tools",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MTG Deckbuilder Tools - MCP Server and Desktop App for Magic: The Gathering deck management",
+  "scripts": {
+    "build": "pnpm build:shared && pnpm build:mcp && pnpm build:electron",
+    "build:shared": "pnpm --filter @mtg-deckbuilder/shared build",
+    "build:mcp": "pnpm --filter @mtg-deckbuilder/mcp-server build",
+    "build:electron": "pnpm --filter @mtg-deckbuilder/electron-app build",
+    "dev": "pnpm build:shared && pnpm --filter @mtg-deckbuilder/electron-app electron:dev",
+    "dev:mcp": "pnpm build:shared && pnpm --filter @mtg-deckbuilder/mcp-server dev",
+    "typecheck": "pnpm -r typecheck",
+    "clean": "pnpm -r clean",
+    "postinstall": "pnpm build:shared"
+  },
+  "packageManager": "pnpm@9.0.0",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.2.2"
+  }
+}

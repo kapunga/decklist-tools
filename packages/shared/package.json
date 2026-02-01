@@ -1,0 +1,47 @@
+{
+  "name": "@mtg-deckbuilder/shared",
+  "version": "0.1.0",
+  "description": "Shared types, utilities, and clients for MTG Deckbuilder",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./types": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/types/index.js"
+    },
+    "./scryfall": {
+      "types": "./dist/scryfall/index.d.ts",
+      "import": "./dist/scryfall/index.js"
+    },
+    "./formats": {
+      "types": "./dist/formats/index.d.ts",
+      "import": "./dist/formats/index.js"
+    },
+    "./constants": {
+      "types": "./dist/constants/index.d.ts",
+      "import": "./dist/constants/index.js"
+    },
+    "./storage": {
+      "types": "./dist/storage/index.d.ts",
+      "import": "./dist/storage/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/uuid": "^9.0.6",
+    "typescript": "^5.2.2"
+  }
+}
