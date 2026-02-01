@@ -181,18 +181,18 @@ Render a deck using a specific view format. Available views are listed in the to
 | Param | Type | Required | Description |
 |-------|------|----------|-------------|
 | `deck_id` | string | yes | Deck UUID |
-| `view` | string | no | View name (default: `full`) |
-| `sort_by` | string | no | Sort field |
-| `group_by` | string | no | Group field |
+| `view` | string | no | `full` (default), `curve`, or `notes` |
+| `sort_by` | string | no | `name` (default) or `set` (sort by set+collector number, shows `[x]`/`[ ]` ownership markers) |
+| `group_by` | string | no | `none` (default), `role` (group by role), or `type` (group by card type) |
 | `filters` | object[] | no | Array of filter objects |
 
 Each filter object:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `type` | string | `cmc`, `color`, `card-type`, or `role` |
+| `type` | string | `cmc`, `color`, `card-type`, `role`, or `ownership` |
 | `mode` | string | `include` or `exclude` |
-| `values` | any[] | Values to match |
+| `values` | any[] | Values to match (ownership values: `owned`, `pulled`, `need_to_buy`) |
 
 **Response:** Markdown-formatted string of the rendered deck view.
 

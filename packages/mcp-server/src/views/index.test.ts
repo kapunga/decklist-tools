@@ -8,18 +8,16 @@ const globalRoles: RoleDefinition[] = [
   { id: 'removal', name: 'Removal', description: 'Removes permanents', color: '#ef4444' },
 ]
 
-function render(viewType: string, deckOverrides?: Parameters<typeof makeDeck>[0], roles = globalRoles) {
+function render(viewType: string, deckOverrides?: Parameters<typeof makeDeck>[0], roles = globalRoles, sortBy?: string, groupBy?: string) {
   const deck = makeDeck(deckOverrides)
-  return renderDeckView(deck, viewType, roles)
+  return renderDeckView(deck, viewType, roles, sortBy, groupBy)
 }
 
 describe('getViewDescriptions', () => {
-  it('returns 8 views', () => {
+  it('returns 3 views', () => {
     const views = getViewDescriptions()
-    expect(views).toHaveLength(8)
-    expect(views.map(v => v.id)).toEqual([
-      'full', 'skeleton', 'checklist', 'curve', 'buy-list', 'by-role', 'by-type', 'notes'
-    ])
+    expect(views).toHaveLength(3)
+    expect(views.map(v => v.id)).toEqual(['full', 'curve', 'notes'])
   })
 })
 
@@ -77,32 +75,54 @@ describe('full view', () => {
   })
 })
 
-describe('skeleton view', () => {
-  it('groups by role', () => {
+describe('full view with group_by=role', () => {
+  it('groups cards by role with descriptions', () => {
     const deck = makeDeck()
     deck.cards.push(makeDeckCard('Sol Ring', { roles: ['ramp'] }))
-    deck.cards.push(makeDeckCard('Swords to Plowshares', { roles: ['removal'] }))
-    const result = renderDeckView(deck, 'skeleton', globalRoles)
-    expect(result).toContain('**Ramp**')
-    expect(result).toContain('**Removal**')
+    const result = renderDeckView(deck, 'full', globalRoles, undefined, 'role')
+    expect(result).toContain('## Ramp')
+    expect(result).toContain('*Accelerates mana production*')
   })
 
-  it('shows untagged section', () => {
+  it('shows unassigned section', () => {
     const deck = makeDeck()
     deck.cards.push(makeDeckCard('Island', { roles: [] }))
-    const result = renderDeckView(deck, 'skeleton', globalRoles)
-    expect(result).toContain('**Untagged**')
+    const result = renderDeckView(deck, 'full', globalRoles, undefined, 'role')
+    expect(result).toContain('## Unassigned')
   })
 
   it('only includes confirmed cards', () => {
     const deck = makeDeck()
     deck.cards.push(makeDeckCard('Sol Ring', { inclusion: 'considering', roles: ['ramp'] }))
-    const result = renderDeckView(deck, 'skeleton', globalRoles)
+    const result = renderDeckView(deck, 'full', globalRoles, undefined, 'role')
     expect(result).not.toContain('Sol Ring')
   })
 })
 
-describe('checklist view', () => {
+describe('full view with group_by=type', () => {
+  it('groups by card type', () => {
+    const deck = makeDeck()
+    deck.cards.push(makeDeckCard('Elf', { typeLine: 'Creature — Elf' }))
+    deck.cards.push(makeDeckCard('Bolt', { typeLine: 'Instant' }))
+    deck.cards.push(makeDeckCard('Forest', { typeLine: 'Basic Land — Forest' }))
+    const result = renderDeckView(deck, 'full', globalRoles, undefined, 'type')
+    expect(result).toContain('## Creature')
+    expect(result).toContain('## Instant')
+    expect(result).toContain('## Land')
+  })
+
+  it('sorts types in CARD_TYPE_ORDER', () => {
+    const deck = makeDeck()
+    deck.cards.push(makeDeckCard('Land Card', { typeLine: 'Land' }))
+    deck.cards.push(makeDeckCard('Creature Card', { typeLine: 'Creature' }))
+    const result = renderDeckView(deck, 'full', globalRoles, undefined, 'type')
+    const creatureIdx = result.indexOf('## Creature')
+    const landIdx = result.indexOf('## Land')
+    expect(creatureIdx).toBeLessThan(landIdx)
+  })
+})
+
+describe('full view with sort_by=set', () => {
   it('sorts by set and collector number', () => {
     const deck = makeDeck()
     deck.cards.push(makeDeckCard('Card B', {
@@ -111,7 +131,7 @@ describe('checklist view', () => {
     deck.cards.push(makeDeckCard('Card A', {
       card: { name: 'Card A', setCode: 'aaa', collectorNumber: '2' }
     }))
-    const result = renderDeckView(deck, 'checklist', globalRoles)
+    const result = renderDeckView(deck, 'full', globalRoles, 'set')
     const cardAIdx = result.indexOf('Card A')
     const cardBIdx = result.indexOf('Card B')
     expect(cardAIdx).toBeLessThan(cardBIdx)
@@ -121,7 +141,7 @@ describe('checklist view', () => {
     const deck = makeDeck()
     deck.cards.push(makeDeckCard('Owned Card', { ownership: 'pulled' }))
     deck.cards.push(makeDeckCard('Need Card', { ownership: 'need_to_buy' }))
-    const result = renderDeckView(deck, 'checklist', globalRoles)
+    const result = renderDeckView(deck, 'full', globalRoles, 'set')
     expect(result).toContain('[x]')
     expect(result).toContain('[ ]')
   })
@@ -208,74 +228,9 @@ describe('curve view', () => {
 
     const filters = [{ type: 'card-type' as const, mode: 'include' as const, values: ['Creature'] }]
     const result = renderDeckView(deck, 'curve', globalRoles, undefined, undefined, filters, cache)
-    // Should show only creature in type distribution
     expect(result).toContain('Creature')
-    // Instant should not appear in type distribution (it's filtered out)
     const typeDistSection = result.split('## Type Distribution')[1]?.split('##')[0] || ''
     expect(typeDistSection).not.toContain('Instant')
-  })
-})
-
-describe('buy-list view', () => {
-  it('shows only need_to_buy cards', () => {
-    const deck = makeDeck()
-    deck.cards.push(makeDeckCard('Buy Me', { ownership: 'need_to_buy' }))
-    deck.cards.push(makeDeckCard('Owned', { ownership: 'owned' }))
-    const result = renderDeckView(deck, 'buy-list', globalRoles)
-    expect(result).toContain('Buy Me')
-    expect(result).not.toContain('Owned')
-  })
-
-  it('shows empty message when nothing to buy', () => {
-    const result = render('buy-list')
-    expect(result).toContain('No cards marked as "need to buy"')
-  })
-
-  it('includes sideboard cards', () => {
-    const deck = makeDeck()
-    deck.sideboard.push(makeDeckCard('Side Buy', { ownership: 'need_to_buy' }))
-    const result = renderDeckView(deck, 'buy-list', globalRoles)
-    expect(result).toContain('Side Buy')
-  })
-})
-
-describe('by-role view', () => {
-  it('groups cards by role with descriptions', () => {
-    const deck = makeDeck()
-    deck.cards.push(makeDeckCard('Sol Ring', { roles: ['ramp'] }))
-    const result = renderDeckView(deck, 'by-role', globalRoles)
-    expect(result).toContain('## Ramp')
-    expect(result).toContain('*Accelerates mana production*')
-  })
-
-  it('shows unassigned section', () => {
-    const deck = makeDeck()
-    deck.cards.push(makeDeckCard('Island', { roles: [] }))
-    const result = renderDeckView(deck, 'by-role', globalRoles)
-    expect(result).toContain('## Unassigned')
-  })
-})
-
-describe('by-type view', () => {
-  it('groups by card type', () => {
-    const deck = makeDeck()
-    deck.cards.push(makeDeckCard('Elf', { typeLine: 'Creature — Elf' }))
-    deck.cards.push(makeDeckCard('Bolt', { typeLine: 'Instant' }))
-    deck.cards.push(makeDeckCard('Forest', { typeLine: 'Basic Land — Forest' }))
-    const result = renderDeckView(deck, 'by-type', globalRoles)
-    expect(result).toContain('## Creature')
-    expect(result).toContain('## Instant')
-    expect(result).toContain('## Land')
-  })
-
-  it('sorts types in CARD_TYPE_ORDER', () => {
-    const deck = makeDeck()
-    deck.cards.push(makeDeckCard('Land Card', { typeLine: 'Land' }))
-    deck.cards.push(makeDeckCard('Creature Card', { typeLine: 'Creature' }))
-    const result = renderDeckView(deck, 'by-type', globalRoles)
-    const creatureIdx = result.indexOf('## Creature')
-    const landIdx = result.indexOf('## Land')
-    expect(creatureIdx).toBeLessThan(landIdx)
   })
 })
 

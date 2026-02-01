@@ -179,7 +179,7 @@ export function getToolDefinitions(): Tool[] {
             items: {
               type: 'object',
               properties: {
-                type: { type: 'string', enum: ['cmc', 'color', 'card-type', 'role'] },
+                type: { type: 'string', enum: ['cmc', 'color', 'card-type', 'role', 'ownership'] },
                 mode: { type: 'string', enum: ['include', 'exclude'] },
                 values: { type: 'array', items: {} },
               },
