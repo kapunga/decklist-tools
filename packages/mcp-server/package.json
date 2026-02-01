@@ -8,7 +8,8 @@
     "mtg-deckbuilder-mcp": "./dist/main.js"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && pnpm bundle",
+    "bundle": "esbuild dist/main.js --bundle --platform=node --format=esm --outfile=dist/bundle.js",
     "start": "node dist/main.js",
     "dev": "tsx src/main.ts",
     "clean": "rm -rf dist",
@@ -23,6 +24,7 @@
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
+    "esbuild": "^0.27.2",
     "pkg": "^5.8.1",
     "tsx": "^4.7.0",
     "typescript": "^5.2.2",

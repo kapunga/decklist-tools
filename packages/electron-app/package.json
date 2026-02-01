@@ -67,9 +67,8 @@
     ],
     "extraResources": [
       {
-        "from": "../mcp-server/dist",
-        "to": "mcp-server",
-        "filter": ["**/*"]
+        "from": "../mcp-server/dist/bundle.js",
+        "to": "mcp-server/main.js"
       }
     ],
     "mac": {
