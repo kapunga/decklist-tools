@@ -16,22 +16,3 @@ Find which decks contain a specific card.
   { "deckId": "a1b2c3d4-...", "deckName": "Atraxa Superfriends", "location": "mainboard", "quantity": 1 }
 ]
 ```
-
-## `get_buy_list`
-
-Get all cards marked `need_to_buy` across all decks.
-
-**Input:** None
-
-**Response:**
-```json
-[
-  {
-    "cardName": "Smothering Tithe",
-    "setCode": "rna",
-    "collectorNumber": "22",
-    "quantity": 1,
-    "decks": ["Atraxa Superfriends"]
-  }
-]
-```

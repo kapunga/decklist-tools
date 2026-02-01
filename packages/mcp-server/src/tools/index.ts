@@ -332,14 +332,6 @@ export function getToolDefinitions(): Tool[] {
         required: ['card_name'],
       },
     },
-    {
-      name: 'get_buy_list',
-      description: 'Get all cards marked need_to_buy across all decks',
-      inputSchema: {
-        type: 'object',
-        properties: {},
-      },
-    },
   ]
 }
 
@@ -378,8 +370,6 @@ export async function handleToolCall(
       return manageDeckNote(storage, args as unknown as ManageDeckNoteArgs)
     case 'search_decks_for_card':
       return searchDecksForCard(storage, args.card_name as string)
-    case 'get_buy_list':
-      return getBuyList(storage)
     default:
       throw new Error(`Unknown tool: ${name}`)
   }
@@ -1174,52 +1164,3 @@ function searchDecksForCard(storage: Storage, cardName: string) {
   return results
 }
 
-function getBuyList(storage: Storage) {
-  const decks = storage.listDecks()
-  const buyList: {
-    cardName: string
-    setCode: string
-    collectorNumber: string
-    quantity: number
-    decks: string[]
-  }[] = []
-
-  const cardMap = new Map<
-    string,
-    { setCode: string; collectorNumber: string; quantity: number; decks: string[] }
-  >()
-
-  for (const deck of decks) {
-    for (const card of deck.cards) {
-      if (card.ownership === 'need_to_buy') {
-        const key = card.card.name.toLowerCase()
-        const existing = cardMap.get(key)
-        if (existing) {
-          existing.quantity += card.quantity
-          if (!existing.decks.includes(deck.name)) {
-            existing.decks.push(deck.name)
-          }
-        } else {
-          cardMap.set(key, {
-            setCode: card.card.setCode,
-            collectorNumber: card.card.collectorNumber,
-            quantity: card.quantity,
-            decks: [deck.name],
-          })
-        }
-      }
-    }
-  }
-
-  for (const [name, data] of cardMap) {
-    buyList.push({
-      cardName: name,
-      setCode: data.setCode,
-      collectorNumber: data.collectorNumber,
-      quantity: data.quantity,
-      decks: data.decks,
-    })
-  }
-
-  return buyList.sort((a, b) => a.cardName.localeCompare(b.cardName))
-}
