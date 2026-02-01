@@ -204,6 +204,8 @@ export interface ScryfallCard {
   color_identity: string[]
   set: string
   collector_number: string
+  power?: string
+  toughness?: string
   rarity: string
   layout?: string  // For detecting DFCs: 'transform', 'modal_dfc', 'reversible_card', etc.
   image_uris?: {
@@ -219,6 +221,8 @@ export interface ScryfallCard {
     mana_cost?: string
     type_line?: string
     oracle_text?: string
+    power?: string
+    toughness?: string
     colors?: string[]
     image_uris?: {
       small: string

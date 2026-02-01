@@ -63,6 +63,46 @@ Search for cards on Scryfall. Accepts a card name (fuzzy or exact), a Scryfall U
 | `limit` | number | no | Max results for search queries (default 10) |
 | `set_code` | string | no | Set code for specific printing |
 | `collector_number` | string | no | Collector number for specific printing |
+| `format` | string | no | `compact` (default) or `json` |
+
+### Compact format (default)
+
+The default output is a token-efficient text format.
+
+**Single card (normal):**
+```
+Sol Ring • C21#263 • uncommon • {1} Artifact
+{T}: Add {C}{C}.
+```
+
+**Single card (creature with P/T):**
+```
+Adorable Kitten • UNH#1 • common • {W} Creature — Cat 1/1
+When Adorable Kitten enters the battlefield, roll a six-sided die. You gain life equal to the result.
+```
+
+**Double-faced cards (transform/modal_dfc/adventure):**
+```
+Front Name // Back Name • SET#123 • rarity • transform
+Front: {mana_cost} Type Line P/T
+front oracle text
+---
+Back: Back Type Line P/T
+back oracle text
+```
+
+**Search (multiple results):**
+```
+Found 142 cards:
+
+Sol Ring • C21#263 • uncommon • {1} Artifact
+{T}: Add {C}{C}.
+
+Arcane Signet • C21#159 • common • {2} Artifact
+{T}: Add one mana of any color in your commander's color identity.
+```
+
+### JSON format (`format: "json"`)
 
 **Response (single card):**
 ```json
@@ -73,6 +113,8 @@ Search for cards on Scryfall. Accepts a card name (fuzzy or exact), a Scryfall U
   "cmc": 1,
   "typeLine": "Artifact",
   "oracleText": "{T}: Add {C}{C}.",
+  "power": null,
+  "toughness": null,
   "colors": [],
   "colorIdentity": [],
   "set": "c21",

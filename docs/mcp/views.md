@@ -23,3 +23,9 @@ Each filter object:
 | `values` | any[] | Values to match (ownership values: `owned`, `pulled`, `need_to_buy`) |
 
 **Response:** Markdown-formatted string of the rendered deck view.
+
+Card lines in the `full` view include mana cost when Scryfall data is cached:
+```
+- 1x Sol Ring • {1} [Artifact] (Ramp) [NEED TO BUY]
+```
+When no cached data is available, the mana cost is omitted.

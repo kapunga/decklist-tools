@@ -23,6 +23,7 @@ import {
   getCardById,
   searchCards,
   type ScryfallCard,
+  isDoubleFacedCard,
 } from '@mtg-deckbuilder/shared'
 
 import { renderDeckView, getViewDescriptions } from '../views/index.js'
@@ -157,6 +158,7 @@ export function getToolDefinitions(): Tool[] {
           limit: { type: 'number', description: 'Max results for search queries (default 10)' },
           set_code: { type: 'string', description: 'Set code for specific printing' },
           collector_number: { type: 'string', description: 'Collector number for specific printing' },
+          format: { type: 'string', enum: ['compact', 'json'], description: 'Output format (default: compact)' },
         },
         required: ['query'],
       },
@@ -420,6 +422,7 @@ interface SearchCardsArgs {
   limit?: number
   set_code?: string
   collector_number?: string
+  format?: 'compact' | 'json'
 }
 
 interface ViewDeckArgs {
@@ -721,6 +724,8 @@ function formatCardResponse(scryfallCard: ScryfallCard) {
     cmc: scryfallCard.cmc,
     typeLine: scryfallCard.type_line,
     oracleText: scryfallCard.oracle_text,
+    power: scryfallCard.power,
+    toughness: scryfallCard.toughness,
     colors: scryfallCard.colors,
     colorIdentity: scryfallCard.color_identity,
     set: scryfallCard.set,
@@ -731,12 +736,54 @@ function formatCardResponse(scryfallCard: ScryfallCard) {
   }
 }
 
+function formatCardCompact(card: ScryfallCard): string {
+  const setInfo = `${card.set.toUpperCase()}#${card.collector_number}`
+  const hasFaces = card.card_faces && card.card_faces.length >= 2
+
+  if (hasFaces && (isDoubleFacedCard(card) || card.layout === 'adventure')) {
+    const front = card.card_faces![0]
+    const back = card.card_faces![1]
+    const lines: string[] = []
+
+    // Header: Front Name // Back Name • SET#123 • rarity • layout
+    lines.push(`${front.name} // ${back.name} • ${setInfo} • ${card.rarity} • ${card.layout}`)
+
+    // Front face
+    const frontPt = front.power && front.toughness ? ` ${front.power}/${front.toughness}` : ''
+    const frontMana = front.mana_cost ? `${front.mana_cost} ` : ''
+    lines.push(`Front: ${frontMana}${front.type_line || ''}${frontPt}`)
+    if (front.oracle_text) lines.push(front.oracle_text)
+
+    lines.push('---')
+
+    // Back face
+    const backPt = back.power && back.toughness ? ` ${back.power}/${back.toughness}` : ''
+    const backMana = back.mana_cost ? `${back.mana_cost} ` : ''
+    lines.push(`Back: ${backMana}${back.type_line || ''}${backPt}`)
+    if (back.oracle_text) lines.push(back.oracle_text)
+
+    return lines.join('\n')
+  }
+
+  // Normal card
+  const lines: string[] = []
+  const pt = card.power && card.toughness ? ` ${card.power}/${card.toughness}` : ''
+  const mana = card.mana_cost ? `${card.mana_cost} ` : ''
+  lines.push(`${card.name} • ${setInfo} • ${card.rarity} • ${mana}${card.type_line}${pt}`)
+  if (card.oracle_text) lines.push(card.oracle_text)
+
+  return lines.join('\n')
+}
+
 async function searchCardsHandler(args: SearchCardsArgs) {
+  const useCompact = args.format !== 'json'
+  const formatCard = useCompact ? formatCardCompact : formatCardResponse
+
   // If set_code + collector_number provided, fetch specific printing
   if (args.set_code && args.collector_number) {
     const scryfallCard = await getCardBySetAndNumber(args.set_code, args.collector_number)
     if (!scryfallCard) throw new Error(`Card not found: ${args.set_code} ${args.collector_number}`)
-    return formatCardResponse(scryfallCard)
+    return formatCard(scryfallCard)
   }
 
   // UUID pattern → fetch by ID
@@ -744,7 +791,7 @@ async function searchCardsHandler(args: SearchCardsArgs) {
   if (uuidPattern.test(args.query)) {
     const scryfallCard = await getCardById(args.query)
     if (!scryfallCard) throw new Error(`Card not found with ID: ${args.query}`)
-    return formatCardResponse(scryfallCard)
+    return formatCard(scryfallCard)
   }
 
   // Scryfall search syntax → full search
@@ -752,10 +799,17 @@ async function searchCardsHandler(args: SearchCardsArgs) {
     const result = await searchCards(args.query)
     if (!result) throw new Error(`Search failed for query: ${args.query}`)
     const limit = args.limit ?? 10
+    const cards = result.data.slice(0, limit)
+
+    if (useCompact) {
+      const formatted = cards.map(formatCardCompact)
+      return `Found ${result.total_cards} cards:\n\n${formatted.join('\n\n')}`
+    }
+
     return {
       totalCards: result.total_cards,
       hasMore: result.data.length > limit,
-      cards: result.data.slice(0, limit).map(formatCardResponse),
+      cards: cards.map(formatCardResponse),
     }
   }
 
@@ -767,7 +821,7 @@ async function searchCardsHandler(args: SearchCardsArgs) {
     scryfallCard = await searchCardByName(args.query)
   }
   if (!scryfallCard) throw new Error(`Card not found: ${args.query}`)
-  return formatCardResponse(scryfallCard)
+  return formatCard(scryfallCard)
 }
 
 function viewDeck(storage: Storage, args: ViewDeckArgs) {
@@ -776,14 +830,12 @@ function viewDeck(storage: Storage, args: ViewDeckArgs) {
 
   const globalRoles = storage.getGlobalRoles()
 
-  let scryfallCache: Map<string, ScryfallCard> | undefined
-  if (args.view === 'curve' || (args.filters && args.filters.length > 0)) {
-    scryfallCache = new Map()
-    for (const card of deck.cards) {
-      if (card.card.scryfallId) {
-        const cached = storage.getCachedCard(card.card.scryfallId) as ScryfallCard | null
-        if (cached) scryfallCache.set(card.card.scryfallId, cached)
-      }
+  const scryfallCache = new Map<string, ScryfallCard>()
+  const allCards = [...deck.cards, ...deck.alternates, ...deck.sideboard]
+  for (const card of allCards) {
+    if (card.card.scryfallId) {
+      const cached = storage.getCachedCard(card.card.scryfallId) as ScryfallCard | null
+      if (cached) scryfallCache.set(card.card.scryfallId, cached)
     }
   }
 

@@ -35,13 +35,13 @@ export function renderDeckView(
 
   switch (viewType) {
     case 'full':
-      return renderFullView(deck, globalRoles, sortBy, groupBy, filteredCardIds)
+      return renderFullView(deck, globalRoles, sortBy, groupBy, filteredCardIds, scryfallCache)
     case 'curve':
       return renderCurveView(deck, scryfallCache, filteredCardIds)
     case 'notes':
       return renderNotesView(deck, globalRoles)
     default:
-      return renderFullView(deck, globalRoles, sortBy, groupBy, filteredCardIds)
+      return renderFullView(deck, globalRoles, sortBy, groupBy, filteredCardIds, scryfallCache)
   }
 }
 
@@ -50,7 +50,8 @@ function renderFullView(
   globalRoles: RoleDefinition[],
   sortBy?: string,
   groupBy?: string,
-  filteredCardIds?: Set<string>
+  filteredCardIds?: Set<string>,
+  scryfallCache?: Map<string, ScryfallCard>
 ): string {
   const lines: string[] = []
 
@@ -94,14 +95,14 @@ function renderFullView(
       if (confirmedCards.length > 0) {
         lines.push('### Confirmed')
         for (const c of confirmedCards) {
-          lines.push(formatCardLine(c, globalRoles, deck.customRoles))
+          lines.push(formatCardLine(c, globalRoles, deck.customRoles, scryfallCache))
         }
         lines.push('')
       }
       if (consideringCards.length > 0) {
         lines.push('### Considering')
         for (const c of consideringCards) {
-          lines.push(formatCardLine(c, globalRoles, deck.customRoles))
+          lines.push(formatCardLine(c, globalRoles, deck.customRoles, scryfallCache))
         }
         lines.push('')
       }
@@ -113,7 +114,7 @@ function renderFullView(
     if (deck.alternates.length > 0) {
       lines.push('## Alternates')
       for (const c of deck.alternates) {
-        lines.push(formatCardLine(c, globalRoles, deck.customRoles))
+        lines.push(formatCardLine(c, globalRoles, deck.customRoles, scryfallCache))
       }
       lines.push('')
     }
@@ -122,7 +123,7 @@ function renderFullView(
     if (deck.sideboard.length > 0) {
       lines.push('## Sideboard')
       for (const c of deck.sideboard) {
-        lines.push(formatCardLine(c, globalRoles, deck.customRoles))
+        lines.push(formatCardLine(c, globalRoles, deck.customRoles, scryfallCache))
       }
       lines.push('')
     }
@@ -228,10 +229,23 @@ function renderChecklist(lines: string[], cards: DeckCard[]): void {
 function formatCardLine(
   card: DeckCard,
   globalRoles: RoleDefinition[],
-  customRoles: RoleDefinition[]
+  customRoles: RoleDefinition[],
+  scryfallCache?: Map<string, ScryfallCard>
 ): string {
   const parts: string[] = []
-  parts.push(`- ${card.quantity}x ${card.card.name}`)
+
+  // Try to get mana cost from scryfall cache
+  let manaCost: string | undefined
+  if (scryfallCache && card.card.scryfallId) {
+    const cached = scryfallCache.get(card.card.scryfallId)
+    if (cached) manaCost = cached.mana_cost
+  }
+
+  if (manaCost) {
+    parts.push(`- ${card.quantity}x ${card.card.name} • ${manaCost}`)
+  } else {
+    parts.push(`- ${card.quantity}x ${card.card.name}`)
+  }
 
   if (card.typeLine) {
     parts.push(`[${getPrimaryType(card.typeLine)}]`)
