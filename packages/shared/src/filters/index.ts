@@ -35,7 +35,13 @@ export interface RoleFilter {
   values: string[] // role IDs
 }
 
-export type CardFilter = CmcFilter | ColorFilter | CardTypeFilter | RoleFilter
+export interface OwnershipFilter {
+  type: 'ownership'
+  mode: FilterMode
+  values: string[] // owned, pulled, need_to_buy
+}
+
+export type CardFilter = CmcFilter | ColorFilter | CardTypeFilter | RoleFilter | OwnershipFilter
 
 // Filter groups determine which filter types are available
 export type FilterGroup = 'mana' | 'type' | 'role'
@@ -95,6 +101,10 @@ function matchesFilter(card: EnrichedDeckCard, filter: CardFilter): boolean {
     }
     case 'role': {
       const matches = filter.values.some(v => card.deckCard.roles.includes(v))
+      return filter.mode === 'include' ? matches : !matches
+    }
+    case 'ownership': {
+      const matches = filter.values.includes(card.deckCard.ownership)
       return filter.mode === 'include' ? matches : !matches
     }
   }

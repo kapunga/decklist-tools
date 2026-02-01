@@ -30,6 +30,7 @@ const FILTER_TYPE_LABELS: Record<CardFilter['type'], string> = {
   color: 'Color',
   'card-type': 'Card Type',
   role: 'Role',
+  ownership: 'Ownership',
 }
 
 const COLOR_ORDER = ['W', 'U', 'B', 'R', 'G', 'C']

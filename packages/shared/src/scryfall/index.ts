@@ -44,6 +44,24 @@ export async function searchCardByName(name: string): Promise<ScryfallCard | nul
   }
 }
 
+export async function searchCardByNameExact(name: string): Promise<ScryfallCard | null> {
+  try {
+    const response = await rateLimitedFetch(
+      `${BASE_URL}/cards/named?exact=${encodeURIComponent(name)}`
+    )
+
+    if (!response.ok) {
+      if (response.status === 404) return null
+      throw new Error(`Scryfall API error: ${response.status}`)
+    }
+
+    return await response.json() as ScryfallCard
+  } catch (error) {
+    console.error('Error searching for card:', error)
+    return null
+  }
+}
+
 export async function getCardBySetAndNumber(
   setCode: string,
   collectorNumber: string
