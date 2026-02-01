@@ -12,6 +12,8 @@
     "start": "node dist/main.js",
     "dev": "tsx src/main.ts",
     "clean": "rm -rf dist",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "pkg": "pkg . --targets node18-macos-arm64,node18-macos-x64 --output bin/mtg-deckbuilder-mcp"
   },
@@ -23,11 +25,15 @@
     "@types/node": "^20.10.0",
     "pkg": "^5.8.1",
     "tsx": "^4.7.0",
-    "typescript": "^5.2.2"
+    "typescript": "^5.2.2",
+    "vitest": "^4.0.18"
   },
   "pkg": {
     "scripts": "dist/**/*.js",
-    "targets": ["node18-macos-arm64", "node18-macos-x64"],
+    "targets": [
+      "node18-macos-arm64",
+      "node18-macos-x64"
+    ],
     "outputPath": "bin"
   }
 }

@@ -9,6 +9,7 @@ import { DeckListView } from '@/components/DeckListView'
 import { QuickAdd } from '@/components/QuickAdd'
 import { ImportDialog } from '@/components/ImportDialog'
 import { DeckStats } from '@/components/DeckStats'
+import { NotesView } from '@/components/NotesView'
 import { RoleEditModal } from '@/components/RoleEditModal'
 import { ColorPips } from '@/components/ColorPips'
 import { getCardCount } from '@/types'
@@ -185,6 +186,9 @@ export function DeckDetail() {
                 Sideboard ({deck.sideboard.length})
               </TabsTrigger>
             )}
+            <TabsTrigger value="notes">
+              Notes ({deck.notes.length})
+            </TabsTrigger>
             <TabsTrigger value="stats">Stats</TabsTrigger>
           </TabsList>
         </div>
@@ -203,6 +207,10 @@ export function DeckDetail() {
               <DeckListView deck={deck} listType="sideboard" />
             </TabsContent>
           )}
+
+          <TabsContent value="notes" className="m-0 h-full">
+            <NotesView deck={deck} />
+          </TabsContent>
 
           <TabsContent value="stats" className="m-0 p-4 overflow-auto h-full">
             <DeckStats deck={deck} />
