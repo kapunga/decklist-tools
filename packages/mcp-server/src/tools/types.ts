@@ -12,7 +12,8 @@ export interface ManageDeckArgs {
 export interface ManageCardArgs {
   action: 'add' | 'remove' | 'update' | 'move'
   deck_id: string
-  name: string
+  name?: string
+  cards?: string[]
   set_code?: string
   collector_number?: string
   quantity?: number

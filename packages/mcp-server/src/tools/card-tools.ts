@@ -12,96 +12,139 @@ import {
   searchCards,
   isDoubleFacedCard,
 } from '@mtg-deckbuilder/shared'
-import { getDeckOrThrow, fetchScryfallCard, createCardIdentifier, findCardInList, findCardIndexInList } from './helpers.js'
+import { getDeckOrThrow, fetchScryfallCard, createCardIdentifier, findCardInList, findCardIndexInList, parseCardString } from './helpers.js'
 import type { ManageCardArgs, SearchCardsArgs } from './types.js'
 
 // Scryfall operator patterns for detecting search queries
 const SCRYFALL_OPERATORS = /(?:^|\s)(?:t:|c:|ci:|o:|pow:|tou:|cmc[<>=!]|mv[<>=!]|is:|has:|not:|set:|e:|r:|f:|id:|mana:|devotion:|produces:|keyword:|oracle:|name:|flavor:|art:|border:|frame:|game:|year:|date:|usd[<>=!]|eur[<>=!]|tix[<>=!])/i
+
+function resolveCards(args: ManageCardArgs): string[] {
+  if (args.cards && args.cards.length > 0) return args.cards
+  if (args.name) return [args.name]
+  throw new Error('Either "cards" or "name" must be provided')
+}
 
 export async function manageCard(storage: Storage, args: ManageCardArgs) {
   const deck = getDeckOrThrow(storage, args.deck_id)
 
   switch (args.action) {
     case 'add': {
-      const scryfallCard = await fetchScryfallCard(args.name, args.set_code, args.collector_number)
-      const cardIdentifier = createCardIdentifier(scryfallCard)
+      const cardStrings = resolveCards(args)
+      const results: Array<{ name: string; set: string; collectorNumber: string; quantity: number }> = []
 
-      const deckCard: DeckCard = {
-        id: generateDeckCardId(),
-        card: cardIdentifier,
-        quantity: args.quantity || 1,
-        inclusion: (args.status as InclusionStatus) || 'confirmed',
-        ownership: (args.ownership as OwnershipStatus) || 'need_to_buy',
-        roles: args.roles || [],
-        typeLine: scryfallCard.type_line,
-        isPinned: false,
-        addedAt: new Date().toISOString(),
-        addedBy: 'user',
-      }
+      for (const cardStr of cardStrings) {
+        let setCode: string | undefined
+        let collectorNumber: string | undefined
+        let quantity = 1
 
-      if (args.to_sideboard) {
-        deck.sideboard.push(deckCard)
-      } else if (args.to_alternates) {
-        deck.alternates.push(deckCard)
-      } else {
-        deck.cards.push(deckCard)
+        // If using the new cards array format, parse the card string
+        if (args.cards && args.cards.length > 0) {
+          const parsed = parseCardString(cardStr)
+          setCode = parsed.setCode
+          collectorNumber = parsed.collectorNumber
+          quantity = parsed.quantity
+        } else {
+          // Legacy single-card via name field
+          setCode = args.set_code
+          collectorNumber = args.collector_number
+          quantity = args.quantity || 1
+        }
+
+        const scryfallCard = await fetchScryfallCard(cardStr, setCode, collectorNumber)
+        const cardIdentifier = createCardIdentifier(scryfallCard)
+
+        const deckCard: DeckCard = {
+          id: generateDeckCardId(),
+          card: cardIdentifier,
+          quantity,
+          inclusion: (args.status as InclusionStatus) || 'confirmed',
+          ownership: (args.ownership as OwnershipStatus) || 'need_to_buy',
+          roles: args.roles || [],
+          typeLine: scryfallCard.type_line,
+          isPinned: false,
+          addedAt: new Date().toISOString(),
+          addedBy: 'user',
+        }
+
+        if (args.to_sideboard) {
+          deck.sideboard.push(deckCard)
+        } else if (args.to_alternates) {
+          deck.alternates.push(deckCard)
+        } else {
+          deck.cards.push(deckCard)
+        }
+
+        results.push({
+          name: scryfallCard.name,
+          set: scryfallCard.set,
+          collectorNumber: scryfallCard.collector_number,
+          quantity: deckCard.quantity,
+        })
       }
 
       storage.saveDeck(deck)
       return {
         success: true,
-        card: {
-          name: scryfallCard.name,
-          set: scryfallCard.set,
-          collectorNumber: scryfallCard.collector_number,
-          quantity: deckCard.quantity,
-        },
+        cards: results,
       }
     }
     case 'remove': {
+      const cardNames = resolveCards(args)
       const targetList = args.from_sideboard
         ? deck.sideboard
         : args.from_alternates
           ? deck.alternates
           : deck.cards
 
-      const cardIndex = findCardIndexInList(targetList, args.name)
-      if (cardIndex === -1) throw new Error(`Card not found in deck: ${args.name}`)
+      const removed: string[] = []
+      for (const cardName of cardNames) {
+        const cardIndex = findCardIndexInList(targetList, cardName)
+        if (cardIndex === -1) throw new Error(`Card not found in deck: ${cardName}`)
 
-      if (args.quantity && args.quantity < targetList[cardIndex].quantity) {
-        targetList[cardIndex].quantity -= args.quantity
-      } else {
-        targetList.splice(cardIndex, 1)
+        if (args.quantity && args.quantity < targetList[cardIndex].quantity) {
+          targetList[cardIndex].quantity -= args.quantity
+        } else {
+          targetList.splice(cardIndex, 1)
+        }
+        removed.push(cardName)
       }
 
       storage.saveDeck(deck)
-      return { success: true, message: `Removed ${args.name} from deck` }
+      return { success: true, message: `Removed ${removed.join(', ')} from deck` }
     }
     case 'update': {
-      let card: DeckCard | undefined
-      for (const list of [deck.cards, deck.alternates, deck.sideboard]) {
-        card = findCardInList(list, args.name)
-        if (card) break
-      }
-      if (!card) throw new Error(`Card not found in deck: ${args.name}`)
+      const cardNames = resolveCards(args)
+      const updated: Array<{ name: string; roles: string[] }> = []
 
-      if (args.roles !== undefined) card.roles = args.roles
-      if (args.add_roles) {
-        card.roles = [...new Set([...card.roles, ...args.add_roles])]
+      for (const cardName of cardNames) {
+        let card: DeckCard | undefined
+        for (const list of [deck.cards, deck.alternates, deck.sideboard]) {
+          card = findCardInList(list, cardName)
+          if (card) break
+        }
+        if (!card) throw new Error(`Card not found in deck: ${cardName}`)
+
+        if (args.roles !== undefined) card.roles = args.roles
+        if (args.add_roles) {
+          card.roles = [...new Set([...card.roles, ...args.add_roles])]
+        }
+        if (args.remove_roles) {
+          card.roles = card.roles.filter((r) => !args.remove_roles!.includes(r))
+        }
+        if (args.status !== undefined) card.inclusion = args.status as InclusionStatus
+        if (args.ownership !== undefined) card.ownership = args.ownership as OwnershipStatus
+        if (args.pinned !== undefined) card.isPinned = args.pinned
+        if (args.notes !== undefined) card.notes = args.notes
+
+        updated.push({ name: card.card.name, roles: card.roles })
       }
-      if (args.remove_roles) {
-        card.roles = card.roles.filter((r) => !args.remove_roles!.includes(r))
-      }
-      if (args.status !== undefined) card.inclusion = args.status as InclusionStatus
-      if (args.ownership !== undefined) card.ownership = args.ownership as OwnershipStatus
-      if (args.pinned !== undefined) card.isPinned = args.pinned
-      if (args.notes !== undefined) card.notes = args.notes
 
       storage.saveDeck(deck)
-      return { success: true, card: { name: card.card.name, roles: card.roles } }
+      return { success: true, cards: updated }
     }
     case 'move': {
       if (!args.from || !args.to) throw new Error('from and to are required for move')
+      const cardNames = resolveCards(args)
 
       const getList = (name: string): DeckCard[] => {
         switch (name) {
@@ -114,15 +157,19 @@ export async function manageCard(storage: Storage, args: ManageCardArgs) {
 
       const fromList = getList(args.from)
       const toList = getList(args.to)
+      const moved: string[] = []
 
-      const cardIndex = findCardIndexInList(fromList, args.name)
-      if (cardIndex === -1) throw new Error(`Card not found in ${args.from}: ${args.name}`)
+      for (const cardName of cardNames) {
+        const cardIndex = findCardIndexInList(fromList, cardName)
+        if (cardIndex === -1) throw new Error(`Card not found in ${args.from}: ${cardName}`)
 
-      const [card] = fromList.splice(cardIndex, 1)
-      toList.push(card)
+        const [card] = fromList.splice(cardIndex, 1)
+        toList.push(card)
+        moved.push(cardName)
+      }
 
       storage.saveDeck(deck)
-      return { success: true, message: `Moved ${args.name} from ${args.from} to ${args.to}` }
+      return { success: true, message: `Moved ${moved.join(', ')} from ${args.from} to ${args.to}` }
     }
     default:
       throw new Error(`Unknown action: ${args.action}`)
