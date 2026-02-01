@@ -18,7 +18,11 @@ import {
   getCardCount,
   propagateNoteRole,
   searchCardByName,
+  searchCardByNameExact,
   getCardBySetAndNumber,
+  getCardById,
+  searchCards,
+  type ScryfallCard,
   formats,
   getFormat,
   detectFormat,
@@ -201,8 +205,32 @@ export function getToolDefinitions(): Tool[] {
           name: { type: 'string' },
           set_code: { type: 'string' },
           collector_number: { type: 'string' },
+          exact: { type: 'boolean', description: 'Use exact name matching instead of fuzzy' },
         },
         required: ['name'],
+      },
+    },
+    {
+      name: 'scryfall_search',
+      description: 'Search Scryfall using full query syntax (e.g. "c:blue t:instant cmc<=2")',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', description: 'Scryfall search query' },
+          limit: { type: 'number', description: 'Max results to return (default 10)' },
+        },
+        required: ['query'],
+      },
+    },
+    {
+      name: 'lookup_card_by_id',
+      description: 'Look up a card by its Scryfall UUID',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          scryfall_id: { type: 'string', description: 'Scryfall card UUID' },
+        },
+        required: ['scryfall_id'],
       },
     },
 
@@ -562,6 +590,10 @@ export async function handleToolCall(
       return moveCard(storage, args as unknown as MoveCardArgs)
     case 'lookup_card':
       return lookupCard(args as unknown as LookupCardArgs)
+    case 'scryfall_search':
+      return scryfallSearch(args as unknown as ScryfallSearchArgs)
+    case 'lookup_card_by_id':
+      return lookupCardById(args.scryfall_id as string)
     case 'view_deck':
       return viewDeck(storage, args as unknown as ViewDeckArgs)
     case 'list_views':
@@ -668,6 +700,12 @@ interface LookupCardArgs {
   name: string
   set_code?: string
   collector_number?: string
+  exact?: boolean
+}
+
+interface ScryfallSearchArgs {
+  query: string
+  limit?: number
 }
 
 interface ViewDeckArgs {
@@ -997,20 +1035,10 @@ function moveCard(storage: Storage, args: MoveCardArgs) {
   return { success: true, message: `Moved ${args.name} from ${args.from} to ${args.to}` }
 }
 
-async function lookupCard(args: LookupCardArgs) {
-  let scryfallCard
-  if (args.set_code && args.collector_number) {
-    scryfallCard = await getCardBySetAndNumber(args.set_code, args.collector_number)
-  } else {
-    scryfallCard = await searchCardByName(args.name)
-  }
-
-  if (!scryfallCard) {
-    throw new Error(`Card not found: ${args.name}`)
-  }
-
+function formatCardResponse(scryfallCard: ScryfallCard) {
   return {
     name: scryfallCard.name,
+    scryfallId: scryfallCard.id,
     manaCost: scryfallCard.mana_cost,
     cmc: scryfallCard.cmc,
     typeLine: scryfallCard.type_line,
@@ -1023,6 +1051,48 @@ async function lookupCard(args: LookupCardArgs) {
     prices: scryfallCard.prices,
     legalities: scryfallCard.legalities,
   }
+}
+
+async function lookupCard(args: LookupCardArgs) {
+  let scryfallCard
+  if (args.set_code && args.collector_number) {
+    scryfallCard = await getCardBySetAndNumber(args.set_code, args.collector_number)
+  } else if (args.exact) {
+    scryfallCard = await searchCardByNameExact(args.name)
+  } else {
+    scryfallCard = await searchCardByName(args.name)
+  }
+
+  if (!scryfallCard) {
+    throw new Error(`Card not found: ${args.name}`)
+  }
+
+  return formatCardResponse(scryfallCard)
+}
+
+async function scryfallSearch(args: ScryfallSearchArgs) {
+  const result = await searchCards(args.query)
+
+  if (!result) {
+    throw new Error(`Search failed for query: ${args.query}`)
+  }
+
+  const limit = args.limit ?? 10
+  return {
+    totalCards: result.total_cards,
+    hasMore: result.data.length > limit,
+    cards: result.data.slice(0, limit).map(formatCardResponse),
+  }
+}
+
+async function lookupCardById(scryfallId: string) {
+  const scryfallCard = await getCardById(scryfallId)
+
+  if (!scryfallCard) {
+    throw new Error(`Card not found with ID: ${scryfallId}`)
+  }
+
+  return formatCardResponse(scryfallCard)
 }
 
 function viewDeck(storage: Storage, args: ViewDeckArgs) {
