@@ -1,31 +1,35 @@
 # MTG Deckbuilder Tools
 
-A suite of tools for managing Magic: The Gathering decks, consisting of:
+A monorepo suite of tools for managing Magic: The Gathering decks, consisting of:
 
-1. **MCP Server** (Scala) - Enables Claude to help build and manage decks through natural conversation
-2. **Electron App** (React/TypeScript) - Desktop application for visual deck management
+1. **Shared Package** (`packages/shared`) - Common types, utilities, Scryfall client, and format parsers
+2. **MCP Server** (`packages/mcp-server`) - TypeScript MCP server enabling Claude to help build and manage decks
+3. **Electron App** (`packages/electron-app`) - Desktop application for visual deck management
 
-Both applications share the same storage format, allowing you to use Claude for deck building assistance while managing your collection visually in the desktop app.
+All packages share the same JSON-based storage, allowing you to use Claude for deck building assistance while managing your collection visually in the desktop app.
 
 ## Prerequisites
 
-### For the MCP Server
-- Java 17 or later (JDK)
-- sbt (Scala Build Tool) - [Installation guide](https://www.scala-sbt.org/download.html)
+- Node.js 20 or later
+- pnpm 9
 
-### For the Electron App
-- Node.js 18 or later
-- npm or yarn
+## Quick Start
+
+```bash
+pnpm install        # Install all dependencies (also builds shared package)
+pnpm dev            # Launch Electron app with hot reload
+```
 
 ## Storage Location
 
-Both applications store data in:
+All packages store data in:
 - **macOS:** `~/Library/Application Support/mtg-deckbuilder/`
 
 ```
 mtg-deckbuilder/
 ├── config.json              # Application configuration
 ├── taxonomy.json            # Global tag taxonomy
+├── global-roles.json        # Global role definitions
 ├── decks/
 │   └── {uuid}.json          # Individual deck files
 ├── interest-list.json       # Cards of interest
@@ -36,69 +40,42 @@ mtg-deckbuilder/
 
 ---
 
-## MCP Server Setup
-
-### Building
+## Build Commands
 
 ```bash
-cd mcp-server
-sbt assembly
+pnpm build          # Build all packages in order
+pnpm build:shared   # Build shared package (must be built first)
+pnpm build:mcp      # Build MCP server
+pnpm build:electron  # Build Electron app
+pnpm dev            # Full Electron + hot reload
+pnpm dev:mcp        # Run MCP server in development mode
+pnpm typecheck      # TypeScript checking across all packages
+pnpm test:mcp       # Run MCP server tests
+pnpm clean          # Clean all build outputs
 ```
 
-This creates a fat JAR at `target/scala-3.3.1/mtg-deckbuilder-mcp.jar`.
+---
 
-### Running Tests
+## MCP Server
 
-```bash
-cd mcp-server
-sbt test
-```
-
-### Running Manually
-
-```bash
-# Using the run script
-./run.sh
-
-# Or directly with java
-java -jar target/scala-3.3.1/mtg-deckbuilder-mcp.jar
-```
+The TypeScript MCP server enables Claude to help build and manage decks through natural conversation.
 
 ### Configuring with Claude Desktop
 
-Add this to your Claude Desktop configuration file:
+The easiest way is through the Electron app's Settings page — click **Connect to Claude Desktop** to automatically configure the MCP server.
 
-**macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
-
-**Option 1: Using the run script (recommended)**
+Alternatively, add this to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 ```json
 {
   "mcpServers": {
     "mtg-deckbuilder": {
-      "command": "/path/to/mcp-server/run.sh"
+      "command": "node",
+      "args": ["/path/to/decklist-tools/packages/mcp-server/dist/main.js"]
     }
   }
 }
 ```
-
-**Option 2: Using java directly**
-
-```json
-{
-  "mcpServers": {
-    "mtg-deckbuilder": {
-      "command": "java",
-      "args": [
-        "-jar",
-        "/path/to/mcp-server/target/scala-3.3.1/mtg-deckbuilder-mcp.jar"
-      ]
-    }
-  }
-}
-```
-
-Replace `/path/to/mcp-server` with the actual path to your mcp-server directory.
 
 ### Available MCP Tools
 
@@ -112,7 +89,7 @@ Replace `/path/to/mcp-server` with the actual path to your mcp-server directory.
 #### Card Management
 - `add_card` - Add a card to a deck (resolves via Scryfall)
 - `remove_card` - Remove a card from a deck
-- `update_card` - Update a card's role, tags, status, ownership, etc.
+- `update_card` - Update a card's roles, status, ownership, etc.
 - `move_card` - Move a card between mainboard, alternates, and sideboard
 - `lookup_card` - Look up a card from Scryfall without adding to a deck
 
@@ -120,12 +97,21 @@ Replace `/path/to/mcp-server` with the actual path to your mcp-server directory.
 - `view_deck` - Render a deck using a specific view format
 - `list_views` - List available deck views
 
-Built-in views: `full`, `skeleton`, `checklist`, `curve`, `buy-list`, `by-role`, `by-function`
+Built-in views: `full`, `skeleton`, `checklist`, `curve`, `buy-list`, `by-role`, `by-type`, `notes`
 
-#### Tags
-- `list_tags` - List all available tags
-- `add_custom_tag` - Add a custom tag to a deck
-- `add_global_tag` - Add a new global tag to the taxonomy
+#### Roles
+- `list_roles` - List all available roles
+- `add_custom_role` - Add a custom role to a deck
+- `add_global_role` - Add a new global role
+
+#### Commander
+- `set_commanders` - Set commander(s) and color identity
+
+#### Notes
+- `add_deck_note` - Add a note to a deck
+- `update_deck_note` - Update an existing note
+- `delete_deck_note` - Delete a note
+- `list_deck_notes` - List all notes for a deck
 
 #### Interest List
 - `get_interest_list` - Get the full interest list
@@ -144,30 +130,7 @@ Built-in views: `full`, `skeleton`, `checklist`, `curve`, `buy-list`, `by-role`,
 
 ---
 
-## Electron App Setup
-
-### Installing Dependencies
-
-```bash
-cd electron-app
-npm install
-```
-
-### Development Mode
-
-```bash
-npm run electron:dev
-```
-
-This starts the Vite dev server and launches Electron with hot reload.
-
-### Building for Production
-
-```bash
-npm run build
-```
-
-This builds the app and creates distributable packages in the `release/` directory.
+## Electron App
 
 ### Features
 
@@ -175,7 +138,9 @@ This builds the app and creates distributable packages in the `release/` directo
 - **Deck Detail View** - View and edit deck contents with grouping by role
 - **Quick Add** - Type card names with Scryfall autocomplete
 - **Card Management** - Change roles, ownership status, move between lists
+- **Mana Curve** - Visualize mana distribution with filtering
 - **Stats View** - See card distribution by role and cards needing purchase
+- **Claude Desktop Integration** - One-click MCP server setup from Settings
 - **File Watching** - Automatically reloads when MCP server modifies files
 
 ### Keyboard Shortcuts
@@ -199,8 +164,8 @@ Created deck: Isshin Attacks (ID: abc-123-def)
 
 User: Add Isshin, Two Heavens as One as the commander
 
-Claude: [Uses add_card tool with role=commander]
-Added Isshin, Two Heavens as One to the deck.
+Claude: [Uses set_commanders tool]
+Set Isshin, Two Heavens as One as commander.
 
 User: Show me the deck organized by role
 
@@ -212,51 +177,14 @@ Claude: [Uses view_deck tool with view=by-role]
 ...
 ```
 
-### Importing a Decklist
-
-```
-User: Import this deck:
-1 Isshin, Two Heavens as One (NEO) 226
-1 Aurelia, the Warleader (GTC) 143
-1 Combat Celebrant (AKH) 125
-...
-
-Claude: [Uses import_deck tool]
-Created deck with 3 cards. All cards resolved successfully.
-```
-
----
-
-## Development
-
-### MCP Server (Scala)
-
-```bash
-cd mcp-server
-sbt compile        # Compile
-sbt test           # Run tests
-sbt assembly       # Build fat JAR
-sbt run            # Run directly
-```
-
-### Electron App
-
-```bash
-cd electron-app
-npm run dev              # Start Vite dev server only
-npm run electron:dev     # Start with Electron
-npm run typecheck        # Type check TypeScript
-npm run build            # Build for production
-```
-
 ---
 
 ## Troubleshooting
 
 ### MCP Server not connecting
 
-1. Ensure Java 17+ is installed: `java -version`
-2. Rebuild the JAR: `cd mcp-server && sbt clean assembly`
+1. Ensure Node.js 20+ is installed: `node -v`
+2. Rebuild: `pnpm build`
 3. Check the path in `claude_desktop_config.json` is correct
 4. Restart Claude Desktop after config changes
 
