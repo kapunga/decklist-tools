@@ -40,8 +40,8 @@ function call(name: string, args: Record<string, unknown> = {}) {
 // ─── Tool Definitions ──────────────────────────────────────────
 
 describe('getToolDefinitions', () => {
-  it('returns 15 tools', () => {
-    expect(getToolDefinitions()).toHaveLength(15)
+  it('returns 14 tools', () => {
+    expect(getToolDefinitions()).toHaveLength(14)
   })
 })
 
@@ -353,15 +353,23 @@ describe('Card Search', () => {
     it('fuzzy name lookup by default', async () => {
       mockSearchCardByName.mockResolvedValue(bolCard)
       const result = await call('search_cards', { query: 'Lightning Bolt' }) as any
-      expect(result.name).toBe('Lightning Bolt')
-      expect(result.typeLine).toBe('Instant')
+      // Default format is compact (string)
+      expect(result).toContain('Lightning Bolt')
+      expect(result).toContain('Instant')
     })
 
     it('exact name lookup', async () => {
       mockSearchCardByNameExact.mockResolvedValue(bolCard)
       const result = await call('search_cards', { query: 'Lightning Bolt', exact: true }) as any
-      expect(result.name).toBe('Lightning Bolt')
+      expect(result).toContain('Lightning Bolt')
       expect(mockSearchCardByNameExact).toHaveBeenCalledWith('Lightning Bolt')
+    })
+
+    it('fuzzy name lookup returns JSON when format is json', async () => {
+      mockSearchCardByName.mockResolvedValue(bolCard)
+      const result = await call('search_cards', { query: 'Lightning Bolt', format: 'json' }) as any
+      expect(result.name).toBe('Lightning Bolt')
+      expect(result.typeLine).toBe('Instant')
     })
 
     it('uses set+number when provided', async () => {
@@ -376,13 +384,24 @@ describe('Card Search', () => {
       expect(mockGetCardById).toHaveBeenCalledWith('12345678-1234-1234-1234-123456789abc')
     })
 
-    it('detects Scryfall operators and runs search', async () => {
+    it('detects Scryfall operators and runs search (compact)', async () => {
       mockSearchCards.mockResolvedValue({
         total_cards: 1,
         has_more: false,
         data: [bolCard],
       } as any)
       const result = await call('search_cards', { query: 't:instant c:red cmc<=1' }) as any
+      expect(result).toContain('Found 1 cards')
+      expect(result).toContain('Lightning Bolt')
+    })
+
+    it('detects Scryfall operators and runs search (json)', async () => {
+      mockSearchCards.mockResolvedValue({
+        total_cards: 1,
+        has_more: false,
+        data: [bolCard],
+      } as any)
+      const result = await call('search_cards', { query: 't:instant c:red cmc<=1', format: 'json' }) as any
       expect(result.totalCards).toBe(1)
       expect(result.cards).toHaveLength(1)
     })
@@ -794,31 +813,6 @@ describe('Search/Reports', () => {
     })
   })
 
-  describe('get_buy_list', () => {
-    it('aggregates need_to_buy cards across decks', async () => {
-      const deck1 = makeDeck({ name: 'Deck 1' })
-      deck1.cards.push(makeDeckCard('Sol Ring', { ownership: 'need_to_buy', quantity: 1 }))
-      const deck2 = makeDeck({ name: 'Deck 2' })
-      deck2.cards.push(makeDeckCard('Sol Ring', { ownership: 'need_to_buy', quantity: 1 }))
-      mock._decks.set(deck1.id, deck1)
-      mock._decks.set(deck2.id, deck2)
-
-      const result = await call('get_buy_list') as any[]
-      expect(result).toHaveLength(1)
-      expect(result[0].quantity).toBe(2)
-      expect(result[0].decks).toContain('Deck 1')
-      expect(result[0].decks).toContain('Deck 2')
-    })
-
-    it('excludes owned cards', async () => {
-      const deck = makeDeck()
-      deck.cards.push(makeDeckCard('Sol Ring', { ownership: 'owned' }))
-      mock._decks.set(deck.id, deck)
-
-      const result = await call('get_buy_list') as any[]
-      expect(result).toHaveLength(0)
-    })
-  })
 })
 
 // ─── Unknown tool ──────────────────────────────────────────────
