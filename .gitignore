@@ -9,7 +9,6 @@ mcp-server/.bloop/
 # Node.js
 node_modules/
 .pnpm-store/
-pnpm-lock.yaml
 
 # Build outputs
 packages/*/dist/

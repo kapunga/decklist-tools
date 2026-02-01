@@ -15,6 +15,9 @@ export interface ElectronAPI {
   saveGlobalRoles: (roles: unknown[]) => Promise<void>
   onStorageChanged: (callback: (data: { event: string; filename: string }) => void) => void
   removeStorageListener: () => void
+  getClaudeConnectionStatus: () => Promise<{ connected: boolean; configPath: string; mcpServerPath?: string }>
+  connectClaudeDesktop: () => Promise<{ success: boolean; error?: string }>
+  disconnectClaudeDesktop: () => Promise<{ success: boolean; error?: string }>
 }
 
 declare global {
