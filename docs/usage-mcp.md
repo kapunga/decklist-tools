@@ -1,6 +1,6 @@
 # MCP Server
 
-The MCP server provides 30+ tools that let Claude Desktop help you build and manage decks through natural conversation.
+The MCP server provides 15 tools that let Claude Desktop help you build and manage decks through natural conversation.
 
 ## Getting Started
 
@@ -8,7 +8,7 @@ After [setting up the MCP server](/installation#mcp-server-setup), open Claude D
 
 > "Create a new Commander deck called Isshin Attacks"
 
-Claude will use the `create_deck` tool and confirm the deck was created. Changes appear immediately in the desktop app.
+Claude will use the `manage_deck` tool and confirm the deck was created. Changes appear immediately in the desktop app.
 
 ## Available Tools
 
@@ -17,20 +17,15 @@ Claude will use the `create_deck` tool and confirm the deck was created. Changes
 | Tool | Description |
 |------|-------------|
 | `list_decks` | List all saved decks |
-| `get_deck` | Get a deck by ID or name |
-| `create_deck` | Create a new empty deck |
-| `update_deck_metadata` | Update name, description, archetype, or strategy |
-| `delete_deck` | Delete a deck permanently |
+| `get_deck` | Get a deck by ID or name (includes validation) |
+| `manage_deck` | Create, update, or delete a deck |
 
 ### Card Management
 
 | Tool | Description |
 |------|-------------|
-| `add_card` | Add a card (resolves via Scryfall) |
-| `remove_card` | Remove a card from a deck |
-| `update_card` | Update roles, status, ownership |
-| `move_card` | Move between mainboard, alternates, sideboard |
-| `lookup_card` | Look up a card without adding to a deck |
+| `manage_card` | Add, remove, update, or move a card in a deck |
+| `search_cards` | Search for cards on Scryfall (name, UUID, or query) |
 
 ### Commander
 
@@ -43,60 +38,44 @@ Claude will use the `create_deck` tool and confirm the deck was created. Changes
 | Tool | Description |
 |------|-------------|
 | `view_deck` | Render a deck in a specific view format |
-| `list_views` | List available views |
 
-Available views: `full`, `skeleton`, `checklist`, `curve`, `buy-list`, `by-role`, `by-type`, `notes`
+Available views: `full` (supports `group_by` and `sort_by` params), `curve`, `notes`
 
 ### Roles
 
 | Tool | Description |
 |------|-------------|
 | `list_roles` | List all available roles |
-| `add_custom_role` | Add a custom role to a deck |
-| `add_global_role` | Add a new global role |
+| `manage_role` | Add custom/global roles, update or delete global roles |
 
 ### Notes
 
 | Tool | Description |
 |------|-------------|
-| `add_deck_note` | Add a note to a deck |
-| `update_deck_note` | Update an existing note |
-| `delete_deck_note` | Delete a note |
 | `list_deck_notes` | List all notes for a deck |
+| `manage_deck_note` | Add, update, or delete a deck note |
 
 ### Interest List
 
 | Tool | Description |
 |------|-------------|
 | `get_interest_list` | Get the full interest list |
-| `add_to_interest_list` | Add a card to the interest list |
-| `remove_from_interest_list` | Remove a card |
+| `manage_interest_list` | Add or remove cards from the interest list |
 
-### Import/Export
-
-| Tool | Description |
-|------|-------------|
-| `import_deck` | Import from Arena, Moxfield, Archidekt, MTGO, or simple text |
-| `export_deck` | Export to a specific format |
-| `list_export_formats` | List available formats |
-
-### Validation & Search
+### Search & Reports
 
 | Tool | Description |
 |------|-------------|
-| `validate_deck` | Check against format rules |
 | `search_decks_for_card` | Find which decks contain a card |
 | `get_buy_list` | Get all "need to buy" cards across decks |
 
 ## Example Conversation
 
 ```
-User: Import this deck:
-1 Isshin, Two Heavens as One (NEO) 226
-1 Aurelia, the Warleader (GTC) 143
-1 Combat Celebrant (AKH) 125
+User: Create a Commander deck called Isshin Attacks
 
-Claude: Created deck with 3 cards. All cards resolved successfully.
+Claude: [Uses manage_deck with action=create]
+Created deck "Isshin Attacks" in Commander format.
 
 User: Show me the mana curve
 
