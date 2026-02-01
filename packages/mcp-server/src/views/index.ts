@@ -15,6 +15,8 @@ export function getViewDescriptions(): ViewDescription[] {
   ]
 }
 
+export type DetailLevel = 'summary' | 'compact' | 'full'
+
 export function renderDeckView(
   deck: Deck,
   viewType: string,
@@ -22,7 +24,8 @@ export function renderDeckView(
   sortBy?: string,
   groupBy?: string,
   filters?: CardFilter[],
-  scryfallCache?: Map<string, ScryfallCard>
+  scryfallCache?: Map<string, ScryfallCard>,
+  detail?: DetailLevel
 ): string {
   // If filters are provided, apply them to get filtered card IDs
   let filteredCardIds: Set<string> | undefined
@@ -35,13 +38,13 @@ export function renderDeckView(
 
   switch (viewType) {
     case 'full':
-      return renderFullView(deck, globalRoles, sortBy, groupBy, filteredCardIds, scryfallCache)
+      return renderFullView(deck, globalRoles, sortBy, groupBy, filteredCardIds, scryfallCache, detail)
     case 'curve':
       return renderCurveView(deck, scryfallCache, filteredCardIds)
     case 'notes':
       return renderNotesView(deck, globalRoles)
     default:
-      return renderFullView(deck, globalRoles, sortBy, groupBy, filteredCardIds, scryfallCache)
+      return renderFullView(deck, globalRoles, sortBy, groupBy, filteredCardIds, scryfallCache, detail)
   }
 }
 
@@ -51,7 +54,8 @@ function renderFullView(
   sortBy?: string,
   groupBy?: string,
   filteredCardIds?: Set<string>,
-  scryfallCache?: Map<string, ScryfallCard>
+  scryfallCache?: Map<string, ScryfallCard>,
+  detail?: DetailLevel
 ): string {
   const lines: string[] = []
 
@@ -95,14 +99,14 @@ function renderFullView(
       if (confirmedCards.length > 0) {
         lines.push('### Confirmed')
         for (const c of confirmedCards) {
-          lines.push(formatCardLine(c, globalRoles, deck.customRoles, scryfallCache))
+          lines.push(formatCardLine(c, globalRoles, deck.customRoles, scryfallCache, detail))
         }
         lines.push('')
       }
       if (consideringCards.length > 0) {
         lines.push('### Considering')
         for (const c of consideringCards) {
-          lines.push(formatCardLine(c, globalRoles, deck.customRoles, scryfallCache))
+          lines.push(formatCardLine(c, globalRoles, deck.customRoles, scryfallCache, detail))
         }
         lines.push('')
       }
@@ -114,7 +118,7 @@ function renderFullView(
     if (deck.alternates.length > 0) {
       lines.push('## Alternates')
       for (const c of deck.alternates) {
-        lines.push(formatCardLine(c, globalRoles, deck.customRoles, scryfallCache))
+        lines.push(formatCardLine(c, globalRoles, deck.customRoles, scryfallCache, detail))
       }
       lines.push('')
     }
@@ -123,7 +127,7 @@ function renderFullView(
     if (deck.sideboard.length > 0) {
       lines.push('## Sideboard')
       for (const c of deck.sideboard) {
-        lines.push(formatCardLine(c, globalRoles, deck.customRoles, scryfallCache))
+        lines.push(formatCardLine(c, globalRoles, deck.customRoles, scryfallCache, detail))
       }
       lines.push('')
     }
@@ -230,27 +234,42 @@ function formatCardLine(
   card: DeckCard,
   globalRoles: RoleDefinition[],
   customRoles: RoleDefinition[],
-  scryfallCache?: Map<string, ScryfallCard>
+  scryfallCache?: Map<string, ScryfallCard>,
+  detail?: DetailLevel
 ): string {
-  const parts: string[] = []
+  const level = detail || 'summary'
+  const cached = scryfallCache && card.card.scryfallId
+    ? scryfallCache.get(card.card.scryfallId)
+    : undefined
 
-  // Try to get mana cost from scryfall cache
-  let manaCost: string | undefined
-  if (scryfallCache && card.card.scryfallId) {
-    const cached = scryfallCache.get(card.card.scryfallId)
-    if (cached) manaCost = cached.mana_cost
-  }
+  // Build the header line
+  const headerParts: string[] = []
 
-  if (manaCost) {
-    parts.push(`- ${card.quantity}x ${card.card.name} • ${manaCost}`)
+  if (level === 'full' && cached) {
+    // Full: include set/rarity
+    const setInfo = `${cached.set.toUpperCase()}#${cached.collector_number}`
+    const mana = cached.mana_cost ? `${cached.mana_cost} ` : ''
+    const pt = cached.power && cached.toughness ? ` ${cached.power}/${cached.toughness}` : ''
+    headerParts.push(`- ${card.quantity}x ${card.card.name} • ${setInfo} • ${cached.rarity} • ${mana}${card.typeLine || cached.type_line}${pt}`)
+  } else if (level === 'compact' && cached) {
+    // Compact: mana cost + full type line
+    const mana = cached.mana_cost ? `${cached.mana_cost} ` : ''
+    const pt = cached.power && cached.toughness ? ` ${cached.power}/${cached.toughness}` : ''
+    headerParts.push(`- ${card.quantity}x ${card.card.name} • ${mana}${card.typeLine || cached.type_line}${pt}`)
   } else {
-    parts.push(`- ${card.quantity}x ${card.card.name}`)
+    // Summary: mana cost + primary type
+    const manaCost = cached?.mana_cost
+    if (manaCost) {
+      headerParts.push(`- ${card.quantity}x ${card.card.name} • ${manaCost}`)
+    } else {
+      headerParts.push(`- ${card.quantity}x ${card.card.name}`)
+    }
+    if (card.typeLine) {
+      headerParts.push(`[${getPrimaryType(card.typeLine)}]`)
+    }
   }
 
-  if (card.typeLine) {
-    parts.push(`[${getPrimaryType(card.typeLine)}]`)
-  }
-
+  // Roles
   if (card.roles.length > 0) {
     const roleNames = card.roles
       .map((r) => {
@@ -258,20 +277,29 @@ function formatCardLine(
         return role?.name || r
       })
       .join(', ')
-    parts.push(`(${roleNames})`)
+    headerParts.push(`(${roleNames})`)
   }
 
+  // Ownership / pinned
   if (card.ownership === 'need_to_buy') {
-    parts.push('[NEED TO BUY]')
+    headerParts.push('[NEED TO BUY]')
   } else if (card.ownership === 'pulled') {
-    parts.push('[PULLED]')
+    headerParts.push('[PULLED]')
   }
 
   if (card.isPinned) {
-    parts.push('[PINNED]')
+    headerParts.push('[PINNED]')
   }
 
-  return parts.join(' ')
+  const header = headerParts.join(' ')
+
+  // For compact and full, append oracle text
+  if ((level === 'compact' || level === 'full') && cached?.oracle_text) {
+    const indented = cached.oracle_text.split('\n').map(l => `  ${l}`).join('\n')
+    return `${header}\n${indented}`
+  }
+
+  return header
 }
 
 function renderCurveView(deck: Deck, scryfallCache?: Map<string, ScryfallCard>, filteredCardIds?: Set<string>): string {

@@ -173,6 +173,7 @@ export function getToolDefinitions(): Tool[] {
         properties: {
           deck_id: { type: 'string' },
           view: { type: 'string', default: 'full' },
+          detail: { type: 'string', enum: ['summary', 'compact', 'full'], description: 'Card detail level: summary (default, one-line), compact (adds oracle text), full (adds set/rarity)' },
           sort_by: { type: 'string' },
           group_by: { type: 'string' },
           filters: {
@@ -425,9 +426,12 @@ interface SearchCardsArgs {
   format?: 'compact' | 'json'
 }
 
+type DetailLevel = 'summary' | 'compact' | 'full'
+
 interface ViewDeckArgs {
   deck_id: string
   view?: string
+  detail?: DetailLevel
   sort_by?: string
   group_by?: string
   filters?: import('@mtg-deckbuilder/shared').CardFilter[]
@@ -839,7 +843,7 @@ function viewDeck(storage: Storage, args: ViewDeckArgs) {
     }
   }
 
-  return renderDeckView(deck, args.view || 'full', globalRoles, args.sort_by, args.group_by, args.filters, scryfallCache)
+  return renderDeckView(deck, args.view || 'full', globalRoles, args.sort_by, args.group_by, args.filters, scryfallCache, args.detail)
 }
 
 function listRoles(storage: Storage, deckId?: string) {
