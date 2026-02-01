@@ -1,5 +1,6 @@
 import type { Deck } from '../types/index.js'
 import type { DeckExportFormat, ParsedCard, RenderOptions } from './types.js'
+import { getConfirmedCards, getMaybeboardCards } from './utils.js'
 
 export const moxfieldFormat: DeckExportFormat = {
   id: 'moxfield',
@@ -62,7 +63,7 @@ export const moxfieldFormat: DeckExportFormat = {
     }
 
     // Main deck
-    deck.cards.filter(c => c.inclusion === 'confirmed').forEach(c => {
+    getConfirmedCards(deck).forEach(c => {
       lines.push(
         `${c.quantity},${c.card.name},${c.card.setCode},${c.card.collectorNumber},,,English,Mainboard`
       )
@@ -79,11 +80,7 @@ export const moxfieldFormat: DeckExportFormat = {
 
     // Maybeboard
     if (options.includeMaybeboard) {
-      const maybe = [
-        ...deck.cards.filter(c => c.inclusion === 'considering'),
-        ...deck.alternates
-      ]
-      maybe.forEach(c => {
+      getMaybeboardCards(deck).forEach(c => {
         lines.push(
           `${c.quantity},${c.card.name},${c.card.setCode},${c.card.collectorNumber},,,English,Maybeboard`
         )

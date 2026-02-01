@@ -1,0 +1,230 @@
+import {
+  Storage,
+  type DeckCard,
+  type InclusionStatus,
+  type OwnershipStatus,
+  type ScryfallCard,
+  generateDeckCardId,
+  searchCardByNameExact,
+  searchCardByName,
+  getCardBySetAndNumber,
+  getCardById,
+  searchCards,
+  isDoubleFacedCard,
+} from '@mtg-deckbuilder/shared'
+import { getDeckOrThrow, fetchScryfallCard, createCardIdentifier, findCardInList, findCardIndexInList } from './helpers.js'
+import type { ManageCardArgs, SearchCardsArgs } from './types.js'
+
+// Scryfall operator patterns for detecting search queries
+const SCRYFALL_OPERATORS = /(?:^|\s)(?:t:|c:|ci:|o:|pow:|tou:|cmc[<>=!]|mv[<>=!]|is:|has:|not:|set:|e:|r:|f:|id:|mana:|devotion:|produces:|keyword:|oracle:|name:|flavor:|art:|border:|frame:|game:|year:|date:|usd[<>=!]|eur[<>=!]|tix[<>=!])/i
+
+export async function manageCard(storage: Storage, args: ManageCardArgs) {
+  const deck = getDeckOrThrow(storage, args.deck_id)
+
+  switch (args.action) {
+    case 'add': {
+      const scryfallCard = await fetchScryfallCard(args.name, args.set_code, args.collector_number)
+      const cardIdentifier = createCardIdentifier(scryfallCard)
+
+      const deckCard: DeckCard = {
+        id: generateDeckCardId(),
+        card: cardIdentifier,
+        quantity: args.quantity || 1,
+        inclusion: (args.status as InclusionStatus) || 'confirmed',
+        ownership: (args.ownership as OwnershipStatus) || 'need_to_buy',
+        roles: args.roles || [],
+        typeLine: scryfallCard.type_line,
+        isPinned: false,
+        addedAt: new Date().toISOString(),
+        addedBy: 'user',
+      }
+
+      if (args.to_sideboard) {
+        deck.sideboard.push(deckCard)
+      } else if (args.to_alternates) {
+        deck.alternates.push(deckCard)
+      } else {
+        deck.cards.push(deckCard)
+      }
+
+      storage.saveDeck(deck)
+      return {
+        success: true,
+        card: {
+          name: scryfallCard.name,
+          set: scryfallCard.set,
+          collectorNumber: scryfallCard.collector_number,
+          quantity: deckCard.quantity,
+        },
+      }
+    }
+    case 'remove': {
+      const targetList = args.from_sideboard
+        ? deck.sideboard
+        : args.from_alternates
+          ? deck.alternates
+          : deck.cards
+
+      const cardIndex = findCardIndexInList(targetList, args.name)
+      if (cardIndex === -1) throw new Error(`Card not found in deck: ${args.name}`)
+
+      if (args.quantity && args.quantity < targetList[cardIndex].quantity) {
+        targetList[cardIndex].quantity -= args.quantity
+      } else {
+        targetList.splice(cardIndex, 1)
+      }
+
+      storage.saveDeck(deck)
+      return { success: true, message: `Removed ${args.name} from deck` }
+    }
+    case 'update': {
+      let card: DeckCard | undefined
+      for (const list of [deck.cards, deck.alternates, deck.sideboard]) {
+        card = findCardInList(list, args.name)
+        if (card) break
+      }
+      if (!card) throw new Error(`Card not found in deck: ${args.name}`)
+
+      if (args.roles !== undefined) card.roles = args.roles
+      if (args.add_roles) {
+        card.roles = [...new Set([...card.roles, ...args.add_roles])]
+      }
+      if (args.remove_roles) {
+        card.roles = card.roles.filter((r) => !args.remove_roles!.includes(r))
+      }
+      if (args.status !== undefined) card.inclusion = args.status as InclusionStatus
+      if (args.ownership !== undefined) card.ownership = args.ownership as OwnershipStatus
+      if (args.pinned !== undefined) card.isPinned = args.pinned
+      if (args.notes !== undefined) card.notes = args.notes
+
+      storage.saveDeck(deck)
+      return { success: true, card: { name: card.card.name, roles: card.roles } }
+    }
+    case 'move': {
+      if (!args.from || !args.to) throw new Error('from and to are required for move')
+
+      const getList = (name: string): DeckCard[] => {
+        switch (name) {
+          case 'mainboard': return deck.cards
+          case 'alternates': return deck.alternates
+          case 'sideboard': return deck.sideboard
+          default: throw new Error(`Invalid list: ${name}`)
+        }
+      }
+
+      const fromList = getList(args.from)
+      const toList = getList(args.to)
+
+      const cardIndex = findCardIndexInList(fromList, args.name)
+      if (cardIndex === -1) throw new Error(`Card not found in ${args.from}: ${args.name}`)
+
+      const [card] = fromList.splice(cardIndex, 1)
+      toList.push(card)
+
+      storage.saveDeck(deck)
+      return { success: true, message: `Moved ${args.name} from ${args.from} to ${args.to}` }
+    }
+    default:
+      throw new Error(`Unknown action: ${args.action}`)
+  }
+}
+
+function formatCardResponse(scryfallCard: ScryfallCard) {
+  return {
+    name: scryfallCard.name,
+    scryfallId: scryfallCard.id,
+    manaCost: scryfallCard.mana_cost,
+    cmc: scryfallCard.cmc,
+    typeLine: scryfallCard.type_line,
+    oracleText: scryfallCard.oracle_text,
+    power: scryfallCard.power,
+    toughness: scryfallCard.toughness,
+    colors: scryfallCard.colors,
+    colorIdentity: scryfallCard.color_identity,
+    set: scryfallCard.set,
+    collectorNumber: scryfallCard.collector_number,
+    rarity: scryfallCard.rarity,
+    prices: scryfallCard.prices,
+    legalities: scryfallCard.legalities,
+  }
+}
+
+function formatCardCompact(card: ScryfallCard): string {
+  const setInfo = `${card.set.toUpperCase()}#${card.collector_number}`
+  const hasFaces = card.card_faces && card.card_faces.length >= 2
+
+  if (hasFaces && (isDoubleFacedCard(card) || card.layout === 'adventure')) {
+    const front = card.card_faces![0]
+    const back = card.card_faces![1]
+    const lines: string[] = []
+
+    lines.push(`${front.name} // ${back.name} • ${setInfo} • ${card.rarity} • ${card.layout}`)
+
+    const frontPt = front.power && front.toughness ? ` ${front.power}/${front.toughness}` : ''
+    const frontMana = front.mana_cost ? `${front.mana_cost} ` : ''
+    lines.push(`Front: ${frontMana}${front.type_line || ''}${frontPt}`)
+    if (front.oracle_text) lines.push(front.oracle_text)
+
+    lines.push('---')
+
+    const backPt = back.power && back.toughness ? ` ${back.power}/${back.toughness}` : ''
+    const backMana = back.mana_cost ? `${back.mana_cost} ` : ''
+    lines.push(`Back: ${backMana}${back.type_line || ''}${backPt}`)
+    if (back.oracle_text) lines.push(back.oracle_text)
+
+    return lines.join('\n')
+  }
+
+  const lines: string[] = []
+  const pt = card.power && card.toughness ? ` ${card.power}/${card.toughness}` : ''
+  const mana = card.mana_cost ? `${card.mana_cost} ` : ''
+  lines.push(`${card.name} • ${setInfo} • ${card.rarity} • ${mana}${card.type_line}${pt}`)
+  if (card.oracle_text) lines.push(card.oracle_text)
+
+  return lines.join('\n')
+}
+
+export async function searchCardsHandler(args: SearchCardsArgs) {
+  const useCompact = args.format !== 'json'
+  const formatCard = useCompact ? formatCardCompact : formatCardResponse
+
+  if (args.set_code && args.collector_number) {
+    const scryfallCard = await getCardBySetAndNumber(args.set_code, args.collector_number)
+    if (!scryfallCard) throw new Error(`Card not found: ${args.set_code} ${args.collector_number}`)
+    return formatCard(scryfallCard)
+  }
+
+  const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (uuidPattern.test(args.query)) {
+    const scryfallCard = await getCardById(args.query)
+    if (!scryfallCard) throw new Error(`Card not found with ID: ${args.query}`)
+    return formatCard(scryfallCard)
+  }
+
+  if (SCRYFALL_OPERATORS.test(args.query)) {
+    const result = await searchCards(args.query)
+    if (!result) throw new Error(`Search failed for query: ${args.query}`)
+    const limit = args.limit ?? 10
+    const cards = result.data.slice(0, limit)
+
+    if (useCompact) {
+      const formatted = cards.map(formatCardCompact)
+      return `Found ${result.total_cards} cards:\n\n${formatted.join('\n\n')}`
+    }
+
+    return {
+      totalCards: result.total_cards,
+      hasMore: result.data.length > limit,
+      cards: cards.map(formatCardResponse),
+    }
+  }
+
+  let scryfallCard
+  if (args.exact) {
+    scryfallCard = await searchCardByNameExact(args.query)
+  } else {
+    scryfallCard = await searchCardByName(args.query)
+  }
+  if (!scryfallCard) throw new Error(`Card not found: ${args.query}`)
+  return formatCard(scryfallCard)
+}

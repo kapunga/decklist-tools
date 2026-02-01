@@ -1,5 +1,6 @@
 import type { Deck } from '../types/index.js'
 import type { DeckExportFormat, ParsedCard, RenderOptions } from './types.js'
+import { prepareLines, getConfirmedCards } from './utils.js'
 
 export const mtgoFormat: DeckExportFormat = {
   id: 'mtgo',
@@ -8,7 +9,7 @@ export const mtgoFormat: DeckExportFormat = {
 
   parse(text: string): ParsedCard[] {
     const cards: ParsedCard[] = []
-    const lines = text.split('\n').map(l => l.trim())
+    const lines = prepareLines(text)
 
     const cardPattern = /^(\d+)\s+(.+)$/
     let inSideboard = false
@@ -59,9 +60,7 @@ export const mtgoFormat: DeckExportFormat = {
       lines.push('')
     }
 
-    deck.cards
-      .filter(c => c.inclusion === 'confirmed')
-      .forEach(c => {
+    getConfirmedCards(deck).forEach(c => {
         lines.push(`${c.quantity} ${c.card.name}`)
       })
 

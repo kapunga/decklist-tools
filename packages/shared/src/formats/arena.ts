@@ -1,5 +1,6 @@
 import type { Deck } from '../types/index.js'
 import type { DeckExportFormat, ParsedCard, RenderOptions } from './types.js'
+import { prepareLines, getConfirmedCards, getMaybeboardCards } from './utils.js'
 
 export const arenaFormat: DeckExportFormat = {
   id: 'arena',
@@ -8,7 +9,7 @@ export const arenaFormat: DeckExportFormat = {
 
   parse(text: string): ParsedCard[] {
     const cards: ParsedCard[] = []
-    const lines = text.split('\n').map(l => l.trim())
+    const lines = prepareLines(text)
 
     // Pattern: "1x Card Name (SET) 123" or "1 Card Name (SET) 123"
     // Also handles trailing markers like *F*, *E* and special collector numbers like 81p, 248s
@@ -94,9 +95,7 @@ export const arenaFormat: DeckExportFormat = {
     }
 
     lines.push('Deck')
-    deck.cards
-      .filter(c => c.inclusion === 'confirmed')
-      .forEach(c => {
+    getConfirmedCards(deck).forEach(c => {
         lines.push(
           `${c.quantity} ${c.card.name} (${c.card.setCode.toUpperCase()}) ${c.card.collectorNumber}`
         )
@@ -112,10 +111,7 @@ export const arenaFormat: DeckExportFormat = {
     }
 
     if (options.includeMaybeboard) {
-      const maybe = [
-        ...deck.cards.filter(c => c.inclusion === 'considering'),
-        ...deck.alternates
-      ]
+      const maybe = getMaybeboardCards(deck)
       if (maybe.length > 0) {
         lines.push('', 'Maybeboard')
         maybe.forEach(c => {
