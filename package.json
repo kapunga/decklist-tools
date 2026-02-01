@@ -1,6 +1,6 @@
 {
   "name": "mtg-deckbuilder-tools",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "MTG Deckbuilder Tools - MCP Server and Desktop App for Magic: The Gathering deck management",
   "scripts": {

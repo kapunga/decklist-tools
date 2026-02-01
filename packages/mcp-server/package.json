@@ -1,6 +1,6 @@
 {
   "name": "@mtg-deckbuilder/mcp-server",
-  "version": "1.0.0",
+  "version": "0.1.1",
   "description": "MCP Server for MTG Deckbuilder - enables Claude to help build and manage decks",
   "type": "module",
   "main": "dist/main.js",

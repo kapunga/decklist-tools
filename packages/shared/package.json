@@ -1,6 +1,6 @@
 {
   "name": "@mtg-deckbuilder/shared",
-  "version": "1.0.0",
+  "version": "0.1.1",
   "description": "Shared types, utilities, and clients for MTG Deckbuilder",
   "type": "module",
   "main": "./dist/index.js",
