@@ -22,7 +22,7 @@ Press **Esc** to return to the deck list.
 Each card tracks:
 
 - **Status**: confirmed or considering
-- **Ownership**: owned, need to buy, or ordered
+- **Ownership**: unknown (default), owned, pulled, or need to buy
 - **Roles**: functional tags like "Ramp", "Removal", "Draw", etc.
 - **List**: mainboard, sideboard, or alternates
 

@@ -58,7 +58,7 @@ export async function manageCard(storage: Storage, args: ManageCardArgs) {
           card: cardIdentifier,
           quantity,
           inclusion: (args.status as InclusionStatus) || 'confirmed',
-          ownership: (args.ownership as OwnershipStatus) || 'need_to_buy',
+          ownership: (args.ownership as OwnershipStatus) || 'unknown',
           roles: args.roles || [],
           typeLine: scryfallCard.type_line,
           isPinned: false,

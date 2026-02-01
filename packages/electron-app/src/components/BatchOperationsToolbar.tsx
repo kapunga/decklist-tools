@@ -82,6 +82,10 @@ export function BatchOperationsToolbar({
           <DropdownMenuContent>
             <DropdownMenuLabel>Ownership Status</DropdownMenuLabel>
             <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => handleSetOwnership('unknown')}>
+              <Check className="w-4 h-4 mr-2 text-gray-400" />
+              Unknown
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => handleSetOwnership('owned')}>
               <Check className="w-4 h-4 mr-2 text-green-500" />
               Owned

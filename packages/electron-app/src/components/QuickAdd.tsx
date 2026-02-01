@@ -116,7 +116,7 @@ export function QuickAdd({ deckId, format, colorIdentity, customRoles }: QuickAd
       },
       quantity,
       inclusion: 'confirmed',
-      ownership: 'owned',
+      ownership: 'unknown',
       roles,
       typeLine: pendingCard.type_line,
       isPinned: false,

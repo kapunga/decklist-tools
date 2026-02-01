@@ -17,7 +17,7 @@ Add, remove, update, or move cards in a deck. Supports batch operations via the 
 | `quantity` | number | no | Copies for single-card add (deprecated, use `Nx` prefix in `cards`) |
 | `roles` | string[] | no | Role IDs (add: initial roles, update: replace all) |
 | `status` | string | no | `confirmed` or `considering` (add/update) |
-| `ownership` | string | no | `owned`, `pulled`, or `need_to_buy` (add/update) |
+| `ownership` | string | no | `unknown` (default), `owned`, `pulled`, or `need_to_buy` (add/update) |
 | `to_alternates` | boolean | no | Add to alternates (add) |
 | `to_sideboard` | boolean | no | Add to sideboard (add) |
 | `from_alternates` | boolean | no | Remove from alternates (remove) |

@@ -38,7 +38,7 @@ export interface RoleFilter {
 export interface OwnershipFilter {
   type: 'ownership'
   mode: FilterMode
-  values: string[] // owned, pulled, need_to_buy
+  values: string[] // unknown, owned, pulled, need_to_buy
 }
 
 export type CardFilter = CmcFilter | ColorFilter | CardTypeFilter | RoleFilter | OwnershipFilter
