@@ -25,7 +25,20 @@ export default defineConfig({
         text: 'Usage',
         items: [
           { text: 'Desktop App', link: '/usage-electron' },
-          { text: 'MCP Server', link: '/usage-mcp' },
+        ],
+      },
+      {
+        text: 'MCP Server',
+        items: [
+          { text: 'Overview', link: '/usage-mcp' },
+          { text: 'Deck Management', link: '/mcp/deck-management' },
+          { text: 'Card Management', link: '/mcp/card-management' },
+          { text: 'Views', link: '/mcp/views' },
+          { text: 'Roles', link: '/mcp/roles' },
+          { text: 'Commanders', link: '/mcp/commanders' },
+          { text: 'Notes', link: '/mcp/notes' },
+          { text: 'Interest List', link: '/mcp/interest-list' },
+          { text: 'Search & Reports', link: '/mcp/search-reports' },
         ],
       },
     ],
