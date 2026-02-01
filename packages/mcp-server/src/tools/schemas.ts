@@ -56,7 +56,7 @@ export function getToolDefinitions(): Tool[] {
     // Card Management
     {
       name: 'manage_card',
-      description: 'Add, remove, update, or move a card in a deck.',
+      description: 'Add, remove, update, or move cards in a deck. Supports batch operations via the `cards` array. For add: each entry is "[Nx ]<set_code> <collector_number>" (e.g. "fdn 542", "2x woe 138"). For remove/update/move: each entry is a card name.',
       inputSchema: {
         type: 'object',
         properties: {
@@ -65,11 +65,16 @@ export function getToolDefinitions(): Tool[] {
             enum: ['add', 'remove', 'update', 'move'],
           },
           deck_id: { type: 'string' },
-          name: { type: 'string', description: 'Card name' },
+          cards: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Batch of cards. For add: "[Nx ]<set_code> <collector_number>" strings. For remove/update/move: card name strings.',
+          },
+          name: { type: 'string', description: 'Single card name (deprecated, use cards instead)' },
           // add params
-          set_code: { type: 'string' },
-          collector_number: { type: 'string' },
-          quantity: { type: 'number', default: 1 },
+          set_code: { type: 'string', description: 'Set code for single-card add (deprecated, use cards instead)' },
+          collector_number: { type: 'string', description: 'Collector number for single-card add (deprecated, use cards instead)' },
+          quantity: { type: 'number', default: 1, description: 'Quantity for single-card add (deprecated, use Nx prefix in cards instead)' },
           roles: {
             type: 'array',
             items: { type: 'string' },
@@ -111,7 +116,7 @@ export function getToolDefinitions(): Tool[] {
             enum: ['mainboard', 'alternates', 'sideboard'],
           },
         },
-        required: ['action', 'deck_id', 'name'],
+        required: ['action', 'deck_id'],
       },
     },
 

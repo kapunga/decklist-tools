@@ -4,16 +4,17 @@ Tools for managing cards within decks and searching for cards on Scryfall.
 
 ## `manage_card`
 
-Add, remove, update, or move a card in a deck.
+Add, remove, update, or move cards in a deck. Supports batch operations via the `cards` array.
 
 | Param | Type | Required | Description |
 |-------|------|----------|-------------|
 | `action` | string | yes | `add`, `remove`, `update`, or `move` |
 | `deck_id` | string | yes | Deck UUID |
-| `name` | string | yes | Card name |
-| `set_code` | string | no | Set code for specific printing (add) |
-| `collector_number` | string | no | Collector number (add) |
-| `quantity` | number | no | Number of copies (add: default 1, remove: default all) |
+| `cards` | string[] | no* | Batch of cards (see format per action below) |
+| `name` | string | no* | Single card name (deprecated, use `cards`) |
+| `set_code` | string | no | Set code for single-card add (deprecated, use `cards`) |
+| `collector_number` | string | no | Collector number for single-card add (deprecated, use `cards`) |
+| `quantity` | number | no | Copies for single-card add (deprecated, use `Nx` prefix in `cards`) |
 | `roles` | string[] | no | Role IDs (add: initial roles, update: replace all) |
 | `status` | string | no | `confirmed` or `considering` (add/update) |
 | `ownership` | string | no | `owned`, `pulled`, or `need_to_buy` (add/update) |
@@ -28,19 +29,74 @@ Add, remove, update, or move a card in a deck.
 | `from` | string | move | `mainboard`, `alternates`, or `sideboard` |
 | `to` | string | move | `mainboard`, `alternates`, or `sideboard` |
 
+\* Either `cards` or `name` must be provided. If `name` is provided without `cards`, it is treated as `cards: [name]`.
+
+### Card string formats
+
+**Add action** — each entry is `"[Nx ]<set_code> <collector_number>"`:
+- `"fdn 542"` → 1 copy from set FDN, collector number 542
+- `"2x woe 138"` → 2 copies from set WOE, collector number 138
+
+**Remove / Update / Move actions** — each entry is a card name (e.g. `"Sol Ring"`).
+
+### Examples
+
+**Batch add:**
+```json
+{
+  "action": "add",
+  "deck_id": "abc-123",
+  "cards": ["fdn 542", "2x woe 138", "woe 142"],
+  "roles": ["combat-trick"]
+}
+```
+
+**Batch remove:**
+```json
+{
+  "action": "remove",
+  "deck_id": "abc-123",
+  "cards": ["Snakeskin Veil", "Giant Growth"],
+  "from_alternates": true
+}
+```
+
+**Batch update:**
+```json
+{
+  "action": "update",
+  "deck_id": "abc-123",
+  "cards": ["Snakeskin Veil", "Giant Growth"],
+  "add_roles": ["combat-trick"]
+}
+```
+
+**Batch move:**
+```json
+{
+  "action": "move",
+  "deck_id": "abc-123",
+  "cards": ["Snakeskin Veil"],
+  "from": "alternates",
+  "to": "mainboard"
+}
+```
+
+### Responses
+
 **Response (add):**
 ```json
-{ "success": true, "card": { "name": "Sol Ring", "set": "c21", "collectorNumber": "263", "quantity": 1 } }
+{ "success": true, "cards": [{ "name": "Sol Ring", "set": "c21", "collectorNumber": "263", "quantity": 1 }] }
 ```
 
 **Response (remove):**
 ```json
-{ "success": true, "message": "Removed Sol Ring from deck" }
+{ "success": true, "message": "Removed Sol Ring, Arcane Signet from deck" }
 ```
 
 **Response (update):**
 ```json
-{ "success": true, "card": { "name": "Sol Ring", "roles": ["ramp", "fast-mana"] } }
+{ "success": true, "cards": [{ "name": "Sol Ring", "roles": ["ramp", "fast-mana"] }] }
 ```
 
 **Response (move):**

@@ -162,7 +162,7 @@ describe('Card Management', () => {
 
       const result = await call('manage_card', { action: 'add', deck_id: deck.id, name: 'Lightning Bolt' }) as any
       expect(result.success).toBe(true)
-      expect(result.card.name).toBe('Lightning Bolt')
+      expect(result.cards[0].name).toBe('Lightning Bolt')
       expect(deck.cards).toHaveLength(1)
     })
 
