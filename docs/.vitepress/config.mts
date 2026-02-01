@@ -5,6 +5,10 @@ export default defineConfig({
   description: 'Desktop app and MCP server for Magic: The Gathering deck management',
   base: '/decklist-tools/',
 
+  head: [
+    ['link', { rel: 'icon', type: 'image/png', href: '/decklist-tools/favicon.png' }],
+  ],
+
   themeConfig: {
     nav: [
       { text: 'Home', link: '/' },
