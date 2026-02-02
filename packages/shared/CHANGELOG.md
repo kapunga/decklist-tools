@@ -1,5 +1,11 @@
 # @mtg-deckbuilder/shared
 
+## 0.3.0
+
+### Patch Changes
+
+- a8fc456: Add `unknown` as a new default ownership status for cards. Previously, cards defaulted to `need_to_buy` when added, which cluttered the buy list with unreviewed cards. Now cards default to `unknown` and must be explicitly triaged to `owned`, `pulled`, or `need_to_buy`.
+
 ## 0.2.0
 
 ### Minor Changes
