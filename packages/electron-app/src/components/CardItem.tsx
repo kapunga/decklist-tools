@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Trash2, MoreVertical, ArrowRight, X } from 'lucide-react'
+import { Trash2, MoreVertical, ArrowRight, X, Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/tooltip'
 import { useStore, useAllRoles, useGlobalRoles } from '@/hooks/useStore'
 import { getRoleColor } from '@/lib/constants'
+import { CardEditModal } from '@/components/CardEditModal'
 import type { DeckCard, OwnershipStatus, RoleDefinition } from '@/types'
 
 const ownershipLabels: Record<OwnershipStatus, string> = {
@@ -110,6 +111,9 @@ export function CardItem({ card, deckId, listType }: CardItemProps) {
   // Notes editing state
   const [isEditingNotes, setIsEditingNotes] = useState(false)
   const [notesValue, setNotesValue] = useState(card.notes || '')
+
+  // Edit modal state
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
 
   const handleSaveNotes = async () => {
     if (notesValue !== (card.notes || '')) {
@@ -253,6 +257,11 @@ export function CardItem({ card, deckId, listType }: CardItemProps) {
 
             <DropdownMenuSeparator />
 
+            <DropdownMenuItem onClick={() => setIsEditModalOpen(true)}>
+              <Pencil className="w-4 h-4 mr-2" />
+              Edit Card
+            </DropdownMenuItem>
+
             <DropdownMenuItem
               onClick={handleRemove}
               className="text-destructive focus:text-destructive"
@@ -263,6 +272,15 @@ export function CardItem({ card, deckId, listType }: CardItemProps) {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      {/* Edit Card Modal */}
+      <CardEditModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        card={card}
+        deckId={deckId}
+        listType={listType}
+      />
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Trash2, Plus, Minus, Loader2 } from 'lucide-react'
+import { Trash2, Plus, Minus, Loader2, Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
@@ -8,6 +8,7 @@ import { CollapsibleSection } from '@/components/CollapsibleSection'
 import { BatchOperationsToolbar } from '@/components/BatchOperationsToolbar'
 import { RolePill } from '@/components/RolePill'
 import { RoleAutocomplete } from '@/components/RoleAutocomplete'
+import { CardEditModal } from '@/components/CardEditModal'
 import { CardFilterBar } from '@/components/CardFilterBar'
 import { useStore, useGlobalRoles } from '@/hooks/useStore'
 import { useScryfallCache } from '@/hooks/useScryfallCache'
@@ -287,6 +288,7 @@ export function DeckListView({ deck, listType }: DeckListViewProps) {
                         isSelected={selectedCards.has(card.card.name)}
                         isFocused={focusedCardId === card.id}
                         isCommander={card.id.startsWith('commander-')}
+                        listType={listType}
                         onToggleSelect={() => toggleCardSelection(card.card.name)}
                         onFocus={() => setFocusedCard(card.id)}
                         onQuantityChange={handleQuantityChange}
@@ -329,6 +331,7 @@ interface CardRowProps {
   isSelected: boolean
   isFocused: boolean
   isCommander?: boolean
+  listType: 'cards' | 'alternates' | 'sideboard'
   onToggleSelect: () => void
   onFocus: () => void
   onQuantityChange: (cardName: string, delta: number) => void
@@ -345,6 +348,7 @@ function CardRow({
   isSelected,
   isFocused,
   isCommander = false,
+  listType,
   onToggleSelect,
   onFocus,
   onQuantityChange,
@@ -359,6 +363,9 @@ function CardRow({
   // Notes editing state
   const [isEditingNotes, setIsEditingNotes] = useState(false)
   const [notesValue, setNotesValue] = useState(card.notes || '')
+
+  // Edit modal state
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
 
   // Sync notes value when card changes
   useEffect(() => {
@@ -479,32 +486,58 @@ function CardRow({
         )}
       </div>
 
-      {/* Ownership indicator */}
-      {card.ownership === 'need_to_buy' && (
-        <Badge variant="outline" className="text-yellow-500 border-yellow-500 text-xs flex-shrink-0">
-          Buy
-        </Badge>
-      )}
-      {card.ownership === 'pulled' && (
-        <Badge variant="outline" className="text-blue-500 border-blue-500 text-xs flex-shrink-0">
-          Pulled
-        </Badge>
-      )}
+      {/* Ownership indicator - fixed width to prevent layout shift */}
+      <div className="w-16 flex-shrink-0 flex justify-end">
+        {card.ownership === 'need_to_buy' && (
+          <Badge variant="outline" className="text-yellow-500 border-yellow-500 text-xs">
+            Buy
+          </Badge>
+        )}
+        {card.ownership === 'pulled' && (
+          <Badge variant="outline" className="text-blue-500 border-blue-500 text-xs">
+            Pulled
+          </Badge>
+        )}
+      </div>
 
       {/* Actions - hidden for commanders */}
       {!isCommander && (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7 text-destructive flex-shrink-0"
-          onClick={e => {
-            e.stopPropagation()
-            onDelete(card.card.name)
-          }}
-        >
-          <Trash2 className="w-3 h-3" />
-        </Button>
+        <div className="flex items-center gap-0.5 flex-shrink-0">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-muted-foreground hover:text-foreground"
+            onClick={e => {
+              e.stopPropagation()
+              setIsEditModalOpen(true)
+            }}
+            title="Edit card"
+          >
+            <Pencil className="w-3 h-3" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-destructive flex-shrink-0"
+            onClick={e => {
+              e.stopPropagation()
+              onDelete(card.card.name)
+            }}
+            title="Remove card"
+          >
+            <Trash2 className="w-3 h-3" />
+          </Button>
+        </div>
       )}
+
+      {/* Edit Card Modal */}
+      <CardEditModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        card={card}
+        deckId={deck.id}
+        listType={listType}
+      />
     </div>
   )
 }

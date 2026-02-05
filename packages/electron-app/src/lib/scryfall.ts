@@ -246,6 +246,30 @@ export function getCardPrices(card: ScryfallCard): CardPrices {
   }
 }
 
+// Get all printings of a card by name
+export async function getCardPrintings(cardName: string): Promise<SearchResult | null> {
+  try {
+    // Query: !"Card Name" unique:prints order:released
+    // Returns all printings sorted by release date
+    const query = `!"${cardName}" unique:prints order:released`
+    const response = await rateLimitedFetch(
+      `${BASE_URL}/cards/search?q=${encodeURIComponent(query)}`
+    )
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        return { object: 'list', total_cards: 0, has_more: false, data: [] }
+      }
+      throw new Error(`Scryfall API error: ${response.status}`)
+    }
+
+    return await response.json()
+  } catch (error) {
+    console.error('Error fetching card printings:', error)
+    return null
+  }
+}
+
 // Get card image URL for a specific face (0 = front, 1 = back)
 export function getCardFaceImageUrl(
   card: ScryfallCard,
