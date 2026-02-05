@@ -53,9 +53,11 @@ export function App() {
   }
 
   return (
-    <div className="h-screen bg-background text-foreground flex flex-col pt-12">
-      {/* Top Navigation Bar */}
-      <header className="h-10 border-b flex items-center justify-between px-4 shrink-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <div className="h-screen bg-background text-foreground flex flex-col">
+      {/* Titlebar drag region - spans full width, behind traffic lights */}
+      <div className="titlebar h-12 shrink-0 flex items-end">
+        {/* Navigation sits inside titlebar but buttons are no-drag via CSS */}
+        <header className="h-10 w-full border-b flex items-center justify-between pl-20 pr-4 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <nav className="flex items-center gap-1">
           <NavButton
             view="decks"
@@ -88,7 +90,8 @@ export function App() {
           <Settings className="w-4 h-4" />
           Settings
         </Button>
-      </header>
+        </header>
+      </div>
 
       {/* Main Content */}
       <div className="flex-1 overflow-hidden">
