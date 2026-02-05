@@ -1,6 +1,5 @@
 import { create } from 'zustand'
 import type { Deck, Taxonomy, InterestList, Config, RoleDefinition } from '@/types'
-import { consolidateDuplicateCards } from '@mtg-deckbuilder/shared'
 import type { AppState } from '@/stores/types'
 import { createDeckSlice } from '@/stores/deckSlice'
 import { createCardSlice } from '@/stores/cardSlice'
@@ -12,51 +11,6 @@ import { createConfigSlice } from '@/stores/configSlice'
 import { createSelectionSlice } from '@/stores/selectionSlice'
 
 export type { AppView } from '@/stores/types'
-
-// TEMPORARY MIGRATION: Run once then remove
-async function migrateDecks(decks: Deck[]): Promise<{ migrated: boolean; decks: Deck[] }> {
-  let anyChanges = false
-  const migratedDecks: Deck[] = []
-
-  for (const deck of decks) {
-    const originalCardCount = deck.cards.length
-    const originalAlternatesCount = deck.alternates.length
-    const originalSideboardCount = deck.sideboard.length
-
-    const consolidatedCards = consolidateDuplicateCards(deck.cards)
-    const consolidatedAlternates = consolidateDuplicateCards(deck.alternates)
-    const consolidatedSideboard = consolidateDuplicateCards(deck.sideboard)
-
-    const hasChanges =
-      consolidatedCards.length !== originalCardCount ||
-      consolidatedAlternates.length !== originalAlternatesCount ||
-      consolidatedSideboard.length !== originalSideboardCount
-
-    if (hasChanges) {
-      anyChanges = true
-      const updatedDeck = {
-        ...deck,
-        cards: consolidatedCards,
-        alternates: consolidatedAlternates,
-        sideboard: consolidatedSideboard,
-      }
-      console.log(`[Migration] Consolidated deck "${deck.name}":`,
-        `cards ${originalCardCount} -> ${consolidatedCards.length},`,
-        `alternates ${originalAlternatesCount} -> ${consolidatedAlternates.length},`,
-        `sideboard ${originalSideboardCount} -> ${consolidatedSideboard.length}`)
-      await window.electronAPI.saveDeck(updatedDeck)
-      migratedDecks.push(updatedDeck)
-    } else {
-      migratedDecks.push(deck)
-    }
-  }
-
-  if (anyChanges) {
-    console.log('[Migration] Deck consolidation complete')
-  }
-
-  return { migrated: anyChanges, decks: migratedDecks }
-}
 
 export const useStore = create<AppState>((set, get) => ({
   // Initial state
@@ -78,20 +32,15 @@ export const useStore = create<AppState>((set, get) => ({
       set({ isLoading: true, error: null })
     }
     try {
-      const [rawDecks, taxonomy, interestList, config, globalRoles] = await Promise.all([
+      const [decks, taxonomy, interestList, config, globalRoles] = await Promise.all([
         window.electronAPI.listDecks(),
         window.electronAPI.getTaxonomy(),
         window.electronAPI.getInterestList(),
         window.electronAPI.getConfig(),
         window.electronAPI.getGlobalRoles()
       ])
-
-      // TEMPORARY MIGRATION: Consolidate duplicate cards
-      // Remove this block after running once
-      const { decks } = await migrateDecks(rawDecks as Deck[])
-
       set({
-        decks,
+        decks: decks as Deck[],
         taxonomy: taxonomy as Taxonomy,
         interestList: interestList as InterestList,
         config: config as Config,
