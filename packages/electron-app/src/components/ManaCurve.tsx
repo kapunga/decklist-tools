@@ -89,7 +89,15 @@ export function ManaCurve({ deck, scryfallCache }: ManaCurveProps) {
             <BarChart data={cmcData}>
               <XAxis dataKey="name" />
               <YAxis allowDecimals={false} />
-              <Tooltip />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: 'hsl(var(--popover))',
+                  borderColor: 'hsl(var(--border))',
+                  borderRadius: 'var(--radius)',
+                }}
+                labelStyle={{ color: 'hsl(var(--popover-foreground))' }}
+                itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
+              />
               <Bar dataKey="count" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -122,7 +130,15 @@ export function ManaCurve({ deck, scryfallCache }: ManaCurveProps) {
                     />
                   ))}
                 </Pie>
-                <Tooltip />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'hsl(var(--popover))',
+                    borderColor: 'hsl(var(--border))',
+                    borderRadius: 'var(--radius)',
+                  }}
+                  labelStyle={{ color: 'hsl(var(--popover-foreground))' }}
+                  itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
+                />
               </PieChart>
             </ResponsiveContainer>
             {/* Legend with mana pips */}
