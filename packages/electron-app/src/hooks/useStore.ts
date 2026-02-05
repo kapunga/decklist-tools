@@ -1,5 +1,6 @@
 import { create } from 'zustand'
-import type { Deck, Taxonomy, InterestList, Config, RoleDefinition, DeckCard } from '@/types'
+import type { Deck, Taxonomy, InterestList, Config, RoleDefinition } from '@/types'
+import { consolidateDuplicateCards } from '@mtg-deckbuilder/shared'
 import type { AppState } from '@/stores/types'
 import { createDeckSlice } from '@/stores/deckSlice'
 import { createCardSlice } from '@/stores/cardSlice'
@@ -11,39 +12,6 @@ import { createConfigSlice } from '@/stores/configSlice'
 import { createSelectionSlice } from '@/stores/selectionSlice'
 
 export type { AppView } from '@/stores/types'
-
-// TEMPORARY MIGRATION: Consolidate duplicate card entries
-// Remove this function after running once
-function consolidateDuplicateCards(cards: DeckCard[]): DeckCard[] {
-  const cardMap = new Map<string, DeckCard>()
-
-  for (const card of cards) {
-    const key = card.card.name.toLowerCase()
-    const existing = cardMap.get(key)
-
-    if (existing) {
-      // Merge: sum quantities, union roles, keep earlier addedAt
-      existing.quantity += card.quantity
-      existing.roles = [...new Set([...existing.roles, ...card.roles])]
-      if (new Date(card.addedAt) < new Date(existing.addedAt)) {
-        existing.addedAt = card.addedAt
-      }
-      // If either is pinned, keep it pinned
-      existing.isPinned = existing.isPinned || card.isPinned
-      // Merge notes if both have them
-      if (card.notes && existing.notes && card.notes !== existing.notes) {
-        existing.notes = `${existing.notes}\n${card.notes}`
-      } else if (card.notes && !existing.notes) {
-        existing.notes = card.notes
-      }
-    } else {
-      // Clone the card to avoid mutating the original
-      cardMap.set(key, { ...card, roles: [...card.roles] })
-    }
-  }
-
-  return Array.from(cardMap.values())
-}
 
 // TEMPORARY MIGRATION: Run once then remove
 async function migrateDecks(decks: Deck[]): Promise<{ migrated: boolean; decks: Deck[] }> {

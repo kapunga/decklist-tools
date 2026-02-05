@@ -1,4 +1,5 @@
 import type { DeckCard } from '@/types'
+import { findCardByName, findCardIndexByName } from '@mtg-deckbuilder/shared'
 import type { CardSlice, SliceCreator } from './types'
 
 export const createCardSlice: SliceCreator<CardSlice> = (_set, get) => ({
@@ -7,9 +8,7 @@ export const createCardSlice: SliceCreator<CardSlice> = (_set, get) => ({
     if (!deck) return
 
     const targetList = deck[target]
-    const existingIndex = targetList.findIndex(
-      c => c.card.name.toLowerCase() === card.card.name.toLowerCase()
-    )
+    const existingIndex = findCardIndexByName(targetList, card.card.name)
 
     let updatedList: DeckCard[]
     if (existingIndex >= 0) {
@@ -29,11 +28,12 @@ export const createCardSlice: SliceCreator<CardSlice> = (_set, get) => ({
     const deck = get().decks.find(d => d.id === deckId)
     if (!deck) return
 
+    const index = findCardIndexByName(deck[target], cardName)
+    if (index === -1) return
+
     await get().updateDeck({
       ...deck,
-      [target]: deck[target].filter(
-        c => c.card.name.toLowerCase() !== cardName.toLowerCase()
-      )
+      [target]: deck[target].filter((_, i) => i !== index)
     })
   },
 
@@ -41,12 +41,11 @@ export const createCardSlice: SliceCreator<CardSlice> = (_set, get) => ({
     const deck = get().decks.find(d => d.id === deckId)
     if (!deck) return
 
-    const updateList = (list: DeckCard[]): DeckCard[] =>
-      list.map(c =>
-        c.card.name.toLowerCase() === cardName.toLowerCase()
-          ? { ...c, ...updates }
-          : c
-      )
+    const updateList = (list: DeckCard[]): DeckCard[] => {
+      const index = findCardIndexByName(list, cardName)
+      if (index === -1) return list
+      return list.map((c, i) => i === index ? { ...c, ...updates } : c)
+    }
 
     await get().updateDeck({
       ...deck,
@@ -60,15 +59,11 @@ export const createCardSlice: SliceCreator<CardSlice> = (_set, get) => ({
     const deck = get().decks.find(d => d.id === deckId)
     if (!deck) return
 
-    const card = deck[from].find(
-      c => c.card.name.toLowerCase() === cardName.toLowerCase()
-    )
+    const card = findCardByName(deck[from], cardName)
     if (!card) return
 
     // Check if card already exists in target list
-    const existingIndex = deck[to].findIndex(
-      c => c.card.name.toLowerCase() === cardName.toLowerCase()
-    )
+    const existingIndex = findCardIndexByName(deck[to], cardName)
 
     let updatedToList
     if (existingIndex >= 0) {
@@ -86,11 +81,10 @@ export const createCardSlice: SliceCreator<CardSlice> = (_set, get) => ({
       updatedToList = [...deck[to], card]
     }
 
+    const fromIndex = findCardIndexByName(deck[from], cardName)
     await get().updateDeck({
       ...deck,
-      [from]: deck[from].filter(
-        c => c.card.name.toLowerCase() !== cardName.toLowerCase()
-      ),
+      [from]: deck[from].filter((_, i) => i !== fromIndex),
       [to]: updatedToList
     })
   },

@@ -59,16 +59,5 @@ export function createCardIdentifier(scryfallCard: ScryfallCard): CardIdentifier
   }
 }
 
-export function findCardInList<T extends { card: { name: string } }>(
-  list: T[],
-  name: string
-): T | undefined {
-  return list.find(c => c.card.name.toLowerCase() === name.toLowerCase())
-}
-
-export function findCardIndexInList<T extends { card: { name: string } }>(
-  list: T[],
-  name: string
-): number {
-  return list.findIndex(c => c.card.name.toLowerCase() === name.toLowerCase())
-}
+// Re-export from shared with legacy names for backwards compatibility
+export { findCardByName as findCardInList, findCardIndexByName as findCardIndexInList } from '@mtg-deckbuilder/shared'

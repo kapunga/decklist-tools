@@ -13,5 +13,8 @@ export * from './formats/index.js'
 // Filters
 export * from './filters/index.js'
 
+// Utilities
+export * from './utils/index.js'
+
 // Storage
 export { Storage, getStorageBasePath } from './storage/index.js'
