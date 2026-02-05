@@ -424,7 +424,7 @@ function CardRow({
       <span className="w-48 truncate font-medium flex-shrink-0">{card.card.name}</span>
 
       {/* Role section - pills with inline autocomplete */}
-      <div className="flex items-center gap-1 flex-wrap flex-1 min-w-0" onClick={e => e.stopPropagation()}>
+      <div className="flex items-center gap-1 flex-wrap w-64 flex-shrink-0" onClick={e => e.stopPropagation()}>
         {displayRoles.map(roleId => (
           <RolePill
             key={roleId}
