@@ -65,12 +65,33 @@ export const createCardSlice: SliceCreator<CardSlice> = (_set, get) => ({
     )
     if (!card) return
 
+    // Check if card already exists in target list
+    const existingIndex = deck[to].findIndex(
+      c => c.card.name.toLowerCase() === cardName.toLowerCase()
+    )
+
+    let updatedToList
+    if (existingIndex >= 0) {
+      // Merge with existing card
+      updatedToList = deck[to].map((c, i) =>
+        i === existingIndex
+          ? {
+              ...c,
+              quantity: c.quantity + card.quantity,
+              roles: [...new Set([...c.roles, ...card.roles])]
+            }
+          : c
+      )
+    } else {
+      updatedToList = [...deck[to], card]
+    }
+
     await get().updateDeck({
       ...deck,
       [from]: deck[from].filter(
         c => c.card.name.toLowerCase() !== cardName.toLowerCase()
       ),
-      [to]: [...deck[to], card]
+      [to]: updatedToList
     })
   },
 })
