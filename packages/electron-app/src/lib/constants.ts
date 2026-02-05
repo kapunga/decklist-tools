@@ -43,16 +43,36 @@ export const CARD_TYPE_SORT_ORDER: Record<string, number> = {
 }
 
 // Extract primary type from type line
+// For bimodal cards (Adventures, Omens, MDFCs with "//"), prioritize permanent types over spells
+// This ensures cards like "Land // Instant" categorize as Land, not Instant
 export function getPrimaryType(typeLine: string): string {
   const lower = typeLine.toLowerCase()
+
+  // These permanent types always have highest priority
   if (lower.includes('creature')) return 'Creature'
   if (lower.includes('planeswalker')) return 'Planeswalker'
   if (lower.includes('battle')) return 'Battle'
-  if (lower.includes('instant')) return 'Instant'
-  if (lower.includes('sorcery')) return 'Sorcery'
-  if (lower.includes('artifact')) return 'Artifact'
-  if (lower.includes('enchantment')) return 'Enchantment'
-  if (lower.includes('land')) return 'Land'
+
+  // For bimodal cards, prioritize remaining permanents over spells
+  const isBimodal = lower.includes('//')
+
+  if (isBimodal) {
+    // Check remaining permanent types before spell types
+    if (lower.includes('artifact')) return 'Artifact'
+    if (lower.includes('enchantment')) return 'Enchantment'
+    if (lower.includes('land')) return 'Land'
+    // Then spell types
+    if (lower.includes('instant')) return 'Instant'
+    if (lower.includes('sorcery')) return 'Sorcery'
+  } else {
+    // Original order for non-bimodal cards
+    if (lower.includes('instant')) return 'Instant'
+    if (lower.includes('sorcery')) return 'Sorcery'
+    if (lower.includes('artifact')) return 'Artifact'
+    if (lower.includes('enchantment')) return 'Enchantment'
+    if (lower.includes('land')) return 'Land'
+  }
+
   return 'Other'
 }
 
