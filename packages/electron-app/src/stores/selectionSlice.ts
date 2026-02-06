@@ -56,6 +56,7 @@ export const createSelectionSlice: SliceCreator<SelectionSlice> = (set, get) => 
       alternates: updateList(deck.alternates),
       sideboard: updateList(deck.sideboard)
     })
+    set({ selectedCards: new Set<string>() })
   },
 
   batchRemoveCards: async (deckId, cardNames, listType) => {
@@ -109,5 +110,6 @@ export const createSelectionSlice: SliceCreator<SelectionSlice> = (set, get) => 
       alternates: updateList(deck.alternates),
       sideboard: updateList(deck.sideboard)
     })
+    set({ selectedCards: new Set<string>() })
   },
 })
