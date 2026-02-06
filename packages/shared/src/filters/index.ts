@@ -44,12 +44,13 @@ export interface OwnershipFilter {
 export type CardFilter = CmcFilter | ColorFilter | CardTypeFilter | RoleFilter | OwnershipFilter
 
 // Filter groups determine which filter types are available
-export type FilterGroup = 'mana' | 'type' | 'role'
+export type FilterGroup = 'mana' | 'type' | 'role' | 'status'
 
 export const FILTER_GROUP_TYPES: Record<FilterGroup, CardFilter['type'][]> = {
   mana: ['cmc', 'color'],
   type: ['card-type'],
   role: ['role'],
+  status: ['ownership'],
 }
 
 // Get CMC for a card, using Scryfall data if available
