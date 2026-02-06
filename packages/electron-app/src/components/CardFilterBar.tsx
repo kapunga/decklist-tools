@@ -33,6 +33,13 @@ const FILTER_TYPE_LABELS: Record<CardFilter['type'], string> = {
   ownership: 'Ownership',
 }
 
+const OWNERSHIP_STATUS_LABELS: Record<string, string> = {
+  unknown: 'Unknown',
+  owned: 'Owned',
+  pulled: 'Pulled',
+  need_to_buy: 'Buylist',
+}
+
 const COLOR_ORDER = ['W', 'U', 'B', 'R', 'G', 'C']
 
 interface AvailableValues {
@@ -40,6 +47,7 @@ interface AvailableValues {
   colors: string[]
   cardTypes: string[]
   roleIds: string[]
+  ownershipStatuses: string[]
 }
 
 function computeAvailableValues(cards: EnrichedDeckCard[]): AvailableValues {
@@ -47,6 +55,7 @@ function computeAvailableValues(cards: EnrichedDeckCard[]): AvailableValues {
   const colorSet = new Set<string>()
   const typeSet = new Set<string>()
   const roleSet = new Set<string>()
+  const ownershipSet = new Set<string>()
 
   for (const { deckCard, scryfallCard } of cards) {
     const typeLine = scryfallCard?.type_line || deckCard.typeLine || ''
@@ -69,6 +78,8 @@ function computeAvailableValues(cards: EnrichedDeckCard[]): AvailableValues {
     typeSet.add(primaryType)
 
     for (const r of deckCard.roles) roleSet.add(r)
+
+    ownershipSet.add(deckCard.ownership)
   }
 
   const cmcBuckets = [...cmcSet].sort((a, b) => a - b)
@@ -76,8 +87,10 @@ function computeAvailableValues(cards: EnrichedDeckCard[]): AvailableValues {
   const typeOrder = ['Creature', 'Planeswalker', 'Battle', 'Instant', 'Sorcery', 'Artifact', 'Enchantment', 'Land', 'Other']
   const cardTypes = typeOrder.filter(t => typeSet.has(t))
   const roleIds = [...roleSet]
+  const ownershipOrder = ['unknown', 'owned', 'pulled', 'need_to_buy']
+  const ownershipStatuses = ownershipOrder.filter(s => ownershipSet.has(s))
 
-  return { cmcBuckets, colors, cardTypes, roleIds }
+  return { cmcBuckets, colors, cardTypes, roleIds, ownershipStatuses }
 }
 
 // Render a filter summary with inline mana pips for color/cmc filters
@@ -114,6 +127,12 @@ function FilterPillContent({
     case 'role': {
       const names = filter.values
         .map(id => allRoles.find(r => r.id === id)?.name ?? id)
+        .join(', ')
+      return <span>{label} {mode} {names}</span>
+    }
+    case 'ownership': {
+      const names = filter.values
+        .map(s => OWNERSHIP_STATUS_LABELS[s] ?? s)
         .join(', ')
       return <span>{label} {mode} {names}</span>
     }
@@ -341,6 +360,17 @@ export function CardFilterBar({ filters, onChange, allowedGroups, deck, enriched
                       {r.name}
                     </Button>
                   ))}
+
+                {editingType === 'ownership' && available.ownershipStatuses.map(s => (
+                  <Button
+                    key={s}
+                    variant={editingValues.includes(s) ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => toggleValue(s)}
+                  >
+                    {OWNERSHIP_STATUS_LABELS[s]}
+                  </Button>
+                ))}
               </div>
             </div>
           </div>

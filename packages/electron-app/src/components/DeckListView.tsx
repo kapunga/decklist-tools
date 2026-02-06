@@ -245,7 +245,7 @@ export function DeckListView({ deck, listType }: DeckListViewProps) {
         <CardFilterBar
           filters={filters}
           onChange={setFilters}
-          allowedGroups={['mana', 'type', 'role']}
+          allowedGroups={['mana', 'type', 'role', 'status']}
           deck={deck}
           enrichedCards={enriched}
         />
