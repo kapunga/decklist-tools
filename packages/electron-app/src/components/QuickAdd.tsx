@@ -13,6 +13,7 @@ interface QuickAddProps {
   format: DeckFormat
   colorIdentity?: string[]  // For commander format filtering
   customRoles?: RoleDefinition[]
+  activeTab: string
 }
 
 interface DropdownState {
@@ -27,7 +28,7 @@ const initialDropdownState: DropdownState = {
   isVisible: false
 }
 
-export function QuickAdd({ deckId, format, colorIdentity, customRoles }: QuickAddProps) {
+export function QuickAdd({ deckId, format, colorIdentity, customRoles, activeTab }: QuickAddProps) {
   const [inputValue, setInputValue] = useState('')
   const [dropdown, setDropdown] = useState<DropdownState>(initialDropdownState)
   const [isLoading, setIsLoading] = useState(false)
@@ -103,7 +104,7 @@ export function QuickAdd({ deckId, format, colorIdentity, customRoles }: QuickAd
   }, [])
 
   // Confirm adding the card from modal
-  const handleConfirmAdd = useCallback(async (quantity: number, roles: string[]) => {
+  const handleConfirmAdd = useCallback(async (quantity: number, roles: string[], destination: 'cards' | 'alternates' | 'sideboard') => {
     if (!pendingCard) return
 
     const deckCard: DeckCard = {
@@ -124,7 +125,7 @@ export function QuickAdd({ deckId, format, colorIdentity, customRoles }: QuickAd
       addedBy: 'user'
     }
 
-    await addCardToDeck(deckId, deckCard)
+    await addCardToDeck(deckId, deckCard, destination)
     setPendingCard(null)
     inputRef.current?.focus()
   }, [pendingCard, deckId, addCardToDeck])
@@ -250,6 +251,8 @@ export function QuickAdd({ deckId, format, colorIdentity, customRoles }: QuickAd
         colorIdentity={colorIdentity}
         customRoles={customRoles}
         initialQuantity={initialQuantity}
+        activeTab={activeTab}
+        hasSideboard={format.sideboardSize > 0}
       />
     </>
   )
