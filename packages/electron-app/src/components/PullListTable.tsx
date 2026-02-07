@@ -4,9 +4,16 @@ import type { PullListItem } from '@/hooks/usePullList'
 interface PullListTableProps {
   items: PullListItem[]
   deckId: string
+  focusedItemKey: string | null
+  onFocusItem: (item: PullListItem) => void
 }
 
-export function PullListTable({ items, deckId }: PullListTableProps) {
+// Helper to create a unique key for a pull list item
+function getItemKey(item: PullListItem): string {
+  return `${item.deckCardId}-${item.setCode}-${item.collectorNumber}`
+}
+
+export function PullListTable({ items, deckId, focusedItemKey, onFocusItem }: PullListTableProps) {
   if (items.length === 0) {
     return (
       <div className="text-sm text-muted-foreground text-center py-4">
@@ -29,13 +36,18 @@ export function PullListTable({ items, deckId }: PullListTableProps) {
         </tr>
       </thead>
       <tbody>
-        {items.map((item) => (
-          <PullListRow
-            key={`${item.deckCardId}-${item.setCode}-${item.collectorNumber}`}
-            item={item}
-            deckId={deckId}
-          />
-        ))}
+        {items.map((item) => {
+          const itemKey = getItemKey(item)
+          return (
+            <PullListRow
+              key={itemKey}
+              item={item}
+              deckId={deckId}
+              isFocused={focusedItemKey === itemKey}
+              onFocus={() => onFocusItem(item)}
+            />
+          )
+        })}
       </tbody>
     </table>
   )

@@ -1,7 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import os from 'os'
-import type { Deck, Taxonomy, InterestList, Config, RoleDefinition, SetCollectionFile, PullListConfig } from '../types/index.js'
+import type { Deck, DeckCard, Taxonomy, InterestList, Config, RoleDefinition, SetCollectionFile, PullListConfig, PulledPrinting } from '../types/index.js'
 import { DEFAULT_GLOBAL_ROLES } from '../constants/index.js'
 import { DEFAULT_PULL_LIST_CONFIG } from '../types/index.js'
 
@@ -80,13 +80,61 @@ export class Storage {
     }
   }
 
+  // Migrate legacy ownership: 'pulled' to use pulledPrintings
+  private migrateLegacyPulledCards(deck: Deck): boolean {
+    let migrated = false
+
+    const migrateCards = (cards: DeckCard[]) => {
+      for (const card of cards) {
+        // Check for legacy 'pulled' value (cast to handle old data)
+        if ((card.ownership as string) === 'pulled') {
+          // Convert to 'owned' and add pulledPrintings entry
+          card.ownership = 'owned'
+          card.pulledPrintings = card.pulledPrintings ?? []
+
+          // Add entry for the card's current printing if not already tracked
+          const existingEntry = card.pulledPrintings.find(
+            (p: PulledPrinting) => p.setCode.toLowerCase() === card.card.setCode.toLowerCase() &&
+                 p.collectorNumber === card.card.collectorNumber
+          )
+
+          if (!existingEntry) {
+            card.pulledPrintings.push({
+              setCode: card.card.setCode,
+              collectorNumber: card.card.collectorNumber,
+              quantity: card.quantity
+            })
+          }
+
+          migrated = true
+        }
+      }
+    }
+
+    migrateCards(deck.cards || [])
+    migrateCards(deck.alternates || [])
+    migrateCards(deck.sideboard || [])
+
+    return migrated
+  }
+
   // Decks
   listDecks(): Deck[] {
     try {
       const files = fs.readdirSync(this.decksDir).filter(f => f.endsWith('.json'))
-      return files
+      const decks = files
         .map(f => this.readJson<Deck>(path.join(this.decksDir, f)))
         .filter((d): d is Deck => d !== null)
+
+      // Run migration for any decks with legacy ownership: 'pulled'
+      for (const deck of decks) {
+        if (this.migrateLegacyPulledCards(deck)) {
+          console.log(`Migrated legacy pulled cards in deck: ${deck.name}`)
+          this.saveDeck(deck)
+        }
+      }
+
+      return decks
     } catch (error) {
       console.error('Error listing decks:', error)
       return []
@@ -94,10 +142,16 @@ export class Storage {
   }
 
   getDeck(id: string): Deck | null {
-    return this.readJson<Deck>(path.join(this.decksDir, `${id}.json`))
+    const deck = this.readJson<Deck>(path.join(this.decksDir, `${id}.json`))
+    if (deck && this.migrateLegacyPulledCards(deck)) {
+      console.log(`Migrated legacy pulled cards in deck: ${deck.name}`)
+      this.saveDeck(deck)
+    }
+    return deck
   }
 
   getDeckByName(name: string): Deck | null {
+    // listDecks already runs migration
     const decks = this.listDecks()
     return decks.find(d => d.name.toLowerCase() === name.toLowerCase()) || null
   }

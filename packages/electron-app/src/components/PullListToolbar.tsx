@@ -1,4 +1,4 @@
-import { Settings, RotateCcw, Eye, EyeOff } from 'lucide-react'
+import { Settings, RotateCcw, Eye, EyeOff, Mountain } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -15,6 +15,7 @@ interface PullListToolbarProps {
   deckId: string
   sortColumns: PullListSortKey[]
   showPulledSection: boolean
+  hideBasicLands: boolean
 }
 
 const SORT_OPTIONS: { key: PullListSortKey; label: string }[] = [
@@ -28,7 +29,8 @@ const SORT_OPTIONS: { key: PullListSortKey; label: string }[] = [
 export function PullListToolbar({
   deckId,
   sortColumns,
-  showPulledSection
+  showPulledSection,
+  hideBasicLands
 }: PullListToolbarProps) {
   const updatePullListConfig = useStore(state => state.updatePullListConfig)
   const resetPulledStatus = useStore(state => state.resetPulledStatus)
@@ -52,6 +54,10 @@ export function PullListToolbar({
 
   const handleTogglePulledSection = async () => {
     await updatePullListConfig({ showPulledSection: !showPulledSection })
+  }
+
+  const handleToggleBasicLands = async () => {
+    await updatePullListConfig({ hideBasicLands: !hideBasicLands })
   }
 
   const handleReset = async () => {
@@ -106,6 +112,15 @@ export function PullListToolbar({
               Show Pulled
             </>
           )}
+        </Button>
+
+        <Button
+          variant={hideBasicLands ? "outline" : "secondary"}
+          size="sm"
+          onClick={handleToggleBasicLands}
+        >
+          <Mountain className="h-4 w-4 mr-2" />
+          {hideBasicLands ? 'Show Basics' : 'Hide Basics'}
         </Button>
       </div>
 

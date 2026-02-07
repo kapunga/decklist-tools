@@ -1,5 +1,5 @@
 import type { Deck, DeckCard, SetCollectionFile, ScryfallCard, CollectionLevel } from '@mtg-deckbuilder/shared'
-import { getTotalPulledQuantity, COLLECTION_LEVEL_RARITIES } from '@mtg-deckbuilder/shared'
+import { getTotalPulledQuantity, COLLECTION_LEVEL_RARITIES, isBasicLand } from '@mtg-deckbuilder/shared'
 
 interface PullListItem {
   cardName: string
@@ -40,18 +40,23 @@ export function renderPullListView(
   deck: Deck,
   setCollection: SetCollectionFile,
   scryfallCache: Map<string, ScryfallCard>,
-  options?: { showPulled?: boolean }
+  options?: { showPulled?: boolean; hideBasicLands?: boolean }
 ): string {
   const lines: string[] = []
   const showPulled = options?.showPulled ?? true
+  const hideBasicLands = options?.hideBasicLands ?? true
 
   lines.push(`# ${deck.name} - Pull List`)
   lines.push('')
 
-  // Get confirmed cards that aren't already marked as pulled (including commanders)
+  // Get confirmed cards (including commanders), filtering basic lands if enabled
+  let mainCards = deck.cards.filter(c => c.inclusion === 'confirmed')
+  if (hideBasicLands) {
+    mainCards = mainCards.filter(c => !isBasicLand(c.card.name))
+  }
+
   const confirmedCards: DeckCard[] = [
-    // Exclude cards with legacy ownership === 'pulled' - they're already pulled
-    ...deck.cards.filter(c => c.inclusion === 'confirmed' && c.ownership !== 'pulled'),
+    ...mainCards,
     ...deck.commanders.map(cmd => ({
       id: `commander-${cmd.name}`,
       card: cmd,

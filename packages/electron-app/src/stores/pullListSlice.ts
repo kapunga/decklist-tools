@@ -1,5 +1,5 @@
 import type { PullListSlice, SliceCreator } from './types'
-import type { PullListConfig, DeckCard } from '@/types'
+import type { PullListConfig, DeckCard, PulledPrinting } from '@/types'
 
 export const createPullListSlice: SliceCreator<PullListSlice> = (set, get) => ({
   loadPullListConfig: async () => {
@@ -13,7 +13,8 @@ export const createPullListSlice: SliceCreator<PullListSlice> = (set, get) => ({
       version: 1,
       updatedAt: '',
       sortColumns: ['rarity', 'type', 'manaCost', 'name'] as const,
-      showPulledSection: true
+      showPulledSection: true,
+      hideBasicLands: true
     }
 
     const updated: PullListConfig = {
@@ -29,6 +30,44 @@ export const createPullListSlice: SliceCreator<PullListSlice> = (set, get) => ({
     const state = get()
     const deck = state.decks.find(d => d.id === deckId)
     if (!deck) return
+
+    // Check if this is a commander
+    const isCommander = deck.commanders.some(
+      c => c.name.toLowerCase() === cardName.toLowerCase()
+    )
+
+    if (isCommander) {
+      // Handle commander pulling separately
+      const commandersPulled = [...(deck.commandersPulled ?? [])]
+      const existingIndex = commandersPulled.findIndex(
+        p => p.setCode.toLowerCase() === setCode.toLowerCase() &&
+             p.collectorNumber === collectorNumber
+      )
+
+      if (existingIndex >= 0) {
+        commandersPulled[existingIndex] = {
+          ...commandersPulled[existingIndex],
+          quantity: commandersPulled[existingIndex].quantity + quantity
+        }
+      } else {
+        commandersPulled.push({
+          setCode: setCode.toLowerCase(),
+          collectorNumber,
+          quantity
+        })
+      }
+
+      const updatedDeck = {
+        ...deck,
+        commandersPulled
+      }
+
+      await window.electronAPI.saveDeck(updatedDeck)
+      set({
+        decks: state.decks.map(d => d.id === deckId ? updatedDeck : d)
+      })
+      return
+    }
 
     // Find card in all lists
     const findAndUpdateCard = (cards: DeckCard[]): DeckCard[] => {
@@ -56,9 +95,11 @@ export const createPullListSlice: SliceCreator<PullListSlice> = (set, get) => ({
           })
         }
 
+        // When pulling a card, also mark it as owned (removes from buylist)
         return {
           ...card,
-          pulledPrintings
+          pulledPrintings,
+          ownership: 'owned' as const
         }
       })
     }
@@ -80,6 +121,38 @@ export const createPullListSlice: SliceCreator<PullListSlice> = (set, get) => ({
     const state = get()
     const deck = state.decks.find(d => d.id === deckId)
     if (!deck) return
+
+    // Check if this is a commander
+    const isCommander = deck.commanders.some(
+      c => c.name.toLowerCase() === cardName.toLowerCase()
+    )
+
+    if (isCommander) {
+      // Handle commander unpulling separately
+      const commandersPulled = (deck.commandersPulled ?? [])
+        .map((p: PulledPrinting) => {
+          if (p.setCode.toLowerCase() === setCode.toLowerCase() &&
+              p.collectorNumber === collectorNumber) {
+            return {
+              ...p,
+              quantity: Math.max(0, p.quantity - quantity)
+            }
+          }
+          return p
+        })
+        .filter((p: PulledPrinting) => p.quantity > 0)
+
+      const updatedDeck = {
+        ...deck,
+        commandersPulled: commandersPulled.length > 0 ? commandersPulled : undefined
+      }
+
+      await window.electronAPI.saveDeck(updatedDeck)
+      set({
+        decks: state.decks.map(d => d.id === deckId ? updatedDeck : d)
+      })
+      return
+    }
 
     const findAndUpdateCard = (cards: DeckCard[]): DeckCard[] => {
       return cards.map(card => {
@@ -136,7 +209,8 @@ export const createPullListSlice: SliceCreator<PullListSlice> = (set, get) => ({
       ...deck,
       cards: clearPulled(deck.cards),
       alternates: clearPulled(deck.alternates),
-      sideboard: clearPulled(deck.sideboard)
+      sideboard: clearPulled(deck.sideboard),
+      commandersPulled: undefined  // Also clear commander pulled status
     }
 
     await window.electronAPI.saveDeck(updatedDeck)

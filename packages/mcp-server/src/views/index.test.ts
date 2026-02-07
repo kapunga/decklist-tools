@@ -14,10 +14,10 @@ function render(viewType: string, deckOverrides?: Parameters<typeof makeDeck>[0]
 }
 
 describe('getViewDescriptions', () => {
-  it('returns 3 views', () => {
+  it('returns 4 views', () => {
     const views = getViewDescriptions()
-    expect(views).toHaveLength(3)
-    expect(views.map(v => v.id)).toEqual(['full', 'curve', 'notes'])
+    expect(views).toHaveLength(4)
+    expect(views.map(v => v.id)).toEqual(['full', 'curve', 'notes', 'pull-list'])
   })
 })
 
@@ -67,9 +67,12 @@ describe('full view', () => {
     expect(result).toContain('[PINNED]')
   })
 
-  it('shows pulled badge', () => {
+  it('shows pulled badge when fully pulled via pulledPrintings', () => {
     const deck = makeDeck()
-    deck.cards.push(makeDeckCard('Island', { ownership: 'pulled' }))
+    deck.cards.push(makeDeckCard('Island', {
+      quantity: 1,
+      pulledPrintings: [{ setCode: 'lea', collectorNumber: '1', quantity: 1 }]
+    }))
     const result = renderDeckView(deck, 'full', globalRoles)
     expect(result).toContain('[PULLED]')
   })
@@ -139,7 +142,10 @@ describe('full view with sort_by=set', () => {
 
   it('shows checkbox status', () => {
     const deck = makeDeck()
-    deck.cards.push(makeDeckCard('Owned Card', { ownership: 'pulled' }))
+    deck.cards.push(makeDeckCard('Owned Card', {
+      quantity: 1,
+      pulledPrintings: [{ setCode: 'lea', collectorNumber: '1', quantity: 1 }]
+    }))
     deck.cards.push(makeDeckCard('Need Card', { ownership: 'need_to_buy' }))
     const result = renderDeckView(deck, 'full', globalRoles, 'set')
     expect(result).toContain('[x]')

@@ -1,5 +1,5 @@
 import type { DeckCard, RoleDefinition, ScryfallCard } from '@mtg-deckbuilder/shared'
-import { getPrimaryType, getRoleById } from '@mtg-deckbuilder/shared'
+import { getPrimaryType, getRoleById, isCardFullyPulled } from '@mtg-deckbuilder/shared'
 
 export type DetailLevel = 'summary' | 'compact' | 'full'
 
@@ -50,7 +50,7 @@ export function formatCardLine(
 
   if (card.ownership === 'need_to_buy') {
     headerParts.push('[NEED TO BUY]')
-  } else if (card.ownership === 'pulled') {
+  } else if (isCardFullyPulled(card)) {
     headerParts.push('[PULLED]')
   }
 

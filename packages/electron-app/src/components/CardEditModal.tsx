@@ -33,7 +33,6 @@ interface CardEditModalProps {
 const ownershipOptions: { value: OwnershipStatus; label: string }[] = [
   { value: 'unknown', label: 'Unknown' },
   { value: 'owned', label: 'Owned' },
-  { value: 'pulled', label: 'Pulled' },
   { value: 'need_to_buy', label: 'Need to Buy' },
 ]
 

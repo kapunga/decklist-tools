@@ -3,7 +3,7 @@ import { useQueries } from '@tanstack/react-query'
 import { useStore } from '@/hooks/useStore'
 import { getCardPrintings } from '@/lib/scryfall'
 import type { Deck, DeckCard, ScryfallCard, PullListSortKey, CollectionLevel } from '@/types'
-import { getTotalPulledQuantity, COLLECTION_LEVEL_RARITIES } from '@/types'
+import { getTotalPulledQuantity, COLLECTION_LEVEL_RARITIES, isBasicLand } from '@/types'
 
 export interface PullListItem {
   deckCardId: string
@@ -118,6 +118,11 @@ function compareByKey(
   }
 }
 
+// Get mana cost, handling dual-faced cards
+function getManaCost(card: ScryfallCard): string {
+  return card.mana_cost || card.card_faces?.[0]?.mana_cost || ''
+}
+
 // Multi-column sort comparator
 function createComparator(sortColumns: PullListSortKey[]) {
   return (a: PullListItem, b: PullListItem): number => {
@@ -133,31 +138,48 @@ export function usePullList(deck: Deck | null) {
   const setCollection = useStore(state => state.setCollection)
   const pullListConfig = useStore(state => state.pullListConfig)
 
-  // Get all confirmed cards that aren't already marked as pulled (including commanders)
+  const hideBasicLands = pullListConfig?.hideBasicLands ?? true
+
+  // Get all confirmed cards (including commanders)
   const confirmedCards = useMemo(() => {
     if (!deck) return []
 
-    // Exclude cards with legacy ownership === 'pulled' - they're already pulled
-    const cards = deck.cards.filter(c =>
-      c.inclusion === 'confirmed' && c.ownership !== 'pulled'
-    )
+    let cards = deck.cards.filter(c => c.inclusion === 'confirmed')
+
+    // Filter out basic lands if option is enabled
+    if (hideBasicLands) {
+      cards = cards.filter(c => !isBasicLand(c.card.name))
+    }
 
     // Add commanders as pseudo-cards for pulling
-    const commanderCards: DeckCard[] = deck.commanders.map(cmd => ({
-      id: `commander-${cmd.name}`,
-      card: cmd,
-      quantity: 1,
-      inclusion: 'confirmed' as const,
-      ownership: 'unknown' as const,
-      roles: ['commander'],
-      typeLine: '',
-      isPinned: true,
-      addedAt: deck.createdAt,
-      addedBy: 'user' as const
-    }))
+    // Include commandersPulled data so pull status is tracked correctly
+    const commanderCards: DeckCard[] = deck.commanders.map(cmd => {
+      // Find pulled printings for this commander from commandersPulled
+      // Since commandersPulled tracks by set/collector, we include all pulled printings
+      // that match any printing of this commander (for now, just use the deck's commandersPulled)
+      const pulledPrintings = deck.commandersPulled?.filter(p =>
+        // Match by set+collector number to the commander's card
+        p.setCode.toLowerCase() === cmd.setCode.toLowerCase() &&
+        p.collectorNumber === cmd.collectorNumber
+      ) ?? []
+
+      return {
+        id: `commander-${cmd.name}`,
+        card: cmd,
+        quantity: 1,
+        inclusion: 'confirmed' as const,
+        ownership: 'unknown' as const,
+        roles: ['commander'],
+        typeLine: '',
+        isPinned: true,
+        addedAt: deck.createdAt,
+        addedBy: 'user' as const,
+        pulledPrintings: pulledPrintings.length > 0 ? pulledPrintings : undefined
+      }
+    })
 
     return [...cards, ...commanderCards]
-  }, [deck])
+  }, [deck, hideBasicLands])
 
   // Get unique card names that need printings fetched
   const cardNames = useMemo(() => {
@@ -229,7 +251,7 @@ export function usePullList(deck: Deck | null) {
             collectorNumber: originalPrinting.collector_number,
             rarity: originalPrinting.rarity,
             typeLine: originalPrinting.type_line,
-            manaCost: originalPrinting.mana_cost || '',
+            manaCost: getManaCost(originalPrinting),
             cmc: originalPrinting.cmc,
             quantityNeeded: deckCard.quantity,
             quantityPulledThisPrint: 0,
@@ -260,7 +282,7 @@ export function usePullList(deck: Deck | null) {
           collectorNumber: printing.collector_number,
           rarity: printing.rarity,
           typeLine: printing.type_line,
-          manaCost: printing.mana_cost || '',
+          manaCost: getManaCost(printing),
           cmc: printing.cmc,
           quantityNeeded: deckCard.quantity,
           quantityPulledThisPrint: pulledFromThisPrint,
@@ -351,6 +373,7 @@ export function usePullList(deck: Deck | null) {
     totalRemainingCards,
     isLoading,
     showPulledSection,
+    hideBasicLands,
     sortColumns
   }
 }

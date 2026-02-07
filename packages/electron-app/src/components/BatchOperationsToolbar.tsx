@@ -90,10 +90,6 @@ export function BatchOperationsToolbar({
               <Check className="w-4 h-4 mr-2 text-green-500" />
               Owned
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleSetOwnership('pulled')}>
-              <Check className="w-4 h-4 mr-2 text-blue-500" />
-              Pulled
-            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => handleSetOwnership('need_to_buy')}>
               <DollarSign className="w-4 h-4 mr-2 text-yellow-500" />
               Need to Buy

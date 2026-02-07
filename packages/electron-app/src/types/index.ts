@@ -41,7 +41,7 @@ export interface CardIdentifier {
 
 // Enums
 export type InclusionStatus = 'confirmed' | 'considering' | 'cut'
-export type OwnershipStatus = 'unknown' | 'owned' | 'pulled' | 'need_to_buy'
+export type OwnershipStatus = 'unknown' | 'owned' | 'need_to_buy'
 export type AddedBy = 'user' | 'import'
 export type FormatType = 'commander' | 'standard' | 'modern' | 'kitchen_table'
 export type NoteType = 'combo' | 'synergy' | 'theme' | 'strategy' | 'general'
@@ -137,6 +137,50 @@ export function getTotalPulledQuantity(card: DeckCard): number {
   return (card.pulledPrintings ?? []).reduce((sum, p) => sum + p.quantity, 0)
 }
 
+// Check if a card is fully pulled based on pulledPrintings
+export function isCardFullyPulled(card: DeckCard): boolean {
+  return getTotalPulledQuantity(card) >= card.quantity
+}
+
+// Migrate a deck's cards from legacy ownership: 'pulled' to use pulledPrintings
+// Returns true if any migrations were performed
+export function migrateLegacyPulledCards(deck: Deck): boolean {
+  let migrated = false
+
+  const migrateCards = (cards: DeckCard[]) => {
+    for (const card of cards) {
+      // Check for legacy 'pulled' value (cast to handle old data)
+      if ((card.ownership as string) === 'pulled') {
+        // Convert to 'owned' and add pulledPrintings entry
+        card.ownership = 'owned'
+        card.pulledPrintings = card.pulledPrintings ?? []
+
+        // Add entry for the card's current printing if not already tracked
+        const existingEntry = card.pulledPrintings.find(
+          p => p.setCode.toLowerCase() === card.card.setCode.toLowerCase() &&
+               p.collectorNumber === card.card.collectorNumber
+        )
+
+        if (!existingEntry) {
+          card.pulledPrintings.push({
+            setCode: card.card.setCode,
+            collectorNumber: card.card.collectorNumber,
+            quantity: card.quantity
+          })
+        }
+
+        migrated = true
+      }
+    }
+  }
+
+  migrateCards(deck.cards)
+  migrateCards(deck.alternates)
+  migrateCards(deck.sideboard)
+
+  return migrated
+}
+
 // Generate a unique ID for deck cards
 export function generateDeckCardId(): string {
   return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
@@ -200,6 +244,7 @@ export interface Deck {
   alternates: DeckCard[]
   sideboard: DeckCard[]
   commanders: CardIdentifier[]    // Commander(s) for Commander format
+  commandersPulled?: PulledPrinting[]  // Track pulled status for commanders
   customRoles: RoleDefinition[]   // Deck-specific custom roles
   notes: DeckNote[]
   artCardScryfallId?: string      // Scryfall ID for background art
@@ -356,11 +401,13 @@ export interface PullListConfig {
   updatedAt: string
   sortColumns: PullListSortKey[]  // Order determines sort priority
   showPulledSection: boolean      // Show "Already Pulled" section
+  hideBasicLands: boolean         // Hide basic lands from pull list (default: true)
 }
 
 export const DEFAULT_PULL_LIST_CONFIG: PullListConfig = {
   version: 1,
   updatedAt: '',
   sortColumns: ['rarity', 'type', 'manaCost', 'name'],
-  showPulledSection: true
+  showPulledSection: true,
+  hideBasicLands: true
 }

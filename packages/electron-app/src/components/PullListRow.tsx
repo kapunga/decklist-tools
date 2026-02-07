@@ -11,6 +11,8 @@ import { cn } from '@/lib/utils'
 interface PullListRowProps {
   item: PullListItem
   deckId: string
+  isFocused: boolean
+  onFocus: () => void
 }
 
 const RARITY_COLORS: Record<string, string> = {
@@ -35,7 +37,7 @@ function getPrimaryType(typeLine: string): string {
   return 'Other'
 }
 
-export function PullListRow({ item, deckId }: PullListRowProps) {
+export function PullListRow({ item, deckId, isFocused, onFocus }: PullListRowProps) {
   const pullCards = useStore(state => state.pullCards)
   const unpullCards = useStore(state => state.unpullCards)
   const [showModal, setShowModal] = useState(false)
@@ -61,10 +63,14 @@ export function PullListRow({ item, deckId }: PullListRowProps) {
 
   return (
     <>
-      <tr className={cn(
-        'border-b last:border-b-0 hover:bg-muted/50',
-        isFullyPulled && 'opacity-50'
-      )}>
+      <tr
+        className={cn(
+          'border-b last:border-b-0 cursor-pointer transition-colors',
+          isFocused ? 'bg-accent' : 'hover:bg-muted/50',
+          isFullyPulled && 'opacity-50'
+        )}
+        onClick={onFocus}
+      >
         {/* Collector Number */}
         <td className="px-3 py-2 text-sm text-muted-foreground w-16">
           #{item.collectorNumber}
