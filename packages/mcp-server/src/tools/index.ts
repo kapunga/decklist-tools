@@ -6,6 +6,7 @@ import { listRoles, manageRole } from './role-tools.js'
 import { setCommanders } from './commander-tools.js'
 import { getInterestList, manageInterestList } from './interest-tools.js'
 import { listDeckNotes, manageDeckNote } from './note-tools.js'
+import { getCollectionFilter } from './collection-tools.js'
 import type {
   ManageDeckArgs,
   ManageCardArgs,
@@ -53,6 +54,8 @@ export async function handleToolCall(
       return manageDeckNote(storage, args as unknown as ManageDeckNoteArgs)
     case 'search_decks_for_card':
       return searchDecksForCard(storage, args.card_name as string)
+    case 'get_collection_filter':
+      return getCollectionFilter(storage)
     default:
       throw new Error(`Unknown tool: ${name}`)
   }

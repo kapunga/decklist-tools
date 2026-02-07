@@ -306,5 +306,15 @@ export function getToolDefinitions(): Tool[] {
         required: ['card_name'],
       },
     },
+
+    // Collection Filter
+    {
+      name: 'get_collection_filter',
+      description: 'Generate a Scryfall filter string based on the user\'s set collection. The filter includes sets at their configured collection levels, with appropriate rarity filters. Use this to narrow search results to cards the user likely owns.',
+      inputSchema: {
+        type: 'object',
+        properties: {},
+      },
+    },
   ]
 }

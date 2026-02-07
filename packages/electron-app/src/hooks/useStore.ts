@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Deck, Taxonomy, InterestList, Config, RoleDefinition } from '@/types'
+import type { Deck, Taxonomy, InterestList, Config, RoleDefinition, SetCollectionFile } from '@/types'
 import type { AppState } from '@/stores/types'
 import { createDeckSlice } from '@/stores/deckSlice'
 import { createCardSlice } from '@/stores/cardSlice'
@@ -9,6 +9,7 @@ import { createNoteSlice } from '@/stores/noteSlice'
 import { createInterestListSlice } from '@/stores/interestListSlice'
 import { createConfigSlice } from '@/stores/configSlice'
 import { createSelectionSlice } from '@/stores/selectionSlice'
+import { createSetCollectionSlice } from '@/stores/setCollectionSlice'
 
 export type { AppView } from '@/stores/types'
 
@@ -19,6 +20,7 @@ export const useStore = create<AppState>((set, get) => ({
   interestList: null,
   config: null,
   globalRoles: [],
+  setCollection: null,
   selectedDeckId: null,
   currentView: 'decks',
   isLoading: false,
@@ -32,12 +34,13 @@ export const useStore = create<AppState>((set, get) => ({
       set({ isLoading: true, error: null })
     }
     try {
-      const [decks, taxonomy, interestList, config, globalRoles] = await Promise.all([
+      const [decks, taxonomy, interestList, config, globalRoles, setCollection] = await Promise.all([
         window.electronAPI.listDecks(),
         window.electronAPI.getTaxonomy(),
         window.electronAPI.getInterestList(),
         window.electronAPI.getConfig(),
-        window.electronAPI.getGlobalRoles()
+        window.electronAPI.getGlobalRoles(),
+        window.electronAPI.getSetCollection()
       ])
       set({
         decks: decks as Deck[],
@@ -45,6 +48,7 @@ export const useStore = create<AppState>((set, get) => ({
         interestList: interestList as InterestList,
         config: config as Config,
         globalRoles: globalRoles as RoleDefinition[],
+        setCollection: setCollection as SetCollectionFile,
         isLoading: false,
         hasInitialized: true
       })
@@ -80,6 +84,7 @@ export const useStore = create<AppState>((set, get) => ({
   ...createInterestListSlice(set, get),
   ...createConfigSlice(set, get),
   ...createSelectionSlice(set, get),
+  ...createSetCollectionSlice(set, get),
 }))
 
 // Selector hooks

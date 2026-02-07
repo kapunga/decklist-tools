@@ -1,7 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import os from 'os'
-import type { Deck, Taxonomy, InterestList, Config, RoleDefinition } from '../types/index.js'
+import type { Deck, Taxonomy, InterestList, Config, RoleDefinition, SetCollectionFile } from '../types/index.js'
 import { DEFAULT_GLOBAL_ROLES } from '../constants/index.js'
 
 // Global roles file schema
@@ -182,6 +182,23 @@ export class Storage {
       roles
     }
     this.writeJson(this.globalRolesPath, data)
+  }
+
+  // Set Collection
+  getSetCollection(): SetCollectionFile {
+    const collection = this.readJson<SetCollectionFile>(path.join(this.baseDir, 'set-collection.json'))
+    if (collection) return collection
+
+    return {
+      version: 1,
+      updatedAt: new Date().toISOString(),
+      sets: []
+    }
+  }
+
+  saveSetCollection(collection: SetCollectionFile): void {
+    collection.updatedAt = new Date().toISOString()
+    this.writeJson(path.join(this.baseDir, 'set-collection.json'), collection)
   }
 
   // Scryfall cache

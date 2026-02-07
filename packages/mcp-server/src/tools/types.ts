@@ -90,3 +90,7 @@ export interface ManageDeckNoteArgs {
   role_id?: string
   remove_role?: boolean
 }
+
+export interface GetCollectionFilterArgs {
+  // No arguments required
+}

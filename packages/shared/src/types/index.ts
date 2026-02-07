@@ -1,3 +1,36 @@
+// Set Collection Types
+export type CollectionLevel = 1 | 2 | 3 | 4
+
+export interface SetCollectionEntry {
+  setCode: string           // e.g., "mkm"
+  setName: string           // e.g., "Murders at Karlov Manor"
+  collectionLevel: CollectionLevel
+  releasedAt?: string       // e.g., "2024-02-09"
+  addedAt: string
+}
+
+export interface SetCollectionFile {
+  version: number
+  updatedAt: string
+  sets: SetCollectionEntry[]
+}
+
+// Collection level descriptions for UI
+export const COLLECTION_LEVEL_DESCRIPTIONS: Record<CollectionLevel, string> = {
+  1: 'Few packs - commons and uncommons',
+  2: 'Moderate - commons, uncommons, and rares',
+  3: 'Good collection - all except mythics',
+  4: 'Complete - all cards'
+}
+
+// Rarities included at each collection level for filter generation
+export const COLLECTION_LEVEL_RARITIES: Record<CollectionLevel, string[]> = {
+  1: ['common', 'uncommon'],
+  2: ['common', 'uncommon', 'rare'],
+  3: ['common', 'uncommon', 'rare', 'mythic'],
+  4: ['common', 'uncommon', 'rare', 'mythic']  // All rarities, but no filter applied
+}
+
 // Card Identifier
 export interface CardIdentifier {
   scryfallId?: string

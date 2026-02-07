@@ -234,6 +234,24 @@ export class Storage {
     this.writeJson(this.globalRolesPath, data)
   }
 
+  // Set Collection
+  getSetCollection(): unknown {
+    const collection = this.readJson(path.join(this.baseDir, 'set-collection.json'))
+    if (collection) return collection
+
+    return {
+      version: 1,
+      updatedAt: new Date().toISOString(),
+      sets: []
+    }
+  }
+
+  saveSetCollection(collection: unknown): void {
+    const c = collection as { updatedAt?: string }
+    c.updatedAt = new Date().toISOString()
+    this.writeJson(path.join(this.baseDir, 'set-collection.json'), collection)
+  }
+
   // File watching
   watchForChanges(callback: (event: string, filename: string | null) => void): void {
     if (this.watcher) {
