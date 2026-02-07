@@ -168,6 +168,7 @@ export function DeckDetail() {
           format={deck.format}
           colorIdentity={deck.colorIdentity}
           customRoles={deck.customRoles}
+          activeTab={activeTab}
         />
       </div>
 

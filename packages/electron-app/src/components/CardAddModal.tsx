@@ -10,6 +10,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { CardImage } from '@/components/CardImage'
 import type { ScryfallCard, DeckFormat, RoleDefinition } from '@/types'
 import { getCardLimit } from '@/types'
@@ -17,16 +19,26 @@ import { getAllRoles } from '@/lib/constants'
 import { isLegalInFormat, matchesColorIdentity } from '@/lib/scryfall'
 import { useGlobalRoles } from '@/hooks/useStore'
 
+type CardDestination = 'cards' | 'alternates' | 'sideboard'
+
 interface CardAddModalProps {
   card: ScryfallCard | null
   isOpen: boolean
   onClose: () => void
-  onConfirm: (quantity: number, roles: string[]) => void
+  onConfirm: (quantity: number, roles: string[], destination: CardDestination) => void
   format: DeckFormat
   colorIdentity?: string[]  // Commander's color identity for filtering
   customRoles?: RoleDefinition[]
   initialQuantity?: number
   initialRoles?: string[]
+  activeTab: string
+  hasSideboard: boolean
+}
+
+function getDefaultDestination(activeTab: string): CardDestination {
+  if (activeTab === 'alternates') return 'alternates'
+  if (activeTab === 'sideboard') return 'sideboard'
+  return 'cards'
 }
 
 export function CardAddModal({
@@ -38,10 +50,13 @@ export function CardAddModal({
   colorIdentity,
   customRoles = [],
   initialQuantity = 1,
-  initialRoles
+  initialRoles,
+  activeTab,
+  hasSideboard
 }: CardAddModalProps) {
   const [quantity, setQuantity] = useState(initialQuantity)
   const [selectedRoles, setSelectedRoles] = useState<string[]>(initialRoles || [])
+  const [destination, setDestination] = useState<CardDestination>(getDefaultDestination(activeTab))
   const globalRoles = useGlobalRoles()
 
   // Reset state when card changes
@@ -49,8 +64,9 @@ export function CardAddModal({
     if (card) {
       setQuantity(initialQuantity)
       setSelectedRoles(initialRoles || inferRolesFromCard(card))
+      setDestination(getDefaultDestination(activeTab))
     }
-  }, [card, initialQuantity, initialRoles])
+  }, [card, initialQuantity, initialRoles, activeTab])
 
   // Calculate max quantity for this card
   const maxQuantity = card ? getCardLimit(card.name, format) : 1
@@ -71,8 +87,8 @@ export function CardAddModal({
 
   const handleConfirm = useCallback(() => {
     if (!card) return
-    onConfirm(quantity, selectedRoles)
-  }, [card, quantity, selectedRoles, onConfirm])
+    onConfirm(quantity, selectedRoles, destination)
+  }, [card, quantity, selectedRoles, destination, onConfirm])
 
   const handleClose = useCallback(() => {
     onClose()
@@ -102,6 +118,31 @@ export function CardAddModal({
                 {legalityWarning}
               </div>
             )}
+
+            {/* Destination */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Add to</label>
+              <RadioGroup
+                value={destination}
+                onValueChange={(value) => setDestination(value as CardDestination)}
+                className="flex gap-4"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="cards" id="dest-mainboard" />
+                  <Label htmlFor="dest-mainboard" className="text-sm cursor-pointer">Mainboard</Label>
+                </div>
+                {hasSideboard && (
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="sideboard" id="dest-sideboard" />
+                    <Label htmlFor="dest-sideboard" className="text-sm cursor-pointer">Sideboard</Label>
+                  </div>
+                )}
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="alternates" id="dest-maybeboard" />
+                  <Label htmlFor="dest-maybeboard" className="text-sm cursor-pointer">Maybeboard</Label>
+                </div>
+              </RadioGroup>
+            </div>
 
             {/* Quantity */}
             <div className="space-y-2">
