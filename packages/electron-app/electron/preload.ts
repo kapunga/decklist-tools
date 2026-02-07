@@ -44,7 +44,23 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Claude Desktop integration
   getClaudeConnectionStatus: () => ipcRenderer.invoke('claude:status'),
   connectClaudeDesktop: () => ipcRenderer.invoke('claude:connect'),
-  disconnectClaudeDesktop: () => ipcRenderer.invoke('claude:disconnect')
+  disconnectClaudeDesktop: () => ipcRenderer.invoke('claude:disconnect'),
+
+  // Cache management
+  getCacheStats: () => ipcRenderer.invoke('cache:stats'),
+  clearJsonCache: () => ipcRenderer.invoke('cache:clear-json'),
+  clearImageCache: () => ipcRenderer.invoke('cache:clear-images'),
+  clearAllCache: () => ipcRenderer.invoke('cache:clear-all'),
+  rebuildCacheIndex: () => ipcRenderer.invoke('cache:rebuild-index'),
+  preCacheDeck: (deckId: string, includeImages: boolean) => ipcRenderer.invoke('cache:pre-cache-deck', deckId, includeImages),
+  getCachedImagePath: (scryfallId: string, face?: string) => ipcRenderer.invoke('cache:get-image-path', scryfallId, face),
+  loadAllCardsToCache: (includeImages: boolean) => ipcRenderer.invoke('cache:load-all', includeImages),
+  onCacheProgress: (callback: (progress: CacheLoadProgress) => void) => {
+    const handler = (_: unknown, progress: CacheLoadProgress) => callback(progress)
+    ipcRenderer.on('cache:load-progress', handler)
+    return () => ipcRenderer.removeListener('cache:load-progress', handler)
+  },
+  cancelCacheLoad: () => ipcRenderer.invoke('cache:load-cancel')
 })
 
 // Type definitions for the exposed API
@@ -52,6 +68,39 @@ export interface ClaudeConnectionStatus {
   connected: boolean
   configPath: string
   mcpServerPath?: string
+}
+
+export interface CacheStats {
+  jsonCacheCount: number
+  jsonCacheSizeBytes: number
+  imageCacheCount: number
+  imageCacheSizeBytes: number
+  totalSizeBytes: number
+  oldestEntry?: string
+  newestEntry?: string
+}
+
+export interface CacheIndex {
+  version: number
+  updatedAt: string
+  byName: Record<string, string>
+  bySetCollector: Record<string, string>
+  entries: Record<string, unknown>
+}
+
+export interface PreCacheResult {
+  success: boolean
+  cachedCards: number
+  cachedImages: number
+  errors: string[]
+}
+
+export interface CacheLoadProgress {
+  phase: 'calculating' | 'loading' | 'complete' | 'cancelled' | 'error'
+  totalCards: number
+  cachedCards: number
+  currentCard?: string
+  errors: string[]
 }
 
 export interface ElectronAPI {
@@ -76,6 +125,16 @@ export interface ElectronAPI {
   getClaudeConnectionStatus: () => Promise<ClaudeConnectionStatus>
   connectClaudeDesktop: () => Promise<{ success: boolean; error?: string }>
   disconnectClaudeDesktop: () => Promise<{ success: boolean; error?: string }>
+  getCacheStats: () => Promise<CacheStats>
+  clearJsonCache: () => Promise<void>
+  clearImageCache: () => Promise<void>
+  clearAllCache: () => Promise<void>
+  rebuildCacheIndex: () => Promise<CacheIndex>
+  preCacheDeck: (deckId: string, includeImages: boolean) => Promise<PreCacheResult>
+  getCachedImagePath: (scryfallId: string, face?: string) => Promise<string | null>
+  loadAllCardsToCache: (includeImages: boolean) => Promise<void>
+  onCacheProgress: (callback: (progress: CacheLoadProgress) => void) => () => void
+  cancelCacheLoad: () => Promise<void>
 }
 
 declare global {

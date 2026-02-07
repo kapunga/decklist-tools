@@ -1,6 +1,9 @@
 import type { ScryfallCard } from '../types/index.js'
 import { SCRYFALL } from '../constants/index.js'
 
+// Export cached client
+export { CachedScryfallClient } from './cachedClient.js'
+
 const BASE_URL = 'https://api.scryfall.com'
 const USER_AGENT = 'MTGDeckbuilder/1.0'
 

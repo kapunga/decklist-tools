@@ -1,3 +1,4 @@
+import { useState, useCallback } from 'react'
 import { cn } from '@/lib/utils'
 
 interface ManaCostProps {
@@ -6,15 +7,22 @@ interface ManaCostProps {
   className?: string
 }
 
-// Mapping from mana symbols to Scryfall SVG URLs
-// Format: https://svgs.scryfall.io/card-symbols/{SYMBOL}.svg
-const getSymbolUrl = (symbol: string): string => {
-  // Normalize the symbol (remove braces, handle special cases)
-  const normalized = symbol
+// Normalize a mana symbol for URL use
+const normalizeSymbol = (symbol: string): string => {
+  return symbol
     .replace(/[{}]/g, '')
     .replace(/\//g, '') // {W/U} -> WU
     .toUpperCase()
-  return `https://svgs.scryfall.io/card-symbols/${normalized}.svg`
+}
+
+// Get the local URL for a mana symbol (bundled with app)
+const getLocalSymbolUrl = (symbol: string): string => {
+  return `/mana-symbols/${normalizeSymbol(symbol)}.svg`
+}
+
+// Get the Scryfall CDN URL for a mana symbol (fallback)
+const getScryfallSymbolUrl = (symbol: string): string => {
+  return `https://svgs.scryfall.io/card-symbols/${normalizeSymbol(symbol)}.svg`
 }
 
 // Parse mana cost string into individual symbols
@@ -49,20 +57,17 @@ export function ManaCost({ cost, size = 'md', className }: ManaCostProps) {
   return (
     <span className={cn('inline-flex items-center gap-0.5', className)}>
       {symbols.map((symbol, index) => (
-        <img
+        <ManaSymbol
           key={`${symbol}-${index}`}
-          src={getSymbolUrl(symbol)}
-          alt={`{${symbol}}`}
-          title={`{${symbol}}`}
-          className={cn(sizeClasses[size], 'inline-block')}
-          loading="lazy"
+          symbol={symbol}
+          size={size}
         />
       ))}
     </span>
   )
 }
 
-// For rendering a single mana symbol
+// For rendering a single mana symbol with fallback to Scryfall CDN
 export function ManaSymbol({
   symbol,
   size = 'md',
@@ -72,13 +77,27 @@ export function ManaSymbol({
   size?: 'sm' | 'md' | 'lg'
   className?: string
 }) {
+  const [useFallback, setUseFallback] = useState(false)
+
+  const handleError = useCallback(() => {
+    // If local symbol fails, try Scryfall CDN
+    if (!useFallback) {
+      setUseFallback(true)
+    }
+  }, [useFallback])
+
+  const src = useFallback
+    ? getScryfallSymbolUrl(symbol)
+    : getLocalSymbolUrl(symbol)
+
   return (
     <img
-      src={getSymbolUrl(symbol)}
+      src={src}
       alt={`{${symbol}}`}
       title={`{${symbol}}`}
       className={cn(sizeClasses[size], 'inline-block', className)}
       loading="lazy"
+      onError={handleError}
     />
   )
 }

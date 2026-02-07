@@ -1,9 +1,9 @@
 import fs from 'fs'
 import path from 'path'
 import os from 'os'
-import type { Deck, DeckCard, Taxonomy, InterestList, Config, RoleDefinition, SetCollectionFile, PullListConfig, PulledPrinting } from '../types/index.js'
+import type { Deck, DeckCard, Taxonomy, InterestList, Config, RoleDefinition, SetCollectionFile, PullListConfig, PulledPrinting, CacheIndex, CacheEntryMeta, CacheStats, ScryfallCard } from '../types/index.js'
 import { DEFAULT_GLOBAL_ROLES } from '../constants/index.js'
-import { DEFAULT_PULL_LIST_CONFIG } from '../types/index.js'
+import { DEFAULT_PULL_LIST_CONFIG, isDoubleFacedCard } from '../types/index.js'
 
 // Global roles file schema
 interface GlobalRolesFile {
@@ -26,18 +26,23 @@ export class Storage {
   private baseDir: string
   private decksDir: string
   private cacheDir: string
+  private imageCacheDir: string
+  private cacheIndexPath: string
   private globalRolesPath: string
 
   constructor(basePath?: string) {
     this.baseDir = basePath || getStorageBasePath()
     this.decksDir = path.join(this.baseDir, 'decks')
     this.cacheDir = path.join(this.baseDir, 'cache', 'scryfall')
+    this.imageCacheDir = path.join(this.baseDir, 'cache', 'images')
+    this.cacheIndexPath = path.join(this.cacheDir, 'index.json')
     this.globalRolesPath = path.join(this.baseDir, 'global-roles.json')
 
     // Ensure directories exist
     this.ensureDir(this.baseDir)
     this.ensureDir(this.decksDir)
     this.ensureDir(this.cacheDir)
+    this.ensureDir(this.imageCacheDir)
 
     // Initialize global roles file if it doesn't exist
     this.ensureGlobalRolesFile()
@@ -290,5 +295,286 @@ export class Storage {
 
   getDecksPath(): string {
     return this.decksDir
+  }
+
+  // Cache Index Methods
+  getCacheIndex(): CacheIndex | null {
+    return this.readJson<CacheIndex>(this.cacheIndexPath)
+  }
+
+  saveCacheIndex(index: CacheIndex): void {
+    index.updatedAt = new Date().toISOString()
+    this.writeJson(this.cacheIndexPath, index)
+  }
+
+  private createEmptyCacheIndex(): CacheIndex {
+    return {
+      version: 1,
+      updatedAt: new Date().toISOString(),
+      byName: {},
+      bySetCollector: {},
+      entries: {}
+    }
+  }
+
+  getCachedCardByName(name: string): ScryfallCard | null {
+    const index = this.getCacheIndex()
+    if (!index) return null
+
+    const scryfallId = index.byName[name.toLowerCase()]
+    if (!scryfallId) return null
+
+    return this.getCachedCard(scryfallId) as ScryfallCard | null
+  }
+
+  getCachedCardBySetCollector(setCode: string, collectorNumber: string): ScryfallCard | null {
+    const index = this.getCacheIndex()
+    if (!index) return null
+
+    const key = `${setCode.toLowerCase()}|${collectorNumber}`
+    const scryfallId = index.bySetCollector[key]
+    if (!scryfallId) return null
+
+    return this.getCachedCard(scryfallId) as ScryfallCard | null
+  }
+
+  cacheCardWithIndex(card: ScryfallCard): void {
+    // Cache the card JSON
+    this.cacheCard(card.id, card)
+
+    // Update the index
+    let index = this.getCacheIndex()
+    if (!index) {
+      index = this.createEmptyCacheIndex()
+    }
+
+    // Get JSON file size
+    const cachePath = path.join(this.cacheDir, `${card.id}.json`)
+    let jsonSize = 0
+    try {
+      const stats = fs.statSync(cachePath)
+      jsonSize = stats.size
+    } catch {
+      // File might not exist yet
+    }
+
+    // Create entry metadata
+    const entry: CacheEntryMeta = {
+      scryfallId: card.id,
+      name: card.name,
+      setCode: card.set,
+      collectorNumber: card.collector_number,
+      cachedAt: new Date().toISOString(),
+      jsonSize,
+      hasImage: this.hasImageCached(card.id),
+      imageSize: this.getImageSize(card.id),
+      imageFaces: isDoubleFacedCard(card) ? 2 : 1
+    }
+
+    // Update index entries
+    index.byName[card.name.toLowerCase()] = card.id
+    index.bySetCollector[`${card.set.toLowerCase()}|${card.collector_number}`] = card.id
+    index.entries[card.id] = entry
+
+    this.saveCacheIndex(index)
+  }
+
+  rebuildCacheIndex(): CacheIndex {
+    const index = this.createEmptyCacheIndex()
+
+    try {
+      const files = fs.readdirSync(this.cacheDir).filter(f => f.endsWith('.json') && f !== 'index.json')
+
+      for (const file of files) {
+        const scryfallId = file.replace('.json', '')
+        const card = this.getCachedCard(scryfallId) as ScryfallCard | null
+
+        if (card) {
+          const cachePath = path.join(this.cacheDir, file)
+          const stats = fs.statSync(cachePath)
+
+          const entry: CacheEntryMeta = {
+            scryfallId: card.id,
+            name: card.name,
+            setCode: card.set,
+            collectorNumber: card.collector_number,
+            cachedAt: stats.mtime.toISOString(),
+            jsonSize: stats.size,
+            hasImage: this.hasImageCached(card.id),
+            imageSize: this.getImageSize(card.id),
+            imageFaces: isDoubleFacedCard(card) ? 2 : 1
+          }
+
+          index.byName[card.name.toLowerCase()] = card.id
+          index.bySetCollector[`${card.set.toLowerCase()}|${card.collector_number}`] = card.id
+          index.entries[card.id] = entry
+        }
+      }
+    } catch (error) {
+      console.error('Error rebuilding cache index:', error)
+    }
+
+    this.saveCacheIndex(index)
+    return index
+  }
+
+  getCacheStats(): CacheStats {
+    let jsonCacheCount = 0
+    let jsonCacheSizeBytes = 0
+    let imageCacheCount = 0
+    let imageCacheSizeBytes = 0
+    let oldestEntry: string | undefined
+    let newestEntry: string | undefined
+
+    // Count JSON cache files
+    try {
+      const jsonFiles = fs.readdirSync(this.cacheDir).filter(f => f.endsWith('.json') && f !== 'index.json')
+      jsonCacheCount = jsonFiles.length
+
+      for (const file of jsonFiles) {
+        const filePath = path.join(this.cacheDir, file)
+        const stats = fs.statSync(filePath)
+        jsonCacheSizeBytes += stats.size
+
+        const mtime = stats.mtime.toISOString()
+        if (!oldestEntry || mtime < oldestEntry) oldestEntry = mtime
+        if (!newestEntry || mtime > newestEntry) newestEntry = mtime
+      }
+    } catch {
+      // Directory might not exist
+    }
+
+    // Count image cache files
+    try {
+      const imageFiles = fs.readdirSync(this.imageCacheDir).filter(f => f.endsWith('.jpg'))
+      imageCacheCount = imageFiles.length
+
+      for (const file of imageFiles) {
+        const filePath = path.join(this.imageCacheDir, file)
+        const stats = fs.statSync(filePath)
+        imageCacheSizeBytes += stats.size
+      }
+    } catch {
+      // Directory might not exist
+    }
+
+    return {
+      jsonCacheCount,
+      jsonCacheSizeBytes,
+      imageCacheCount,
+      imageCacheSizeBytes,
+      totalSizeBytes: jsonCacheSizeBytes + imageCacheSizeBytes,
+      oldestEntry,
+      newestEntry
+    }
+  }
+
+  clearJsonCache(): void {
+    try {
+      const files = fs.readdirSync(this.cacheDir)
+      for (const file of files) {
+        fs.unlinkSync(path.join(this.cacheDir, file))
+      }
+    } catch (error) {
+      console.error('Error clearing JSON cache:', error)
+    }
+  }
+
+  clearImageCache(): void {
+    try {
+      const files = fs.readdirSync(this.imageCacheDir)
+      for (const file of files) {
+        fs.unlinkSync(path.join(this.imageCacheDir, file))
+      }
+    } catch (error) {
+      console.error('Error clearing image cache:', error)
+    }
+  }
+
+  clearAllCache(): void {
+    this.clearJsonCache()
+    this.clearImageCache()
+  }
+
+  // Image Cache Methods
+  getImageCacheDir(): string {
+    return this.imageCacheDir
+  }
+
+  getCachedImagePath(scryfallId: string, face?: 'front' | 'back'): string | null {
+    let filename: string
+    if (face === 'back') {
+      filename = `${scryfallId}_back.jpg`
+    } else if (face === 'front') {
+      filename = `${scryfallId}_front.jpg`
+    } else {
+      filename = `${scryfallId}.jpg`
+    }
+
+    const imagePath = path.join(this.imageCacheDir, filename)
+    if (fs.existsSync(imagePath)) {
+      return imagePath
+    }
+
+    // For single-faced cards, also check without suffix
+    if (!face) {
+      const frontPath = path.join(this.imageCacheDir, `${scryfallId}_front.jpg`)
+      if (fs.existsSync(frontPath)) {
+        return frontPath
+      }
+    }
+
+    return null
+  }
+
+  cacheImage(scryfallId: string, data: Buffer, face?: 'front' | 'back'): void {
+    let filename: string
+    if (face === 'back') {
+      filename = `${scryfallId}_back.jpg`
+    } else if (face === 'front') {
+      filename = `${scryfallId}_front.jpg`
+    } else {
+      filename = `${scryfallId}.jpg`
+    }
+
+    const imagePath = path.join(this.imageCacheDir, filename)
+    fs.writeFileSync(imagePath, data)
+
+    // Update cache index if it exists
+    const index = this.getCacheIndex()
+    if (index && index.entries[scryfallId]) {
+      index.entries[scryfallId].hasImage = true
+      index.entries[scryfallId].imageSize = this.getImageSize(scryfallId)
+      this.saveCacheIndex(index)
+    }
+  }
+
+  hasImageCached(scryfallId: string): boolean {
+    return this.getCachedImagePath(scryfallId) !== null ||
+           this.getCachedImagePath(scryfallId, 'front') !== null
+  }
+
+  private getImageSize(scryfallId: string): number | undefined {
+    let totalSize = 0
+
+    // Check for single image
+    const singlePath = path.join(this.imageCacheDir, `${scryfallId}.jpg`)
+    if (fs.existsSync(singlePath)) {
+      totalSize += fs.statSync(singlePath).size
+    }
+
+    // Check for front face
+    const frontPath = path.join(this.imageCacheDir, `${scryfallId}_front.jpg`)
+    if (fs.existsSync(frontPath)) {
+      totalSize += fs.statSync(frontPath).size
+    }
+
+    // Check for back face
+    const backPath = path.join(this.imageCacheDir, `${scryfallId}_back.jpg`)
+    if (fs.existsSync(backPath)) {
+      totalSize += fs.statSync(backPath).size
+    }
+
+    return totalSize > 0 ? totalSize : undefined
   }
 }

@@ -1,9 +1,15 @@
 import { useState, useEffect, useCallback } from 'react'
-import { ArrowLeft, Check, AlertTriangle, Settings, Crown } from 'lucide-react'
+import { ArrowLeft, Check, AlertTriangle, Settings, Crown, Download, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { useStore, useSelectedDeck } from '@/hooks/useStore'
 import { DeckListView } from '@/components/DeckListView'
 import { QuickAdd } from '@/components/QuickAdd'
@@ -26,6 +32,8 @@ export function DeckDetail() {
   const [editedName, setEditedName] = useState('')
   const [activeTab, setActiveTab] = useState('cards')
   const [showRoleModal, setShowRoleModal] = useState(false)
+  const [isCaching, setIsCaching] = useState(false)
+  const [cacheResult, setCacheResult] = useState<{ success: boolean; cachedCards: number; cachedImages: number; errors: string[] } | null>(null)
 
   const handleTabChange = useCallback((value: string) => {
     setActiveTab(value)
@@ -37,6 +45,26 @@ export function DeckDetail() {
       await updateDeck({ ...deck, customRoles })
     }
   }, [deck, updateDeck])
+
+  const handlePreCache = useCallback(async (includeImages: boolean) => {
+    if (!deck) return
+    setIsCaching(true)
+    setCacheResult(null)
+    try {
+      const result = await window.electronAPI.preCacheDeck(deck.id, includeImages)
+      setCacheResult(result)
+    } catch (error) {
+      console.error('Error pre-caching deck:', error)
+      setCacheResult({
+        success: false,
+        cachedCards: 0,
+        cachedImages: 0,
+        errors: [error instanceof Error ? error.message : 'Unknown error']
+      })
+    } finally {
+      setIsCaching(false)
+    }
+  }, [deck])
 
   useEffect(() => {
     if (deck) {
@@ -65,6 +93,22 @@ export function DeckDetail() {
 
   return (
     <div className="h-full flex flex-col">
+      {/* Cache result notification */}
+      {cacheResult && (
+        <div className={`px-4 py-2 text-sm flex items-center justify-between ${cacheResult.success ? 'bg-green-500/10 text-green-700' : 'bg-yellow-500/10 text-yellow-700'}`}>
+          <span>
+            {cacheResult.success
+              ? `Cached ${cacheResult.cachedCards} cards${cacheResult.cachedImages > 0 ? ` and ${cacheResult.cachedImages} images` : ''}`
+              : `Cached with ${cacheResult.errors.length} errors`}
+          </span>
+          <button
+            onClick={() => setCacheResult(null)}
+            className="text-xs hover:underline"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
       {/* Header */}
       <div className="border-b p-4 flex-shrink-0">
         <div className="flex items-center gap-4 mb-4">
@@ -119,6 +163,26 @@ export function DeckDetail() {
           )}
 
           <div className="ml-auto flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" disabled={isCaching}>
+                  {isCaching ? (
+                    <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                  ) : (
+                    <Download className="w-4 h-4 mr-1" />
+                  )}
+                  {isCaching ? 'Caching...' : 'Cache'}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => handlePreCache(false)}>
+                  Cache Card Data Only
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handlePreCache(true)}>
+                  Cache Data + Images
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button variant="outline" size="sm" onClick={() => setShowRoleModal(true)}>
               <Settings className="w-4 h-4 mr-1" />
               Roles

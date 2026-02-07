@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, ipcMain, protocol, session } from 'electron'
 import path from 'path'
 import fs from 'fs'
 import os from 'os'
@@ -49,6 +49,18 @@ function getMcpServerPath(): string {
 let mainWindow: BrowserWindow | null = null
 let storage: Storage | null = null
 
+// Register custom protocol for serving cached images
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: 'cached-image',
+    privileges: {
+      secure: true,
+      supportFetchAPI: true,
+      stream: true
+    }
+  }
+])
+
 const createWindow = () => {
   mainWindow = new BrowserWindow({
     width: 1400,
@@ -56,7 +68,8 @@ const createWindow = () => {
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      sandbox: true
     },
     titleBarStyle: 'hiddenInset',
     trafficLightPosition: { x: 15, y: 15 }
@@ -76,6 +89,71 @@ const createWindow = () => {
 
 app.whenReady().then(() => {
   storage = new Storage()
+
+  // Set Content Security Policy (production only - Vite dev server needs more permissive settings)
+  if (app.isPackaged) {
+    session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+      callback({
+        responseHeaders: {
+          ...details.responseHeaders,
+          'Content-Security-Policy': [
+            [
+              "default-src 'self'",
+              "script-src 'self'",
+              "style-src 'self' 'unsafe-inline'", // Needed for Tailwind/CSS-in-JS
+              "img-src 'self' https://cards.scryfall.io https://svgs.scryfall.io https://api.scryfall.com cached-image: data:",
+              "connect-src 'self' https://api.scryfall.com",
+              "font-src 'self'",
+              "object-src 'none'",
+              "base-uri 'self'",
+              "form-action 'self'",
+              "frame-ancestors 'none'"
+            ].join('; ')
+          ]
+        }
+      })
+    })
+  }
+
+  // Register protocol handler for cached images
+  // URL format: cached-image://cache/{scryfallId}[_{face}].jpg
+  protocol.handle('cached-image', (request) => {
+    // Parse the URL - format is cached-image://cache/filename.jpg
+    // pathname will be /filename.jpg
+    const url = new URL(request.url)
+    const filename = decodeURIComponent(url.pathname.slice(1)) // Remove leading /
+
+    if (!storage) {
+      return new Response('Storage not initialized', { status: 500 })
+    }
+
+    if (!filename || filename.includes('..')) {
+      return new Response('Invalid filename', { status: 400 })
+    }
+
+    const imagePath = path.join(storage.getImageCacheDir(), filename)
+
+    // Security check: ensure the path is within the cache directory
+    const normalizedPath = path.normalize(imagePath)
+    const cacheDir = storage.getImageCacheDir()
+    if (!normalizedPath.startsWith(cacheDir)) {
+      return new Response('Access denied', { status: 403 })
+    }
+
+    if (!fs.existsSync(imagePath)) {
+      return new Response('Image not found', { status: 404 })
+    }
+
+    // Read the file and return as Response with proper content type
+    const imageBuffer = fs.readFileSync(imagePath)
+    return new Response(imageBuffer, {
+      headers: {
+        'Content-Type': 'image/jpeg',
+        'Content-Length': String(imageBuffer.length)
+      }
+    })
+  })
+
   setupIpcHandlers()
   createWindow()
 
@@ -225,5 +303,45 @@ function setupIpcHandlers() {
         error: error instanceof Error ? error.message : 'Unknown error'
       }
     }
+  })
+
+  // Cache management
+  ipcMain.handle('cache:stats', async () => {
+    return storage!.getCacheStats()
+  })
+
+  ipcMain.handle('cache:clear-json', async () => {
+    storage!.clearJsonCache()
+  })
+
+  ipcMain.handle('cache:clear-images', async () => {
+    storage!.clearImageCache()
+  })
+
+  ipcMain.handle('cache:clear-all', async () => {
+    storage!.clearAllCache()
+  })
+
+  ipcMain.handle('cache:rebuild-index', async () => {
+    return storage!.rebuildCacheIndex()
+  })
+
+  ipcMain.handle('cache:pre-cache-deck', async (_, deckId: string, includeImages: boolean) => {
+    return storage!.preCacheDeck(deckId, includeImages)
+  })
+
+  ipcMain.handle('cache:get-image-path', async (_, scryfallId: string, face?: string) => {
+    return storage!.getCachedImagePath(scryfallId, face as 'front' | 'back' | undefined)
+  })
+
+  ipcMain.handle('cache:load-all', async (_, includeImages: boolean) => {
+    if (!mainWindow) return
+    await storage!.loadAllCardsToCache(includeImages, (progress) => {
+      mainWindow?.webContents.send('cache:load-progress', progress)
+    })
+  })
+
+  ipcMain.handle('cache:load-cancel', async () => {
+    storage!.cancelCacheLoad()
   })
 }

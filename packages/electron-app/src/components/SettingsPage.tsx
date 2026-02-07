@@ -22,11 +22,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useStore, useGlobalRoles } from '@/hooks/useStore'
 import { ROLE_COLOR_PALETTE } from '@/lib/constants'
 import { CreateRoleDialog } from '@/components/CreateRoleDialog'
 import { RoleFormFields } from '@/components/RoleFormFields'
 import { SetCollectionQuickAdd } from '@/components/SetCollectionQuickAdd'
+import { CacheSettingsSection } from '@/components/CacheSettingsSection'
 import { getAllSets, type ScryfallSet } from '@/lib/scryfall'
 import type { RoleDefinition, SetCollectionEntry, CollectionLevel } from '@/types'
 
@@ -274,10 +276,10 @@ export function SettingsPage() {
   }, [decks])
 
   return (
-    <div className="h-full overflow-auto">
-      <div className="p-6 max-w-3xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center gap-4 mb-8">
+    <div className="h-full flex flex-col overflow-hidden">
+      {/* Header */}
+      <div className="p-6 pb-0 flex-shrink-0">
+        <div className="flex items-center gap-4 mb-6">
           <Button
             variant="ghost"
             size="sm"
@@ -289,242 +291,270 @@ export function SettingsPage() {
           </Button>
           <h1 className="text-2xl font-bold">Settings</h1>
         </div>
-
-        {/* Claude Desktop Integration Section */}
-        <section className="mb-8">
-          <h2 className="text-lg font-semibold mb-4">Claude Desktop Integration</h2>
-          <div className="p-4 rounded-lg border bg-card">
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-3">
-                {claudeConnected ? (
-                  <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
-                    <PlugZap className="w-5 h-5 text-green-500" />
-                  </div>
-                ) : (
-                  <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-                    <Plug className="w-5 h-5 text-muted-foreground" />
-                  </div>
-                )}
-                <div>
-                  <div className="font-medium">
-                    {claudeConnected ? 'Connected to Claude Desktop' : 'Not Connected'}
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    {claudeConnected
-                      ? 'Claude can help you manage your decks through conversation'
-                      : 'Connect to use AI-powered deck building features'}
-                  </p>
-                </div>
-              </div>
-              <Button
-                variant={claudeConnected ? 'outline' : 'default'}
-                onClick={claudeConnected ? handleDisconnectClaude : handleConnectClaude}
-                disabled={claudeLoading}
-                className="gap-2"
-              >
-                {claudeLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    {claudeConnected ? 'Disconnecting...' : 'Connecting...'}
-                  </>
-                ) : claudeConnected ? (
-                  'Disconnect'
-                ) : (
-                  'Connect to Claude'
-                )}
-              </Button>
-            </div>
-            {claudeError && (
-              <div className="mt-3 p-3 rounded-md bg-destructive/10 text-destructive text-sm">
-                {claudeError}
-              </div>
-            )}
-            {claudeConnected && (
-              <div className="mt-4 pt-4 border-t">
-                <p className="text-sm text-muted-foreground mb-2">
-                  Open Claude Desktop to start managing your decks with AI assistance.
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Note: You may need to restart Claude Desktop for changes to take effect.
-                </p>
-              </div>
-            )}
-          </div>
-        </section>
-
-        {/* Set Collection Section */}
-        <section className="mb-8">
-          <h2 className="text-lg font-semibold mb-4">Set Collection</h2>
-
-          <p className="text-sm text-muted-foreground mb-4">
-            Track which MTG sets you own cards from. Collection levels determine which card rarities are included in Scryfall filters.
-          </p>
-
-          {/* Inline add bar */}
-          <div className="mb-4">
-            <SetCollectionQuickAdd
-              onAdd={handleAddSet}
-              existingSetCodes={setCollection?.sets.map(s => s.setCode.toLowerCase()) ?? []}
-            />
-          </div>
-
-          {/* Set table */}
-          {groupedSets.length > 0 ? (
-            <div className="border rounded-lg overflow-hidden max-h-80 overflow-y-auto">
-              <table className="w-full text-sm table-fixed">
-                <thead className="bg-muted sticky top-0">
-                  <tr className="text-left text-muted-foreground">
-                    <th className="px-3 py-2 font-medium w-14">Code</th>
-                    <th className="px-3 py-2 font-medium w-14">Year</th>
-                    <th className="px-3 py-2 font-medium">Set Name</th>
-                    <th className="px-3 py-2 font-medium w-28">Level</th>
-                    <th className="px-2 py-2 w-10"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {groupedSets.map((item) =>
-                    item.type === 'header' ? (
-                      <tr key={`header-${item.label}`} className="bg-muted/30">
-                        <td colSpan={5} className="px-3 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                          {item.label}
-                        </td>
-                      </tr>
-                    ) : (
-                      <tr key={item.entry.setCode} className="hover:bg-muted/20 border-t border-border/50">
-                        <td className="px-3 py-1.5 uppercase text-muted-foreground font-mono text-xs">
-                          {item.entry.setCode}
-                        </td>
-                        <td className="px-3 py-1.5 text-muted-foreground">
-                          {(() => {
-                            const released = item.entry.releasedAt || setInfo.releaseYears.get(item.entry.setCode.toLowerCase())
-                            return released ? new Date(released).getFullYear() : '—'
-                          })()}
-                        </td>
-                        <td className="px-3 py-1.5 truncate" title={item.entry.setName}>
-                          {item.entry.setName}
-                        </td>
-                        <td className="px-3 py-1.5">
-                          <Select
-                            value={String(item.entry.collectionLevel)}
-                            onValueChange={(value) => handleInlineLevelChange(item.entry.setCode, Number(value) as CollectionLevel)}
-                          >
-                            <SelectTrigger className="h-7 w-24 text-xs">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {([1, 2, 3, 4] as CollectionLevel[]).map((level) => (
-                                <SelectItem key={level} value={String(level)}>
-                                  Level {level}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </td>
-                        <td className="px-2 py-1.5">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                            onClick={() => {
-                              setSetToDelete(item.entry)
-                              setShowDeleteSetDialog(true)
-                            }}
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
-                        </td>
-                      </tr>
-                    )
-                  )}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="text-center py-6 text-sm text-muted-foreground border rounded-lg">
-              No sets in your collection yet. Search above to add sets.
-            </div>
-          )}
-        </section>
-
-        {/* Global Roles Section */}
-        <section>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold">Global Roles</h2>
-            <Button
-              onClick={() => {
-                resetForm()
-                setShowAddDialog(true)
-              }}
-              size="sm"
-              className="gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              Add Role
-            </Button>
-          </div>
-
-          <p className="text-sm text-muted-foreground mb-4">
-            Global roles are available across all decks. Hover for details, click to edit.
-          </p>
-
-          <TooltipProvider delayDuration={300}>
-            <div className="flex flex-wrap gap-2">
-              {globalRoles.map(role => {
-                const { cardCount, deckCount } = getRoleUsage(role.id)
-                return (
-                  <Tooltip key={role.id}>
-                    <TooltipTrigger asChild>
-                      <button
-                        onClick={() => openEditDialog(role)}
-                        className="group flex items-center gap-1.5 px-2.5 py-1 rounded-full border bg-card hover:bg-accent transition-colors text-sm"
-                      >
-                        <div
-                          className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                          style={{ backgroundColor: role.color || '#888' }}
-                        />
-                        <span className="font-medium">{role.name}</span>
-                        {deckCount > 0 && (
-                          <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
-                            <Layers className="w-3 h-3" />
-                            {deckCount}
-                          </span>
-                        )}
-                        <Trash2
-                          className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-destructive transition-opacity ml-0.5"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            openDeleteDialog(role)
-                          }}
-                        />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="max-w-xs">
-                      <div className="space-y-1">
-                        {role.description && (
-                          <p className="text-sm">{role.description}</p>
-                        )}
-                        {cardCount > 0 ? (
-                          <p className="text-xs text-muted-foreground">
-                            Used by {cardCount} card{cardCount !== 1 ? 's' : ''} in {deckCount} deck{deckCount !== 1 ? 's' : ''}
-                          </p>
-                        ) : (
-                          <p className="text-xs text-muted-foreground">Not used yet</p>
-                        )}
-                      </div>
-                    </TooltipContent>
-                  </Tooltip>
-                )
-              })}
-            </div>
-          </TooltipProvider>
-
-          {globalRoles.length === 0 && (
-            <div className="text-center py-8 text-muted-foreground">
-              No global roles defined. Add some roles to get started.
-            </div>
-          )}
-        </section>
       </div>
+
+      {/* Tabs */}
+      <Tabs defaultValue="collection" className="flex-1 flex flex-col overflow-hidden px-6">
+        <TabsList className="w-fit mb-6">
+          <TabsTrigger value="collection">Collection</TabsTrigger>
+          <TabsTrigger value="integration">Agent Integration</TabsTrigger>
+          <TabsTrigger value="system">System</TabsTrigger>
+        </TabsList>
+
+        {/* Collection Tab */}
+        <TabsContent value="collection" className="flex-1 overflow-auto m-0 pb-6">
+          <div className="max-w-3xl space-y-8">
+            {/* Set Collection Section */}
+            <section>
+              <h2 className="text-lg font-semibold mb-4">Set Collection</h2>
+
+              <p className="text-sm text-muted-foreground mb-4">
+                Track which MTG sets you own cards from. Collection levels determine which card rarities are included in Scryfall filters.
+              </p>
+
+              {/* Inline add bar */}
+              <div className="mb-4">
+                <SetCollectionQuickAdd
+                  onAdd={handleAddSet}
+                  existingSetCodes={setCollection?.sets.map(s => s.setCode.toLowerCase()) ?? []}
+                />
+              </div>
+
+              {/* Set table */}
+              {groupedSets.length > 0 ? (
+                <div className="border rounded-lg overflow-hidden max-h-80 overflow-y-auto">
+                  <table className="w-full text-sm table-fixed">
+                    <thead className="bg-muted sticky top-0">
+                      <tr className="text-left text-muted-foreground">
+                        <th className="px-3 py-2 font-medium w-14">Code</th>
+                        <th className="px-3 py-2 font-medium w-14">Year</th>
+                        <th className="px-3 py-2 font-medium">Set Name</th>
+                        <th className="px-3 py-2 font-medium w-28">Level</th>
+                        <th className="px-2 py-2 w-10"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {groupedSets.map((item) =>
+                        item.type === 'header' ? (
+                          <tr key={`header-${item.label}`} className="bg-muted/30">
+                            <td colSpan={5} className="px-3 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                              {item.label}
+                            </td>
+                          </tr>
+                        ) : (
+                          <tr key={item.entry.setCode} className="hover:bg-muted/20 border-t border-border/50">
+                            <td className="px-3 py-1.5 uppercase text-muted-foreground font-mono text-xs">
+                              {item.entry.setCode}
+                            </td>
+                            <td className="px-3 py-1.5 text-muted-foreground">
+                              {(() => {
+                                const released = item.entry.releasedAt || setInfo.releaseYears.get(item.entry.setCode.toLowerCase())
+                                return released ? new Date(released).getFullYear() : '—'
+                              })()}
+                            </td>
+                            <td className="px-3 py-1.5 truncate" title={item.entry.setName}>
+                              {item.entry.setName}
+                            </td>
+                            <td className="px-3 py-1.5">
+                              <Select
+                                value={String(item.entry.collectionLevel)}
+                                onValueChange={(value) => handleInlineLevelChange(item.entry.setCode, Number(value) as CollectionLevel)}
+                              >
+                                <SelectTrigger className="h-7 w-24 text-xs">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {([1, 2, 3, 4] as CollectionLevel[]).map((level) => (
+                                    <SelectItem key={level} value={String(level)}>
+                                      Level {level}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </td>
+                            <td className="px-2 py-1.5">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                                onClick={() => {
+                                  setSetToDelete(item.entry)
+                                  setShowDeleteSetDialog(true)
+                                }}
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </Button>
+                            </td>
+                          </tr>
+                        )
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-6 text-sm text-muted-foreground border rounded-lg">
+                  No sets in your collection yet. Search above to add sets.
+                </div>
+              )}
+            </section>
+
+            {/* Global Roles Section */}
+            <section>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold">Global Roles</h2>
+                <Button
+                  onClick={() => {
+                    resetForm()
+                    setShowAddDialog(true)
+                  }}
+                  size="sm"
+                  className="gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Role
+                </Button>
+              </div>
+
+              <p className="text-sm text-muted-foreground mb-4">
+                Global roles are available across all decks. Hover for details, click to edit.
+              </p>
+
+              <TooltipProvider delayDuration={300}>
+                <div className="flex flex-wrap gap-2">
+                  {globalRoles.map(role => {
+                    const { cardCount, deckCount } = getRoleUsage(role.id)
+                    return (
+                      <Tooltip key={role.id}>
+                        <TooltipTrigger asChild>
+                          <button
+                            onClick={() => openEditDialog(role)}
+                            className="group flex items-center gap-1.5 px-2.5 py-1 rounded-full border bg-card hover:bg-accent transition-colors text-sm"
+                          >
+                            <div
+                              className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                              style={{ backgroundColor: role.color || '#888' }}
+                            />
+                            <span className="font-medium">{role.name}</span>
+                            {deckCount > 0 && (
+                              <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
+                                <Layers className="w-3 h-3" />
+                                {deckCount}
+                              </span>
+                            )}
+                            <Trash2
+                              className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-destructive transition-opacity ml-0.5"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                openDeleteDialog(role)
+                              }}
+                            />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="max-w-xs">
+                          <div className="space-y-1">
+                            {role.description && (
+                              <p className="text-sm">{role.description}</p>
+                            )}
+                            {cardCount > 0 ? (
+                              <p className="text-xs text-muted-foreground">
+                                Used by {cardCount} card{cardCount !== 1 ? 's' : ''} in {deckCount} deck{deckCount !== 1 ? 's' : ''}
+                              </p>
+                            ) : (
+                              <p className="text-xs text-muted-foreground">Not used yet</p>
+                            )}
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
+                    )
+                  })}
+                </div>
+              </TooltipProvider>
+
+              {globalRoles.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  No global roles defined. Add some roles to get started.
+                </div>
+              )}
+            </section>
+          </div>
+        </TabsContent>
+
+        {/* Agent Integration Tab */}
+        <TabsContent value="integration" className="flex-1 overflow-auto m-0 pb-6">
+          <div className="max-w-3xl">
+            <section>
+              <h2 className="text-lg font-semibold mb-4">Claude Desktop Integration</h2>
+              <div className="p-4 rounded-lg border bg-card">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    {claudeConnected ? (
+                      <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
+                        <PlugZap className="w-5 h-5 text-green-500" />
+                      </div>
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                        <Plug className="w-5 h-5 text-muted-foreground" />
+                      </div>
+                    )}
+                    <div>
+                      <div className="font-medium">
+                        {claudeConnected ? 'Connected to Claude Desktop' : 'Not Connected'}
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {claudeConnected
+                          ? 'Claude can help you manage your decks through conversation'
+                          : 'Connect to use AI-powered deck building features'}
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    variant={claudeConnected ? 'outline' : 'default'}
+                    onClick={claudeConnected ? handleDisconnectClaude : handleConnectClaude}
+                    disabled={claudeLoading}
+                    className="gap-2"
+                  >
+                    {claudeLoading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        {claudeConnected ? 'Disconnecting...' : 'Connecting...'}
+                      </>
+                    ) : claudeConnected ? (
+                      'Disconnect'
+                    ) : (
+                      'Connect to Claude'
+                    )}
+                  </Button>
+                </div>
+                {claudeError && (
+                  <div className="mt-3 p-3 rounded-md bg-destructive/10 text-destructive text-sm">
+                    {claudeError}
+                  </div>
+                )}
+                {claudeConnected && (
+                  <div className="mt-4 pt-4 border-t">
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Open Claude Desktop to start managing your decks with AI assistance.
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Note: You may need to restart Claude Desktop for changes to take effect.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </section>
+          </div>
+        </TabsContent>
+
+        {/* System Tab */}
+        <TabsContent value="system" className="flex-1 overflow-auto m-0 pb-6">
+          <div className="max-w-3xl">
+            <section>
+              <h2 className="text-lg font-semibold mb-4">Scryfall Cache</h2>
+              <CacheSettingsSection />
+            </section>
+          </div>
+        </TabsContent>
+      </Tabs>
 
       {/* Add Role Dialog */}
       <CreateRoleDialog
