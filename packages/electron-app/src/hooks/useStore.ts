@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Deck, Taxonomy, InterestList, Config, RoleDefinition, SetCollectionFile } from '@/types'
+import type { Deck, Taxonomy, InterestList, Config, RoleDefinition, SetCollectionFile, PullListConfig } from '@/types'
 import type { AppState } from '@/stores/types'
 import { createDeckSlice } from '@/stores/deckSlice'
 import { createCardSlice } from '@/stores/cardSlice'
@@ -10,6 +10,7 @@ import { createInterestListSlice } from '@/stores/interestListSlice'
 import { createConfigSlice } from '@/stores/configSlice'
 import { createSelectionSlice } from '@/stores/selectionSlice'
 import { createSetCollectionSlice } from '@/stores/setCollectionSlice'
+import { createPullListSlice } from '@/stores/pullListSlice'
 
 export type { AppView } from '@/stores/types'
 
@@ -21,6 +22,7 @@ export const useStore = create<AppState>((set, get) => ({
   config: null,
   globalRoles: [],
   setCollection: null,
+  pullListConfig: null,
   selectedDeckId: null,
   currentView: 'decks',
   isLoading: false,
@@ -34,13 +36,14 @@ export const useStore = create<AppState>((set, get) => ({
       set({ isLoading: true, error: null })
     }
     try {
-      const [decks, taxonomy, interestList, config, globalRoles, setCollection] = await Promise.all([
+      const [decks, taxonomy, interestList, config, globalRoles, setCollection, pullListConfig] = await Promise.all([
         window.electronAPI.listDecks(),
         window.electronAPI.getTaxonomy(),
         window.electronAPI.getInterestList(),
         window.electronAPI.getConfig(),
         window.electronAPI.getGlobalRoles(),
-        window.electronAPI.getSetCollection()
+        window.electronAPI.getSetCollection(),
+        window.electronAPI.getPullListConfig()
       ])
       set({
         decks: decks as Deck[],
@@ -49,6 +52,7 @@ export const useStore = create<AppState>((set, get) => ({
         config: config as Config,
         globalRoles: globalRoles as RoleDefinition[],
         setCollection: setCollection as SetCollectionFile,
+        pullListConfig: pullListConfig as PullListConfig,
         isLoading: false,
         hasInitialized: true
       })
@@ -85,6 +89,7 @@ export const useStore = create<AppState>((set, get) => ({
   ...createConfigSlice(set, get),
   ...createSelectionSlice(set, get),
   ...createSetCollectionSlice(set, get),
+  ...createPullListSlice(set, get),
 }))
 
 // Selector hooks

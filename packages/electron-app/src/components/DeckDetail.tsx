@@ -12,6 +12,7 @@ import { DeckStats } from '@/components/DeckStats'
 import { NotesView } from '@/components/NotesView'
 import { RoleEditModal } from '@/components/RoleEditModal'
 import { ColorPips } from '@/components/ColorPips'
+import { PullListView } from '@/components/PullListView'
 import { getCardCount } from '@/types'
 import type { RoleDefinition } from '@/types'
 
@@ -190,6 +191,7 @@ export function DeckDetail() {
             <TabsTrigger value="notes">
               Notes ({deck.notes.length})
             </TabsTrigger>
+            <TabsTrigger value="pull-list">Pull List</TabsTrigger>
             <TabsTrigger value="stats">Stats</TabsTrigger>
           </TabsList>
         </div>
@@ -211,6 +213,10 @@ export function DeckDetail() {
 
           <TabsContent value="notes" className="m-0 h-full">
             <NotesView deck={deck} />
+          </TabsContent>
+
+          <TabsContent value="pull-list" className="m-0 h-full">
+            <PullListView deck={deck} />
           </TabsContent>
 
           <TabsContent value="stats" className="m-0 p-4 overflow-auto h-full">

@@ -139,7 +139,10 @@ export function viewDeck(storage: Storage, args: ViewDeckArgs) {
     }
   }
 
-  return renderDeckView(deck, args.view || 'full', globalRoles, args.sort_by, args.group_by, args.filters, scryfallCache, args.detail)
+  // Get set collection for pull-list view
+  const setCollection = args.view === 'pull-list' ? storage.getSetCollection() : undefined
+
+  return renderDeckView(deck, args.view || 'full', globalRoles, args.sort_by, args.group_by, args.filters, scryfallCache, args.detail, setCollection)
 }
 
 export function searchDecksForCard(storage: Storage, cardName: string) {

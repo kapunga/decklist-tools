@@ -1,8 +1,9 @@
 import fs from 'fs'
 import path from 'path'
 import os from 'os'
-import type { Deck, Taxonomy, InterestList, Config, RoleDefinition, SetCollectionFile } from '../types/index.js'
+import type { Deck, Taxonomy, InterestList, Config, RoleDefinition, SetCollectionFile, PullListConfig } from '../types/index.js'
 import { DEFAULT_GLOBAL_ROLES } from '../constants/index.js'
+import { DEFAULT_PULL_LIST_CONFIG } from '../types/index.js'
 
 // Global roles file schema
 interface GlobalRolesFile {
@@ -199,6 +200,22 @@ export class Storage {
   saveSetCollection(collection: SetCollectionFile): void {
     collection.updatedAt = new Date().toISOString()
     this.writeJson(path.join(this.baseDir, 'set-collection.json'), collection)
+  }
+
+  // Pull List Config
+  getPullListConfig(): PullListConfig {
+    const config = this.readJson<PullListConfig>(path.join(this.baseDir, 'pull-list-config.json'))
+    if (config) return config
+
+    return {
+      ...DEFAULT_PULL_LIST_CONFIG,
+      updatedAt: new Date().toISOString()
+    }
+  }
+
+  savePullListConfig(config: PullListConfig): void {
+    config.updatedAt = new Date().toISOString()
+    this.writeJson(path.join(this.baseDir, 'pull-list-config.json'), config)
   }
 
   // Scryfall cache

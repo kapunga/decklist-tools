@@ -252,6 +252,25 @@ export class Storage {
     this.writeJson(path.join(this.baseDir, 'set-collection.json'), collection)
   }
 
+  // Pull List Config
+  getPullListConfig(): unknown {
+    const config = this.readJson(path.join(this.baseDir, 'pull-list-config.json'))
+    if (config) return config
+
+    return {
+      version: 1,
+      updatedAt: new Date().toISOString(),
+      sortColumns: ['rarity', 'type', 'manaCost', 'name'],
+      showPulledSection: true
+    }
+  }
+
+  savePullListConfig(config: unknown): void {
+    const c = config as { updatedAt?: string }
+    c.updatedAt = new Date().toISOString()
+    this.writeJson(path.join(this.baseDir, 'pull-list-config.json'), config)
+  }
+
   // File watching
   watchForChanges(callback: (event: string, filename: string | null) => void): void {
     if (this.watcher) {

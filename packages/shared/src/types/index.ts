@@ -109,6 +109,13 @@ export const formatDefaults: Record<FormatType, DeckFormat> = {
   }
 }
 
+// Pulled Printing - tracks which specific printings were pulled for a card
+export interface PulledPrinting {
+  setCode: string
+  collectorNumber: string
+  quantity: number
+}
+
 // Deck Card - cards can have multiple roles
 export interface DeckCard {
   id: string  // Unique identifier for this deck entry
@@ -122,6 +129,12 @@ export interface DeckCard {
   notes?: string
   addedAt: string
   addedBy: AddedBy
+  pulledPrintings?: PulledPrinting[]  // Which printings were pulled and how many
+}
+
+// Helper to get total pulled quantity across all printings
+export function getTotalPulledQuantity(card: DeckCard): number {
+  return (card.pulledPrintings ?? []).reduce((sum, p) => sum + p.quantity, 0)
 }
 
 // Generate a unique ID for deck cards
@@ -336,4 +349,21 @@ export function isBasicLand(name: string): boolean {
     'Snow-Covered Mountain', 'Snow-Covered Forest', 'Wastes'
   ]
   return basicLands.includes(name)
+}
+
+// Pull List Configuration
+export type PullListSortKey = 'collectorNumber' | 'rarity' | 'type' | 'manaCost' | 'name'
+
+export interface PullListConfig {
+  version: number
+  updatedAt: string
+  sortColumns: PullListSortKey[]  // Order determines sort priority
+  showPulledSection: boolean      // Show "Already Pulled" section
+}
+
+export const DEFAULT_PULL_LIST_CONFIG: PullListConfig = {
+  version: 1,
+  updatedAt: '',
+  sortColumns: ['rarity', 'type', 'manaCost', 'name'],
+  showPulledSection: true
 }

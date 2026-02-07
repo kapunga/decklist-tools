@@ -1,4 +1,4 @@
-import type { Deck, Taxonomy, InterestList, Config, DeckCard, DeckNote, CardIdentifier, RoleDefinition, SetCollectionFile, SetCollectionEntry, CollectionLevel } from '@/types'
+import type { Deck, Taxonomy, InterestList, Config, DeckCard, DeckNote, CardIdentifier, RoleDefinition, SetCollectionFile, SetCollectionEntry, CollectionLevel, PullListConfig } from '@/types'
 
 export type AppView = 'decks' | 'deck-detail' | 'interest-list' | 'buy-list' | 'settings'
 
@@ -11,7 +11,8 @@ export interface AppState
     InterestListSlice,
     ConfigSlice,
     SelectionSlice,
-    SetCollectionSlice {
+    SetCollectionSlice,
+    PullListSlice {
   // Data
   decks: Deck[]
   taxonomy: Taxonomy | null
@@ -19,6 +20,7 @@ export interface AppState
   config: Config | null
   globalRoles: RoleDefinition[]
   setCollection: SetCollectionFile | null
+  pullListConfig: PullListConfig | null
 
   // UI State
   selectedDeckId: string | null
@@ -86,6 +88,14 @@ export interface SetCollectionSlice {
   addSetToCollection: (entry: Omit<SetCollectionEntry, 'addedAt'>) => Promise<void>
   updateSetInCollection: (setCode: string, level: CollectionLevel) => Promise<void>
   removeSetFromCollection: (setCode: string) => Promise<void>
+}
+
+export interface PullListSlice {
+  loadPullListConfig: () => Promise<void>
+  updatePullListConfig: (updates: Partial<PullListConfig>) => Promise<void>
+  pullCards: (deckId: string, cardName: string, setCode: string, collectorNumber: string, quantity: number) => Promise<void>
+  unpullCards: (deckId: string, cardName: string, setCode: string, collectorNumber: string, quantity: number) => Promise<void>
+  resetPulledStatus: (deckId: string) => Promise<void>
 }
 
 export interface SelectionSlice {

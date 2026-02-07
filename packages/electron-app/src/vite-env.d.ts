@@ -15,6 +15,8 @@ export interface ElectronAPI {
   saveGlobalRoles: (roles: unknown[]) => Promise<void>
   getSetCollection: () => Promise<unknown>
   saveSetCollection: (collection: unknown) => Promise<void>
+  getPullListConfig: () => Promise<unknown>
+  savePullListConfig: (config: unknown) => Promise<void>
   onStorageChanged: (callback: (data: { event: string; filename: string }) => void) => void
   removeStorageListener: () => void
   getClaudeConnectionStatus: () => Promise<{ connected: boolean; configPath: string; mcpServerPath?: string }>
