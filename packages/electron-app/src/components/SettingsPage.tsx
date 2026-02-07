@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo } from 'react'
-import { ArrowLeft, Plus, MoreVertical, Pencil, Trash2, Plug, PlugZap, Loader2 } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, Plug, PlugZap, Loader2, Layers } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -10,11 +10,11 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import {
   Select,
   SelectContent,
@@ -464,61 +464,59 @@ export function SettingsPage() {
           </div>
 
           <p className="text-sm text-muted-foreground mb-4">
-            Global roles are available across all decks. You can customize the role definitions here.
+            Global roles are available across all decks. Hover for details, click to edit.
           </p>
 
-          <div className="space-y-2">
-            {globalRoles.map(role => {
-              const { cardCount, deckCount } = getRoleUsage(role.id)
-              return (
-                <div
-                  key={role.id}
-                  className="flex items-start justify-between p-3 rounded-lg border bg-card"
-                >
-                  <div className="flex items-start gap-3">
-                    <div
-                      className="w-3 h-3 rounded-full mt-1.5 flex-shrink-0"
-                      style={{ backgroundColor: role.color || '#888' }}
-                    />
-                    <div>
-                      <div className="font-medium">{role.name}</div>
-                      {role.description && (
-                        <p className="text-sm text-muted-foreground mt-0.5">
-                          {role.description}
-                        </p>
-                      )}
-                      {cardCount > 0 && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Used by {cardCount} card{cardCount !== 1 ? 's' : ''} in {deckCount} deck{deckCount !== 1 ? 's' : ''}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <MoreVertical className="w-4 h-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => openEditDialog(role)}>
-                        <Pencil className="w-4 h-4 mr-2" />
-                        Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => openDeleteDialog(role)}
-                        className="text-destructive focus:text-destructive"
+          <TooltipProvider delayDuration={300}>
+            <div className="flex flex-wrap gap-2">
+              {globalRoles.map(role => {
+                const { cardCount, deckCount } = getRoleUsage(role.id)
+                return (
+                  <Tooltip key={role.id}>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => openEditDialog(role)}
+                        className="group flex items-center gap-1.5 px-2.5 py-1 rounded-full border bg-card hover:bg-accent transition-colors text-sm"
                       >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              )
-            })}
-          </div>
+                        <div
+                          className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: role.color || '#888' }}
+                        />
+                        <span className="font-medium">{role.name}</span>
+                        {deckCount > 0 && (
+                          <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
+                            <Layers className="w-3 h-3" />
+                            {deckCount}
+                          </span>
+                        )}
+                        <Trash2
+                          className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-destructive transition-opacity ml-0.5"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            openDeleteDialog(role)
+                          }}
+                        />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="max-w-xs">
+                      <div className="space-y-1">
+                        {role.description && (
+                          <p className="text-sm">{role.description}</p>
+                        )}
+                        {cardCount > 0 ? (
+                          <p className="text-xs text-muted-foreground">
+                            Used by {cardCount} card{cardCount !== 1 ? 's' : ''} in {deckCount} deck{deckCount !== 1 ? 's' : ''}
+                          </p>
+                        ) : (
+                          <p className="text-xs text-muted-foreground">Not used yet</p>
+                        )}
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                )
+              })}
+            </div>
+          </TooltipProvider>
 
           {globalRoles.length === 0 && (
             <div className="text-center py-8 text-muted-foreground">
