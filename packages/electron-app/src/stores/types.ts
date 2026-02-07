@@ -1,4 +1,4 @@
-import type { Deck, Taxonomy, InterestList, Config, DeckCard, DeckNote, CardIdentifier, RoleDefinition } from '@/types'
+import type { Deck, Taxonomy, InterestList, Config, DeckCard, DeckNote, CardIdentifier, RoleDefinition, SetCollectionFile, SetCollectionEntry, CollectionLevel } from '@/types'
 
 export type AppView = 'decks' | 'deck-detail' | 'interest-list' | 'buy-list' | 'settings'
 
@@ -10,13 +10,15 @@ export interface AppState
     NoteSlice,
     InterestListSlice,
     ConfigSlice,
-    SelectionSlice {
+    SelectionSlice,
+    SetCollectionSlice {
   // Data
   decks: Deck[]
   taxonomy: Taxonomy | null
   interestList: InterestList | null
   config: Config | null
   globalRoles: RoleDefinition[]
+  setCollection: SetCollectionFile | null
 
   // UI State
   selectedDeckId: string | null
@@ -78,6 +80,12 @@ export interface InterestListSlice {
 
 export interface ConfigSlice {
   updateConfig: (config: Partial<Config>) => Promise<void>
+}
+
+export interface SetCollectionSlice {
+  addSetToCollection: (entry: Omit<SetCollectionEntry, 'addedAt'>) => Promise<void>
+  updateSetInCollection: (setCode: string, level: CollectionLevel) => Promise<void>
+  removeSetFromCollection: (setCode: string) => Promise<void>
 }
 
 export interface SelectionSlice {

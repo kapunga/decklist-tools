@@ -1,5 +1,5 @@
-import { useState, useCallback, useEffect } from 'react'
-import { ArrowLeft, Plus, MoreVertical, Pencil, Trash2, Plug, PlugZap, Loader2 } from 'lucide-react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
+import { ArrowLeft, Plus, Trash2, Plug, PlugZap, Loader2, Layers } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -10,16 +10,25 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { useStore, useGlobalRoles } from '@/hooks/useStore'
 import { ROLE_COLOR_PALETTE } from '@/lib/constants'
 import { CreateRoleDialog } from '@/components/CreateRoleDialog'
 import { RoleFormFields } from '@/components/RoleFormFields'
-import type { RoleDefinition } from '@/types'
+import { SetCollectionQuickAdd } from '@/components/SetCollectionQuickAdd'
+import { getAllSets, type ScryfallSet } from '@/lib/scryfall'
+import type { RoleDefinition, SetCollectionEntry, CollectionLevel } from '@/types'
 
 export function SettingsPage() {
   const setView = useStore(state => state.setView)
@@ -28,8 +37,14 @@ export function SettingsPage() {
   const updateGlobalRole = useStore(state => state.updateGlobalRole)
   const deleteGlobalRole = useStore(state => state.deleteGlobalRole)
   const decks = useStore(state => state.decks)
+  const setCollection = useStore(state => state.setCollection)
+  const addSetToCollection = useStore(state => state.addSetToCollection)
+  const updateSetInCollection = useStore(state => state.updateSetInCollection)
+  const removeSetFromCollection = useStore(state => state.removeSetFromCollection)
 
   const [showAddDialog, setShowAddDialog] = useState(false)
+  const [setToDelete, setSetToDelete] = useState<SetCollectionEntry | null>(null)
+  const [showDeleteSetDialog, setShowDeleteSetDialog] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [editingRole, setEditingRole] = useState<RoleDefinition | null>(null)
@@ -44,6 +59,92 @@ export function SettingsPage() {
   const [claudeConnected, setClaudeConnected] = useState(false)
   const [claudeLoading, setClaudeLoading] = useState(true)
   const [claudeError, setClaudeError] = useState<string | null>(null)
+
+  // Scryfall sets for looking up release years
+  const [allSets, setAllSets] = useState<ScryfallSet[]>([])
+
+  // Load sets for release year lookup
+  useEffect(() => {
+    getAllSets().then(setAllSets)
+  }, [])
+
+  // Create lookup maps for release years and set types
+  const setInfo = useMemo(() => {
+    const releaseYears = new Map<string, string>()
+    const setTypes = new Map<string, string>()
+    for (const set of allSets) {
+      const code = set.code.toLowerCase()
+      if (set.released_at) {
+        releaseYears.set(code, set.released_at)
+      }
+      if (set.set_type) {
+        setTypes.set(code, set.set_type)
+      }
+    }
+    return { releaseYears, setTypes }
+  }, [allSets])
+
+  // Group labels for set types
+  const TYPE_GROUP_LABELS: Record<string, string> = {
+    'expansion': 'Expansions',
+    'core': 'Core Sets',
+    'draft_innovation': 'Draft Sets',
+    'masters': 'Masters Sets',
+    'commander': 'Commander',
+    'funny': 'Un-Sets',
+    'other': 'Other'
+  }
+
+  // Map set types to groups
+  const getTypeGroup = (setType: string): string => {
+    if (['expansion', 'core'].includes(setType)) return 'expansion'
+    if (setType === 'draft_innovation') return 'draft_innovation'
+    if (setType === 'masters') return 'masters'
+    if (setType === 'commander') return 'commander'
+    if (setType === 'funny') return 'funny'
+    return 'other'
+  }
+
+  const TYPE_GROUP_ORDER = ['expansion', 'draft_innovation', 'masters', 'commander', 'funny', 'other']
+
+  // Group and sort sets by type, then by release date within each group
+  const groupedSets = useMemo(() => {
+    if (!setCollection?.sets) return []
+
+    const groups = new Map<string, SetCollectionEntry[]>()
+
+    for (const entry of setCollection.sets) {
+      const setType = setInfo.setTypes.get(entry.setCode.toLowerCase()) || 'other'
+      const group = getTypeGroup(setType)
+      if (!groups.has(group)) {
+        groups.set(group, [])
+      }
+      groups.get(group)!.push(entry)
+    }
+
+    // Sort each group by release date (most recent first)
+    for (const [, entries] of groups) {
+      entries.sort((a, b) => {
+        const releasedA = a.releasedAt || setInfo.releaseYears.get(a.setCode.toLowerCase()) || ''
+        const releasedB = b.releasedAt || setInfo.releaseYears.get(b.setCode.toLowerCase()) || ''
+        return releasedB.localeCompare(releasedA)
+      })
+    }
+
+    // Build ordered result with group headers
+    const result: Array<{ type: 'header'; label: string } | { type: 'entry'; entry: SetCollectionEntry }> = []
+    for (const groupKey of TYPE_GROUP_ORDER) {
+      const entries = groups.get(groupKey)
+      if (entries && entries.length > 0) {
+        result.push({ type: 'header', label: TYPE_GROUP_LABELS[groupKey] || groupKey })
+        for (const entry of entries) {
+          result.push({ type: 'entry', entry })
+        }
+      }
+    }
+
+    return result
+  }, [setCollection?.sets, setInfo])
 
   // Check Claude connection status on mount
   useEffect(() => {
@@ -138,6 +239,22 @@ export function SettingsPage() {
     setRoleToDelete(role)
     setShowDeleteDialog(true)
   }, [])
+
+  // Set Collection handlers
+  const handleAddSet = useCallback(async (entry: Omit<SetCollectionEntry, 'addedAt'>) => {
+    await addSetToCollection(entry)
+  }, [addSetToCollection])
+
+  const handleDeleteSet = useCallback(async () => {
+    if (!setToDelete) return
+    await removeSetFromCollection(setToDelete.setCode)
+    setSetToDelete(null)
+    setShowDeleteSetDialog(false)
+  }, [setToDelete, removeSetFromCollection])
+
+  const handleInlineLevelChange = useCallback(async (setCode: string, level: CollectionLevel) => {
+    await updateSetInCollection(setCode, level)
+  }, [updateSetInCollection])
 
   // Count how many cards/decks use a role
   const getRoleUsage = useCallback((roleId: string) => {
@@ -235,6 +352,100 @@ export function SettingsPage() {
           </div>
         </section>
 
+        {/* Set Collection Section */}
+        <section className="mb-8">
+          <h2 className="text-lg font-semibold mb-4">Set Collection</h2>
+
+          <p className="text-sm text-muted-foreground mb-4">
+            Track which MTG sets you own cards from. Collection levels determine which card rarities are included in Scryfall filters.
+          </p>
+
+          {/* Inline add bar */}
+          <div className="mb-4">
+            <SetCollectionQuickAdd
+              onAdd={handleAddSet}
+              existingSetCodes={setCollection?.sets.map(s => s.setCode.toLowerCase()) ?? []}
+            />
+          </div>
+
+          {/* Set table */}
+          {groupedSets.length > 0 ? (
+            <div className="border rounded-lg overflow-hidden max-h-80 overflow-y-auto">
+              <table className="w-full text-sm table-fixed">
+                <thead className="bg-muted sticky top-0">
+                  <tr className="text-left text-muted-foreground">
+                    <th className="px-3 py-2 font-medium w-14">Code</th>
+                    <th className="px-3 py-2 font-medium w-14">Year</th>
+                    <th className="px-3 py-2 font-medium">Set Name</th>
+                    <th className="px-3 py-2 font-medium w-28">Level</th>
+                    <th className="px-2 py-2 w-10"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {groupedSets.map((item) =>
+                    item.type === 'header' ? (
+                      <tr key={`header-${item.label}`} className="bg-muted/30">
+                        <td colSpan={5} className="px-3 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                          {item.label}
+                        </td>
+                      </tr>
+                    ) : (
+                      <tr key={item.entry.setCode} className="hover:bg-muted/20 border-t border-border/50">
+                        <td className="px-3 py-1.5 uppercase text-muted-foreground font-mono text-xs">
+                          {item.entry.setCode}
+                        </td>
+                        <td className="px-3 py-1.5 text-muted-foreground">
+                          {(() => {
+                            const released = item.entry.releasedAt || setInfo.releaseYears.get(item.entry.setCode.toLowerCase())
+                            return released ? new Date(released).getFullYear() : '—'
+                          })()}
+                        </td>
+                        <td className="px-3 py-1.5 truncate" title={item.entry.setName}>
+                          {item.entry.setName}
+                        </td>
+                        <td className="px-3 py-1.5">
+                          <Select
+                            value={String(item.entry.collectionLevel)}
+                            onValueChange={(value) => handleInlineLevelChange(item.entry.setCode, Number(value) as CollectionLevel)}
+                          >
+                            <SelectTrigger className="h-7 w-24 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {([1, 2, 3, 4] as CollectionLevel[]).map((level) => (
+                                <SelectItem key={level} value={String(level)}>
+                                  Level {level}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </td>
+                        <td className="px-2 py-1.5">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                            onClick={() => {
+                              setSetToDelete(item.entry)
+                              setShowDeleteSetDialog(true)
+                            }}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </td>
+                      </tr>
+                    )
+                  )}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="text-center py-6 text-sm text-muted-foreground border rounded-lg">
+              No sets in your collection yet. Search above to add sets.
+            </div>
+          )}
+        </section>
+
         {/* Global Roles Section */}
         <section>
           <div className="flex items-center justify-between mb-4">
@@ -253,61 +464,59 @@ export function SettingsPage() {
           </div>
 
           <p className="text-sm text-muted-foreground mb-4">
-            Global roles are available across all decks. You can customize the role definitions here.
+            Global roles are available across all decks. Hover for details, click to edit.
           </p>
 
-          <div className="space-y-2">
-            {globalRoles.map(role => {
-              const { cardCount, deckCount } = getRoleUsage(role.id)
-              return (
-                <div
-                  key={role.id}
-                  className="flex items-start justify-between p-3 rounded-lg border bg-card"
-                >
-                  <div className="flex items-start gap-3">
-                    <div
-                      className="w-3 h-3 rounded-full mt-1.5 flex-shrink-0"
-                      style={{ backgroundColor: role.color || '#888' }}
-                    />
-                    <div>
-                      <div className="font-medium">{role.name}</div>
-                      {role.description && (
-                        <p className="text-sm text-muted-foreground mt-0.5">
-                          {role.description}
-                        </p>
-                      )}
-                      {cardCount > 0 && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Used by {cardCount} card{cardCount !== 1 ? 's' : ''} in {deckCount} deck{deckCount !== 1 ? 's' : ''}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <MoreVertical className="w-4 h-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => openEditDialog(role)}>
-                        <Pencil className="w-4 h-4 mr-2" />
-                        Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => openDeleteDialog(role)}
-                        className="text-destructive focus:text-destructive"
+          <TooltipProvider delayDuration={300}>
+            <div className="flex flex-wrap gap-2">
+              {globalRoles.map(role => {
+                const { cardCount, deckCount } = getRoleUsage(role.id)
+                return (
+                  <Tooltip key={role.id}>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => openEditDialog(role)}
+                        className="group flex items-center gap-1.5 px-2.5 py-1 rounded-full border bg-card hover:bg-accent transition-colors text-sm"
                       >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              )
-            })}
-          </div>
+                        <div
+                          className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: role.color || '#888' }}
+                        />
+                        <span className="font-medium">{role.name}</span>
+                        {deckCount > 0 && (
+                          <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
+                            <Layers className="w-3 h-3" />
+                            {deckCount}
+                          </span>
+                        )}
+                        <Trash2
+                          className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-destructive transition-opacity ml-0.5"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            openDeleteDialog(role)
+                          }}
+                        />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="max-w-xs">
+                      <div className="space-y-1">
+                        {role.description && (
+                          <p className="text-sm">{role.description}</p>
+                        )}
+                        {cardCount > 0 ? (
+                          <p className="text-xs text-muted-foreground">
+                            Used by {cardCount} card{cardCount !== 1 ? 's' : ''} in {deckCount} deck{deckCount !== 1 ? 's' : ''}
+                          </p>
+                        ) : (
+                          <p className="text-xs text-muted-foreground">Not used yet</p>
+                        )}
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                )
+              })}
+            </div>
+          </TooltipProvider>
 
           {globalRoles.length === 0 && (
             <div className="text-center py-8 text-muted-foreground">
@@ -381,6 +590,31 @@ export function SettingsPage() {
               onClick={handleDeleteRole}
             >
               Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Set Confirmation Dialog */}
+      <Dialog open={showDeleteSetDialog} onOpenChange={setShowDeleteSetDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Remove Set</DialogTitle>
+            <DialogDescription>
+              {setToDelete && (
+                <>Are you sure you want to remove "{setToDelete.setName}" from your collection?</>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteSetDialog(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteSet}
+            >
+              Remove
             </Button>
           </DialogFooter>
         </DialogContent>

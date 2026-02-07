@@ -40,8 +40,8 @@ function call(name: string, args: Record<string, unknown> = {}) {
 // ─── Tool Definitions ──────────────────────────────────────────
 
 describe('getToolDefinitions', () => {
-  it('returns 14 tools', () => {
-    expect(getToolDefinitions()).toHaveLength(14)
+  it('returns 15 tools', () => {
+    expect(getToolDefinitions()).toHaveLength(15)
   })
 })
 

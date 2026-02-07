@@ -148,6 +148,15 @@ function setupIpcHandlers() {
     return storage!.saveGlobalRoles(roles)
   })
 
+  // Set Collection
+  ipcMain.handle('set-collection:get', async () => {
+    return storage!.getSetCollection()
+  })
+
+  ipcMain.handle('set-collection:save', async (_, collection: unknown) => {
+    return storage!.saveSetCollection(collection)
+  })
+
   // Watch for file changes
   storage.watchForChanges((event, filename) => {
     if (mainWindow) {

@@ -297,3 +297,52 @@ export function getCardFaceImageUrl(
 
   return null
 }
+
+// Scryfall Set type
+export interface ScryfallSet {
+  id: string
+  code: string
+  name: string
+  set_type: string
+  released_at?: string
+  card_count: number
+  icon_svg_uri?: string
+}
+
+// Response type for /sets endpoint
+interface ScryfallSetsResponse {
+  object: string
+  has_more: boolean
+  data: ScryfallSet[]
+}
+
+// Cache for all sets - stored in memory with expiry
+let setsCache: ScryfallSet[] | null = null
+let setsCacheTime = 0
+const SETS_CACHE_DURATION_MS = 24 * 60 * 60 * 1000 // 24 hours
+
+// Get all sets from Scryfall (cached)
+export async function getAllSets(): Promise<ScryfallSet[]> {
+  // Return cached data if still valid
+  const now = Date.now()
+  if (setsCache && now - setsCacheTime < SETS_CACHE_DURATION_MS) {
+    return setsCache
+  }
+
+  try {
+    const response = await rateLimitedFetch(`${BASE_URL}/sets`)
+
+    if (!response.ok) {
+      throw new Error(`Scryfall API error: ${response.status}`)
+    }
+
+    const result: ScryfallSetsResponse = await response.json()
+    setsCache = result.data || []
+    setsCacheTime = now
+    return setsCache
+  } catch (error) {
+    console.error('Error fetching sets:', error)
+    // Return cached data if available, even if expired
+    return setsCache || []
+  }
+}

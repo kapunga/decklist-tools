@@ -26,6 +26,60 @@ async function rateLimitedFetch(url: string): Promise<Response> {
   })
 }
 
+// Scryfall Set type
+export interface ScryfallSet {
+  id: string
+  code: string
+  name: string
+  set_type: string
+  released_at?: string
+  card_count: number
+  icon_svg_uri?: string
+}
+
+// Get set information by set code
+export async function getSetByCode(setCode: string): Promise<ScryfallSet | null> {
+  try {
+    const response = await rateLimitedFetch(
+      `${BASE_URL}/sets/${setCode.toLowerCase()}`
+    )
+
+    if (!response.ok) {
+      if (response.status === 404) return null
+      throw new Error(`Scryfall API error: ${response.status}`)
+    }
+
+    return await response.json() as ScryfallSet
+  } catch (error) {
+    console.error('Error fetching set:', error)
+    return null
+  }
+}
+
+// Response type for /sets endpoint
+interface ScryfallSetsResponse {
+  object: string
+  has_more: boolean
+  data: ScryfallSet[]
+}
+
+// Get all sets from Scryfall
+export async function getAllSets(): Promise<ScryfallSet[]> {
+  try {
+    const response = await rateLimitedFetch(`${BASE_URL}/sets`)
+
+    if (!response.ok) {
+      throw new Error(`Scryfall API error: ${response.status}`)
+    }
+
+    const result = await response.json() as ScryfallSetsResponse
+    return result.data || []
+  } catch (error) {
+    console.error('Error fetching sets:', error)
+    return []
+  }
+}
+
 export async function searchCardByName(name: string): Promise<ScryfallCard | null> {
   try {
     const response = await rateLimitedFetch(
