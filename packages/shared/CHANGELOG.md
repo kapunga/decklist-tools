@@ -1,5 +1,30 @@
 # @mtg-deckbuilder/shared
 
+## 0.4.0
+
+### Minor Changes
+
+- d330831: Add ownership status filter to card filter bar
+
+  - New "Ownership" filter in the deck list view filter bar
+  - Filter by Unknown, Owned, Pulled, or Buylist status
+  - Supports both Include and Exclude modes
+  - Added 'status' filter group containing the ownership filter type
+
+### Patch Changes
+
+- de40ff7: Fix bimodal card type categorization
+
+  - Cards with dual type lines (Adventures, Omens, MDFCs) now prioritize permanent types over spell types
+  - For example, "Land // Instant" cards like Lindblum now categorize under Land instead of Instant
+  - Updated `getPrimaryType` in both shared package and electron-app
+
+- 91e70ef: Fix duplicate card entries in deck lists
+
+  - MCP server's add and move actions now check for existing cards and merge instead of creating duplicates
+  - Electron app's moveCard action now handles duplicates consistently
+  - Added shared utilities: `findCardByName`, `findCardIndexByName`, and `consolidateDuplicateCards`
+
 ## 0.3.0
 
 ### Patch Changes

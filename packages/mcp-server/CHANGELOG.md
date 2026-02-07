@@ -1,5 +1,20 @@
 # @mtg-deckbuilder/mcp-server
 
+## 0.4.0
+
+### Patch Changes
+
+- 91e70ef: Fix duplicate card entries in deck lists
+
+  - MCP server's add and move actions now check for existing cards and merge instead of creating duplicates
+  - Electron app's moveCard action now handles duplicates consistently
+  - Added shared utilities: `findCardByName`, `findCardIndexByName`, and `consolidateDuplicateCards`
+
+- Updated dependencies [de40ff7]
+- Updated dependencies [91e70ef]
+- Updated dependencies [d330831]
+  - @mtg-deckbuilder/shared@0.4.0
+
 ## 0.3.0
 
 ### Minor Changes

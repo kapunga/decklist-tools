@@ -1,5 +1,89 @@
 # @mtg-deckbuilder/electron-app
 
+## 0.4.0
+
+### Minor Changes
+
+- 9507be8: Add destination selection when adding cards
+
+  - CardAddModal now shows radio buttons to choose where to add a card: Mainboard, Sideboard, or Maybeboard
+  - Default destination is based on the currently active tab (e.g., viewing Alternates tab defaults to Maybeboard)
+  - Sideboard option only appears for formats with sideboard support (not Commander)
+  - Added RadioGroup UI component based on Radix UI
+
+- 86a603e: Add card edit modal with printing selection
+
+  - New CardEditModal component for editing card details (quantity, notes, roles, ownership)
+  - Added printing selector dropdown showing all available printings with set code, collector number, and set name
+  - Added `getCardPrintings` function to query Scryfall for all printings of a card
+  - Edit button added to both Grid view (CardItem menu) and List view (CardRow pencil icon)
+  - Fixed ownership badge layout shift in list view by using fixed-width container
+
+- 1eec367: Add Pull List view for tracking cards to pull from collection
+
+  - New Pull List tab in deck detail view shows cards grouped by set
+  - Displays quantity needed, quantity pulled, and remaining for each card
+  - Filter by rarity (mythic, rare, uncommon, common) and hide fully pulled cards
+  - Click rows to preview card image with pulled/needed counts
+  - Mark individual prints as pulled with quantity tracking modal
+  - "Mark All Pulled" button to quickly complete entire sets
+  - MCP server includes new pull-list-view for Claude to render pull lists
+  - Shared package adds pull tracking types and storage functions
+
+- d330831: Add ownership status filter to card filter bar
+
+  - New "Ownership" filter in the deck list view filter bar
+  - Filter by Unknown, Owned, Pulled, or Buylist status
+  - Supports both Include and Exclude modes
+  - Added 'status' filter group containing the ownership filter type
+
+### Patch Changes
+
+- de40ff7: Fix bimodal card type categorization
+
+  - Cards with dual type lines (Adventures, Omens, MDFCs) now prioritize permanent types over spell types
+  - For example, "Land // Instant" cards like Lindblum now categorize under Land instead of Instant
+  - Updated `getPrimaryType` in both shared package and electron-app
+
+- 5c0a8ba: Clear selection after batch operations in multi-select toolbar
+
+  - Added selection clearing to batchUpdateOwnership and batchAddRoleToCards
+  - Now all batch operations (ownership, delete, move, add role) dismiss the toolbar after completing
+
+- 1753899: Improve Settings page layout and usability
+
+  - Fix sticky header transparency issue in set collection table
+  - Compact global roles into pill-shaped chips with multiple per row
+  - Add deck count indicator with layers icon on role chips
+  - Show role description and usage details in hover tooltip
+  - Click role chip to edit, hover to reveal delete button
+
+- 91e70ef: Fix duplicate card entries in deck lists
+
+  - MCP server's add and move actions now check for existing cards and merge instead of creating duplicates
+  - Electron app's moveCard action now handles duplicates consistently
+  - Added shared utilities: `findCardByName`, `findCardIndexByName`, and `consolidateDuplicateCards`
+
+- 09ece9c: Fix invisible tooltip in mana curve charts
+
+  - Styled Recharts tooltips to match the app's dark theme
+  - Tooltips now use proper dark background and light text colors
+  - Fixed issue where default white tooltip appeared as an empty box
+
+- 14b89c2: Fix notes column alignment in deck list view
+
+  - Changed role section to fixed width so notes column stays aligned regardless of role pill count
+
+- f5499dd: Fix window drag and titlebar layout
+
+  - Added proper titlebar drag region so the window can be dragged
+  - Increased left padding on navigation header to clear macOS traffic lights
+
+- Updated dependencies [de40ff7]
+- Updated dependencies [91e70ef]
+- Updated dependencies [d330831]
+  - @mtg-deckbuilder/shared@0.4.0
+
 ## 0.3.0
 
 ### Patch Changes
