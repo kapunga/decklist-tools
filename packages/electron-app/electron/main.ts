@@ -101,7 +101,7 @@ app.whenReady().then(() => {
               "default-src 'self'",
               "script-src 'self'",
               "style-src 'self' 'unsafe-inline'", // Needed for Tailwind/CSS-in-JS
-              "img-src 'self' https://cards.scryfall.io cached-image: data:",
+              "img-src 'self' https://cards.scryfall.io https://svgs.scryfall.io https://api.scryfall.com cached-image: data:",
               "connect-src 'self' https://api.scryfall.com",
               "font-src 'self'",
               "object-src 'none'",
