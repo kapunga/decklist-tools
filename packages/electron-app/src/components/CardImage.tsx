@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { RefreshCw, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -22,17 +22,43 @@ export function CardImage({
   const [currentFace, setCurrentFace] = useState<0 | 1>(0)
   const [isLoading, setIsLoading] = useState(true)
   const [hasError, setHasError] = useState(false)
+  const [cachedPath, setCachedPath] = useState<string | null>(null)
 
   const isDFC = isDoubleFacedCard(card)
 
-  // Get the appropriate image URL
-  const imageUrl = isDFC
+  // Check for cached image
+  useEffect(() => {
+    const checkCache = async () => {
+      try {
+        const face = isDFC ? (currentFace === 0 ? 'front' : 'back') : undefined
+        const path = await window.electronAPI.getCachedImagePath(card.id, face)
+        setCachedPath(path)
+      } catch {
+        setCachedPath(null)
+      }
+    }
+    checkCache()
+  }, [card.id, currentFace, isDFC])
+
+  // Get the appropriate image URL (use cached if available)
+  const scryfallUrl = isDFC
     ? getCardFaceImageUrl(card, currentFace, size)
     : getCardImageUrl(card, size)
+
+  // Use custom protocol for cached images to avoid file:// security restrictions
+  const getCachedImageUrl = (filePath: string): string => {
+    // Extract filename from the path (e.g., "{scryfallId}.jpg" or "{scryfallId}_front.jpg")
+    const filename = filePath.split('/').pop() || filePath.split('\\').pop() || ''
+    // Format: cached-image://cache/filename.jpg - the "cache" host gives us a proper URL structure
+    return `cached-image://cache/${encodeURIComponent(filename)}`
+  }
+
+  const imageUrl = cachedPath ? getCachedImageUrl(cachedPath) : scryfallUrl
 
   const handleFlip = useCallback(() => {
     setCurrentFace(prev => (prev === 0 ? 1 : 0))
     setIsLoading(true)
+    setCachedPath(null) // Reset cached path on flip to trigger re-check
   }, [])
 
   const handleLoad = useCallback(() => {

@@ -3,8 +3,7 @@ import {
   type Deck,
   type CardIdentifier,
   type ScryfallCard,
-  searchCardByName,
-  getCardBySetAndNumber,
+  CachedScryfallClient,
 } from '@mtg-deckbuilder/shared'
 
 export interface ParsedCardString {
@@ -35,17 +34,42 @@ export function getDeckOrThrow(storage: Storage, deckId: string): Deck {
   return deck
 }
 
+// Singleton cached client instance
+let cachedClient: CachedScryfallClient | null = null
+
+export function getCachedScryfallClient(storage: Storage): CachedScryfallClient {
+  if (!cachedClient) {
+    cachedClient = new CachedScryfallClient(storage)
+  }
+  return cachedClient
+}
+
 export async function fetchScryfallCard(
   name: string,
   setCode?: string,
-  collectorNumber?: string
+  collectorNumber?: string,
+  storage?: Storage
 ): Promise<ScryfallCard> {
-  let scryfallCard
-  if (setCode && collectorNumber) {
-    scryfallCard = await getCardBySetAndNumber(setCode, collectorNumber)
+  let scryfallCard: ScryfallCard | null = null
+
+  // Use cached client if storage is provided
+  if (storage) {
+    const client = getCachedScryfallClient(storage)
+    if (setCode && collectorNumber) {
+      scryfallCard = await client.getCardBySetCollector(setCode, collectorNumber)
+    } else {
+      scryfallCard = await client.getCardByName(name)
+    }
   } else {
-    scryfallCard = await searchCardByName(name)
+    // Fallback to direct API calls without caching
+    const { searchCardByName, getCardBySetAndNumber } = await import('@mtg-deckbuilder/shared')
+    if (setCode && collectorNumber) {
+      scryfallCard = await getCardBySetAndNumber(setCode, collectorNumber)
+    } else {
+      scryfallCard = await searchCardByName(name)
+    }
   }
+
   if (!scryfallCard) throw new Error(`Card not found: ${name}`)
   return scryfallCard
 }

@@ -1,7 +1,16 @@
 import fs from 'fs'
 import path from 'path'
 import { app } from 'electron'
-import type { Deck, DeckCard, PulledPrinting } from '@mtg-deckbuilder/shared'
+import type { Deck, DeckCard, PulledPrinting, CacheIndex, CacheEntryMeta, CacheStats, ScryfallCard, CardIdentifier } from '@mtg-deckbuilder/shared'
+import { isDoubleFacedCard } from '@mtg-deckbuilder/shared'
+
+export interface CacheLoadProgress {
+  phase: 'calculating' | 'loading' | 'complete' | 'cancelled' | 'error'
+  totalCards: number
+  cachedCards: number
+  currentCard?: string
+  errors: string[]
+}
 
 // Global roles file schema
 interface GlobalRolesFile {
@@ -62,19 +71,25 @@ export class Storage {
   private baseDir: string
   private decksDir: string
   private cacheDir: string
+  private imageCacheDir: string
+  private cacheIndexPath: string
   private globalRolesPath: string
   private watcher: fs.FSWatcher | null = null
+  private cacheLoadCancelled: boolean = false
 
   constructor() {
     this.baseDir = path.join(app.getPath('appData'), 'mtg-deckbuilder')
     this.decksDir = path.join(this.baseDir, 'decks')
     this.cacheDir = path.join(this.baseDir, 'cache', 'scryfall')
+    this.imageCacheDir = path.join(this.baseDir, 'cache', 'images')
+    this.cacheIndexPath = path.join(this.cacheDir, 'index.json')
     this.globalRolesPath = path.join(this.baseDir, 'global-roles.json')
 
     // Ensure directories exist
     this.ensureDir(this.baseDir)
     this.ensureDir(this.decksDir)
     this.ensureDir(this.cacheDir)
+    this.ensureDir(this.imageCacheDir)
 
     // Initialize global roles file if it doesn't exist
     this.ensureGlobalRolesFile()
@@ -341,5 +356,636 @@ export class Storage {
       this.watcher.close()
       this.watcher = null
     }
+  }
+
+  // Cache Index Methods
+  getCacheIndex(): CacheIndex | null {
+    return this.readJson<CacheIndex>(this.cacheIndexPath)
+  }
+
+  saveCacheIndex(index: CacheIndex): void {
+    const i = index as { updatedAt?: string }
+    i.updatedAt = new Date().toISOString()
+    this.writeJson(this.cacheIndexPath, index)
+  }
+
+  private createEmptyCacheIndex(): CacheIndex {
+    return {
+      version: 1,
+      updatedAt: new Date().toISOString(),
+      byName: {},
+      bySetCollector: {},
+      entries: {}
+    }
+  }
+
+  getCachedCardByName(name: string): ScryfallCard | null {
+    const index = this.getCacheIndex()
+    if (!index) return null
+
+    const scryfallId = index.byName[name.toLowerCase()]
+    if (!scryfallId) return null
+
+    return this.getCachedCard(scryfallId)
+  }
+
+  getCachedCardBySetCollector(setCode: string, collectorNumber: string): ScryfallCard | null {
+    const index = this.getCacheIndex()
+    if (!index) return null
+
+    const key = `${setCode.toLowerCase()}|${collectorNumber}`
+    const scryfallId = index.bySetCollector[key]
+    if (!scryfallId) return null
+
+    return this.getCachedCard(scryfallId)
+  }
+
+  getCachedCard(scryfallId: string): ScryfallCard | null {
+    const cachePath = path.join(this.cacheDir, `${scryfallId}.json`)
+    return this.readJson<ScryfallCard>(cachePath)
+  }
+
+  cacheCard(scryfallId: string, data: unknown): void {
+    const cachePath = path.join(this.cacheDir, `${scryfallId}.json`)
+    this.writeJson(cachePath, data)
+  }
+
+  cacheCardWithIndex(card: ScryfallCard): void {
+    // Cache the card JSON
+    this.cacheCard(card.id, card)
+
+    // Update the index
+    let index = this.getCacheIndex()
+    if (!index) {
+      index = this.createEmptyCacheIndex()
+    }
+
+    // Get JSON file size
+    const cachePath = path.join(this.cacheDir, `${card.id}.json`)
+    let jsonSize = 0
+    try {
+      const stats = fs.statSync(cachePath)
+      jsonSize = stats.size
+    } catch {
+      // File might not exist yet
+    }
+
+    // Create entry metadata
+    const entry: CacheEntryMeta = {
+      scryfallId: card.id,
+      name: card.name,
+      setCode: card.set,
+      collectorNumber: card.collector_number,
+      cachedAt: new Date().toISOString(),
+      jsonSize,
+      hasImage: this.hasImageCached(card.id),
+      imageSize: this.getImageSize(card.id),
+      imageFaces: isDoubleFacedCard(card) ? 2 : 1
+    }
+
+    // Update index entries
+    index.byName[card.name.toLowerCase()] = card.id
+    index.bySetCollector[`${card.set.toLowerCase()}|${card.collector_number}`] = card.id
+    index.entries[card.id] = entry
+
+    this.saveCacheIndex(index)
+  }
+
+  rebuildCacheIndex(): CacheIndex {
+    const index = this.createEmptyCacheIndex()
+
+    try {
+      const files = fs.readdirSync(this.cacheDir).filter(f => f.endsWith('.json') && f !== 'index.json')
+
+      for (const file of files) {
+        const scryfallId = file.replace('.json', '')
+        const card = this.getCachedCard(scryfallId)
+
+        if (card) {
+          const cachePath = path.join(this.cacheDir, file)
+          const stats = fs.statSync(cachePath)
+
+          const entry: CacheEntryMeta = {
+            scryfallId: card.id,
+            name: card.name,
+            setCode: card.set,
+            collectorNumber: card.collector_number,
+            cachedAt: stats.mtime.toISOString(),
+            jsonSize: stats.size,
+            hasImage: this.hasImageCached(card.id),
+            imageSize: this.getImageSize(card.id),
+            imageFaces: isDoubleFacedCard(card) ? 2 : 1
+          }
+
+          index.byName[card.name.toLowerCase()] = card.id
+          index.bySetCollector[`${card.set.toLowerCase()}|${card.collector_number}`] = card.id
+          index.entries[card.id] = entry
+        }
+      }
+    } catch (error) {
+      console.error('Error rebuilding cache index:', error)
+    }
+
+    this.saveCacheIndex(index)
+    return index
+  }
+
+  getCacheStats(): CacheStats {
+    let jsonCacheCount = 0
+    let jsonCacheSizeBytes = 0
+    let imageCacheCount = 0
+    let imageCacheSizeBytes = 0
+    let oldestEntry: string | undefined
+    let newestEntry: string | undefined
+
+    // Count JSON cache files
+    try {
+      const jsonFiles = fs.readdirSync(this.cacheDir).filter(f => f.endsWith('.json') && f !== 'index.json')
+      jsonCacheCount = jsonFiles.length
+
+      for (const file of jsonFiles) {
+        const filePath = path.join(this.cacheDir, file)
+        const stats = fs.statSync(filePath)
+        jsonCacheSizeBytes += stats.size
+
+        const mtime = stats.mtime.toISOString()
+        if (!oldestEntry || mtime < oldestEntry) oldestEntry = mtime
+        if (!newestEntry || mtime > newestEntry) newestEntry = mtime
+      }
+    } catch {
+      // Directory might not exist
+    }
+
+    // Count image cache files
+    try {
+      const imageFiles = fs.readdirSync(this.imageCacheDir).filter(f => f.endsWith('.jpg'))
+      imageCacheCount = imageFiles.length
+
+      for (const file of imageFiles) {
+        const filePath = path.join(this.imageCacheDir, file)
+        const stats = fs.statSync(filePath)
+        imageCacheSizeBytes += stats.size
+      }
+    } catch {
+      // Directory might not exist
+    }
+
+    return {
+      jsonCacheCount,
+      jsonCacheSizeBytes,
+      imageCacheCount,
+      imageCacheSizeBytes,
+      totalSizeBytes: jsonCacheSizeBytes + imageCacheSizeBytes,
+      oldestEntry,
+      newestEntry
+    }
+  }
+
+  clearJsonCache(): void {
+    try {
+      const files = fs.readdirSync(this.cacheDir)
+      for (const file of files) {
+        fs.unlinkSync(path.join(this.cacheDir, file))
+      }
+    } catch (error) {
+      console.error('Error clearing JSON cache:', error)
+    }
+  }
+
+  clearImageCache(): void {
+    try {
+      const files = fs.readdirSync(this.imageCacheDir)
+      for (const file of files) {
+        fs.unlinkSync(path.join(this.imageCacheDir, file))
+      }
+    } catch (error) {
+      console.error('Error clearing image cache:', error)
+    }
+  }
+
+  clearAllCache(): void {
+    this.clearJsonCache()
+    this.clearImageCache()
+  }
+
+  // Image Cache Methods
+  getImageCacheDir(): string {
+    return this.imageCacheDir
+  }
+
+  getCachedImagePath(scryfallId: string, face?: 'front' | 'back'): string | null {
+    let filename: string
+    if (face === 'back') {
+      filename = `${scryfallId}_back.jpg`
+    } else if (face === 'front') {
+      filename = `${scryfallId}_front.jpg`
+    } else {
+      filename = `${scryfallId}.jpg`
+    }
+
+    const imagePath = path.join(this.imageCacheDir, filename)
+    if (fs.existsSync(imagePath)) {
+      return imagePath
+    }
+
+    // For single-faced cards, also check without suffix
+    if (!face) {
+      const frontPath = path.join(this.imageCacheDir, `${scryfallId}_front.jpg`)
+      if (fs.existsSync(frontPath)) {
+        return frontPath
+      }
+    }
+
+    return null
+  }
+
+  cacheImage(scryfallId: string, data: Buffer, face?: 'front' | 'back'): void {
+    let filename: string
+    if (face === 'back') {
+      filename = `${scryfallId}_back.jpg`
+    } else if (face === 'front') {
+      filename = `${scryfallId}_front.jpg`
+    } else {
+      filename = `${scryfallId}.jpg`
+    }
+
+    const imagePath = path.join(this.imageCacheDir, filename)
+    fs.writeFileSync(imagePath, data)
+
+    // Update cache index if it exists
+    const index = this.getCacheIndex()
+    if (index && index.entries[scryfallId]) {
+      index.entries[scryfallId].hasImage = true
+      index.entries[scryfallId].imageSize = this.getImageSize(scryfallId)
+      this.saveCacheIndex(index)
+    }
+  }
+
+  hasImageCached(scryfallId: string): boolean {
+    return this.getCachedImagePath(scryfallId) !== null ||
+           this.getCachedImagePath(scryfallId, 'front') !== null
+  }
+
+  private getImageSize(scryfallId: string): number | undefined {
+    let totalSize = 0
+
+    // Check for single image
+    const singlePath = path.join(this.imageCacheDir, `${scryfallId}.jpg`)
+    if (fs.existsSync(singlePath)) {
+      totalSize += fs.statSync(singlePath).size
+    }
+
+    // Check for front face
+    const frontPath = path.join(this.imageCacheDir, `${scryfallId}_front.jpg`)
+    if (fs.existsSync(frontPath)) {
+      totalSize += fs.statSync(frontPath).size
+    }
+
+    // Check for back face
+    const backPath = path.join(this.imageCacheDir, `${scryfallId}_back.jpg`)
+    if (fs.existsSync(backPath)) {
+      totalSize += fs.statSync(backPath).size
+    }
+
+    return totalSize > 0 ? totalSize : undefined
+  }
+
+  // Pre-cache deck cards and images
+  async preCacheDeck(deckId: string, includeImages: boolean): Promise<{ success: boolean; cachedCards: number; cachedImages: number; errors: string[] }> {
+    const deck = this.getDeck(deckId) as Deck | null
+    if (!deck) {
+      return { success: false, cachedCards: 0, cachedImages: 0, errors: ['Deck not found'] }
+    }
+
+    const result = {
+      success: true,
+      cachedCards: 0,
+      cachedImages: 0,
+      errors: [] as string[]
+    }
+
+    // Collect all cards from the deck
+    const allCards = [
+      ...deck.cards,
+      ...deck.alternates,
+      ...deck.sideboard
+    ]
+
+    // Also include commanders
+    const commanderIdentifiers = deck.commanders || []
+
+    // Process regular deck cards
+    for (const deckCard of allCards) {
+      try {
+        let card: ScryfallCard | null = null
+
+        if (deckCard.card.scryfallId) {
+          card = this.getCachedCard(deckCard.card.scryfallId)
+          if (!card) {
+            // Fetch from Scryfall API
+            const response = await fetch(`https://api.scryfall.com/cards/${deckCard.card.scryfallId}`)
+            if (response.ok) {
+              card = await response.json() as ScryfallCard
+              this.cacheCardWithIndex(card)
+            }
+          }
+        } else if (deckCard.card.setCode && deckCard.card.collectorNumber) {
+          card = this.getCachedCardBySetCollector(deckCard.card.setCode, deckCard.card.collectorNumber)
+          if (!card) {
+            const response = await fetch(`https://api.scryfall.com/cards/${deckCard.card.setCode.toLowerCase()}/${deckCard.card.collectorNumber}`)
+            if (response.ok) {
+              card = await response.json() as ScryfallCard
+              this.cacheCardWithIndex(card)
+            }
+          }
+        } else {
+          card = this.getCachedCardByName(deckCard.card.name)
+          if (!card) {
+            const response = await fetch(`https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(deckCard.card.name)}`)
+            if (response.ok) {
+              card = await response.json() as ScryfallCard
+              this.cacheCardWithIndex(card)
+            }
+          }
+        }
+
+        if (card) {
+          result.cachedCards++
+
+          if (includeImages) {
+            await this.cacheCardImages(card)
+            result.cachedImages++
+          }
+        } else {
+          result.errors.push(`Card not found: ${deckCard.card.name}`)
+        }
+
+        // Rate limiting: wait 100ms between Scryfall API calls
+        await new Promise(resolve => setTimeout(resolve, 100))
+      } catch (error) {
+        result.errors.push(`Error caching ${deckCard.card.name}: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      }
+    }
+
+    // Process commanders
+    for (const commander of commanderIdentifiers) {
+      try {
+        let card: ScryfallCard | null = null
+
+        if (commander.scryfallId) {
+          card = this.getCachedCard(commander.scryfallId)
+          if (!card) {
+            const response = await fetch(`https://api.scryfall.com/cards/${commander.scryfallId}`)
+            if (response.ok) {
+              card = await response.json() as ScryfallCard
+              this.cacheCardWithIndex(card)
+            }
+          }
+        } else if (commander.setCode && commander.collectorNumber) {
+          card = this.getCachedCardBySetCollector(commander.setCode, commander.collectorNumber)
+          if (!card) {
+            const response = await fetch(`https://api.scryfall.com/cards/${commander.setCode.toLowerCase()}/${commander.collectorNumber}`)
+            if (response.ok) {
+              card = await response.json() as ScryfallCard
+              this.cacheCardWithIndex(card)
+            }
+          }
+        } else {
+          card = this.getCachedCardByName(commander.name)
+          if (!card) {
+            const response = await fetch(`https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(commander.name)}`)
+            if (response.ok) {
+              card = await response.json() as ScryfallCard
+              this.cacheCardWithIndex(card)
+            }
+          }
+        }
+
+        if (card) {
+          result.cachedCards++
+
+          if (includeImages) {
+            await this.cacheCardImages(card)
+            result.cachedImages++
+          }
+        } else {
+          result.errors.push(`Commander not found: ${commander.name}`)
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 100))
+      } catch (error) {
+        result.errors.push(`Error caching commander ${commander.name}: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      }
+    }
+
+    if (result.errors.length > 0) {
+      result.success = false
+    }
+
+    return result
+  }
+
+  private async cacheCardImages(card: ScryfallCard): Promise<void> {
+    const isDFC = isDoubleFacedCard(card)
+
+    const getImageUrl = (card: ScryfallCard, face: 0 | 1): string | null => {
+      if (card.card_faces && card.card_faces[face]?.image_uris) {
+        return card.card_faces[face].image_uris!.normal
+      }
+      if (face === 0 && card.image_uris) {
+        return card.image_uris.normal
+      }
+      return null
+    }
+
+    if (isDFC && card.card_faces) {
+      // Cache both faces
+      const frontUrl = getImageUrl(card, 0)
+      const backUrl = getImageUrl(card, 1)
+
+      if (frontUrl && !this.getCachedImagePath(card.id, 'front')) {
+        try {
+          const response = await fetch(frontUrl)
+          if (response.ok) {
+            const buffer = Buffer.from(await response.arrayBuffer())
+            this.cacheImage(card.id, buffer, 'front')
+          }
+        } catch (error) {
+          console.error(`Error caching front image for ${card.name}:`, error)
+        }
+      }
+
+      if (backUrl && !this.getCachedImagePath(card.id, 'back')) {
+        try {
+          const response = await fetch(backUrl)
+          if (response.ok) {
+            const buffer = Buffer.from(await response.arrayBuffer())
+            this.cacheImage(card.id, buffer, 'back')
+          }
+        } catch (error) {
+          console.error(`Error caching back image for ${card.name}:`, error)
+        }
+      }
+    } else {
+      // Single-faced card
+      const imageUrl = getImageUrl(card, 0)
+
+      if (imageUrl && !this.getCachedImagePath(card.id)) {
+        try {
+          const response = await fetch(imageUrl)
+          if (response.ok) {
+            const buffer = Buffer.from(await response.arrayBuffer())
+            this.cacheImage(card.id, buffer)
+          }
+        } catch (error) {
+          console.error(`Error caching image for ${card.name}:`, error)
+        }
+      }
+    }
+  }
+
+  cancelCacheLoad(): void {
+    this.cacheLoadCancelled = true
+  }
+
+  async loadAllCardsToCache(
+    includeImages: boolean,
+    onProgress: (progress: CacheLoadProgress) => void
+  ): Promise<void> {
+    this.cacheLoadCancelled = false
+    const errors: string[] = []
+
+    // Send initial calculating phase
+    onProgress({
+      phase: 'calculating',
+      totalCards: 0,
+      cachedCards: 0,
+      errors: []
+    })
+
+    // Collect all unique cards from all decks
+    const decks = this.listDecks() as Deck[]
+    const cardMap = new Map<string, { identifier: CardIdentifier; name: string }>()
+
+    for (const deck of decks) {
+      // Add commanders
+      for (const commander of deck.commanders || []) {
+        const key = commander.scryfallId || `${commander.setCode}|${commander.collectorNumber}` || commander.name.toLowerCase()
+        if (!cardMap.has(key)) {
+          cardMap.set(key, { identifier: commander, name: commander.name })
+        }
+      }
+
+      // Add all deck cards
+      const allCards = [...deck.cards, ...deck.alternates, ...deck.sideboard]
+      for (const deckCard of allCards) {
+        const card = deckCard.card
+        const key = card.scryfallId || `${card.setCode}|${card.collectorNumber}` || card.name.toLowerCase()
+        if (!cardMap.has(key)) {
+          cardMap.set(key, { identifier: card, name: card.name })
+        }
+      }
+    }
+
+    // Filter out cards already in cache
+    const cardsToFetch: Array<{ identifier: CardIdentifier; name: string }> = []
+
+    for (const [, cardInfo] of cardMap) {
+      const { identifier } = cardInfo
+      let isCached = false
+
+      if (identifier.scryfallId) {
+        isCached = this.getCachedCard(identifier.scryfallId) !== null
+      } else if (identifier.setCode && identifier.collectorNumber) {
+        isCached = this.getCachedCardBySetCollector(identifier.setCode, identifier.collectorNumber) !== null
+      } else {
+        isCached = this.getCachedCardByName(identifier.name) !== null
+      }
+
+      if (!isCached) {
+        cardsToFetch.push(cardInfo)
+      }
+    }
+
+    const totalCards = cardsToFetch.length
+
+    if (totalCards === 0) {
+      onProgress({
+        phase: 'complete',
+        totalCards: 0,
+        cachedCards: 0,
+        errors: []
+      })
+      return
+    }
+
+    // Start loading
+    let cachedCards = 0
+
+    for (const cardInfo of cardsToFetch) {
+      if (this.cacheLoadCancelled) {
+        onProgress({
+          phase: 'cancelled',
+          totalCards,
+          cachedCards,
+          errors
+        })
+        return
+      }
+
+      const { identifier, name } = cardInfo
+
+      onProgress({
+        phase: 'loading',
+        totalCards,
+        cachedCards,
+        currentCard: name,
+        errors
+      })
+
+      try {
+        let card: ScryfallCard | null = null
+
+        if (identifier.scryfallId) {
+          const response = await fetch(`https://api.scryfall.com/cards/${identifier.scryfallId}`)
+          if (response.ok) {
+            card = await response.json() as ScryfallCard
+          }
+        } else if (identifier.setCode && identifier.collectorNumber) {
+          const response = await fetch(`https://api.scryfall.com/cards/${identifier.setCode.toLowerCase()}/${identifier.collectorNumber}`)
+          if (response.ok) {
+            card = await response.json() as ScryfallCard
+          }
+        } else {
+          const response = await fetch(`https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(name)}`)
+          if (response.ok) {
+            card = await response.json() as ScryfallCard
+          }
+        }
+
+        if (card) {
+          this.cacheCardWithIndex(card)
+          cachedCards++
+
+          if (includeImages) {
+            await this.cacheCardImages(card)
+          }
+        } else {
+          errors.push(`Card not found: ${name}`)
+        }
+
+        // Rate limiting: wait 100ms between Scryfall API calls
+        await new Promise(resolve => setTimeout(resolve, 100))
+      } catch (error) {
+        errors.push(`Error fetching ${name}: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      }
+    }
+
+    onProgress({
+      phase: 'complete',
+      totalCards,
+      cachedCards,
+      errors
+    })
   }
 }

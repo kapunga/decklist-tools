@@ -414,3 +414,41 @@ export const DEFAULT_PULL_LIST_CONFIG: PullListConfig = {
   showPulledSection: true,
   hideBasicLands: true
 }
+
+// Cache Index Types
+export interface CacheIndex {
+  version: number
+  updatedAt: string
+  byName: Record<string, string>           // lowercase name -> scryfallId
+  bySetCollector: Record<string, string>   // "set|collector" -> scryfallId
+  entries: Record<string, CacheEntryMeta>
+}
+
+export interface CacheEntryMeta {
+  scryfallId: string
+  name: string
+  setCode: string
+  collectorNumber: string
+  cachedAt: string
+  jsonSize: number
+  hasImage: boolean
+  imageSize?: number
+  imageFaces?: number  // 1 or 2 for DFCs
+}
+
+export interface CacheStats {
+  jsonCacheCount: number
+  jsonCacheSizeBytes: number
+  imageCacheCount: number
+  imageCacheSizeBytes: number
+  totalSizeBytes: number
+  oldestEntry?: string
+  newestEntry?: string
+}
+
+export interface PreCacheResult {
+  success: boolean
+  cachedCards: number
+  cachedImages: number
+  errors: string[]
+}

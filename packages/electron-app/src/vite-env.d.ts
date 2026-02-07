@@ -1,5 +1,38 @@
 /// <reference types="vite/client" />
 
+export interface CacheStats {
+  jsonCacheCount: number
+  jsonCacheSizeBytes: number
+  imageCacheCount: number
+  imageCacheSizeBytes: number
+  totalSizeBytes: number
+  oldestEntry?: string
+  newestEntry?: string
+}
+
+export interface CacheIndex {
+  version: number
+  updatedAt: string
+  byName: Record<string, string>
+  bySetCollector: Record<string, string>
+  entries: Record<string, unknown>
+}
+
+export interface PreCacheResult {
+  success: boolean
+  cachedCards: number
+  cachedImages: number
+  errors: string[]
+}
+
+export interface CacheLoadProgress {
+  phase: 'calculating' | 'loading' | 'complete' | 'cancelled' | 'error'
+  totalCards: number
+  cachedCards: number
+  currentCard?: string
+  errors: string[]
+}
+
 export interface ElectronAPI {
   listDecks: () => Promise<unknown[]>
   getDeck: (id: string) => Promise<unknown | null>
@@ -22,6 +55,16 @@ export interface ElectronAPI {
   getClaudeConnectionStatus: () => Promise<{ connected: boolean; configPath: string; mcpServerPath?: string }>
   connectClaudeDesktop: () => Promise<{ success: boolean; error?: string }>
   disconnectClaudeDesktop: () => Promise<{ success: boolean; error?: string }>
+  getCacheStats: () => Promise<CacheStats>
+  clearJsonCache: () => Promise<void>
+  clearImageCache: () => Promise<void>
+  clearAllCache: () => Promise<void>
+  rebuildCacheIndex: () => Promise<CacheIndex>
+  preCacheDeck: (deckId: string, includeImages: boolean) => Promise<PreCacheResult>
+  getCachedImagePath: (scryfallId: string, face?: string) => Promise<string | null>
+  loadAllCardsToCache: (includeImages: boolean) => Promise<void>
+  onCacheProgress: (callback: (progress: CacheLoadProgress) => void) => () => void
+  cancelCacheLoad: () => Promise<void>
 }
 
 declare global {
