@@ -157,6 +157,15 @@ function setupIpcHandlers() {
     return storage!.saveSetCollection(collection)
   })
 
+  // Pull List Config
+  ipcMain.handle('pull-list-config:get', async () => {
+    return storage!.getPullListConfig()
+  })
+
+  ipcMain.handle('pull-list-config:save', async (_, config: unknown) => {
+    return storage!.savePullListConfig(config)
+  })
+
   // Watch for file changes
   storage.watchForChanges((event, filename) => {
     if (mainWindow) {

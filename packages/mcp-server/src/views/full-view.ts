@@ -1,5 +1,5 @@
 import type { Deck, DeckCard, RoleDefinition, ScryfallCard } from '@mtg-deckbuilder/shared'
-import { getPrimaryType, getCardCount, getRoleById, CARD_TYPE_ORDER } from '@mtg-deckbuilder/shared'
+import { getPrimaryType, getCardCount, getRoleById, CARD_TYPE_ORDER, isCardFullyPulled } from '@mtg-deckbuilder/shared'
 import { formatCardLine, type DetailLevel } from './formatters.js'
 
 export function renderFullView(
@@ -174,7 +174,7 @@ function renderChecklist(lines: string[], cards: DeckCard[]): void {
       currentSet = card.card.setCode
       lines.push(`## ${currentSet.toUpperCase()}`)
     }
-    const checkbox = card.ownership === 'pulled' ? '[x]' : '[ ]'
+    const checkbox = isCardFullyPulled(card) ? '[x]' : '[ ]'
     lines.push(`${checkbox} ${card.quantity}x ${card.card.name} #${card.card.collectorNumber}`)
   }
 }

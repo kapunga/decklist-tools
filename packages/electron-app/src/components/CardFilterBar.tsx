@@ -36,7 +36,6 @@ const FILTER_TYPE_LABELS: Record<CardFilter['type'], string> = {
 const OWNERSHIP_STATUS_LABELS: Record<string, string> = {
   unknown: 'Unknown',
   owned: 'Owned',
-  pulled: 'Pulled',
   need_to_buy: 'Buylist',
 }
 
@@ -87,7 +86,7 @@ function computeAvailableValues(cards: EnrichedDeckCard[]): AvailableValues {
   const typeOrder = ['Creature', 'Planeswalker', 'Battle', 'Instant', 'Sorcery', 'Artifact', 'Enchantment', 'Land', 'Other']
   const cardTypes = typeOrder.filter(t => typeSet.has(t))
   const roleIds = [...roleSet]
-  const ownershipOrder = ['unknown', 'owned', 'pulled', 'need_to_buy']
+  const ownershipOrder = ['unknown', 'owned', 'need_to_buy']
   const ownershipStatuses = ownershipOrder.filter(s => ownershipSet.has(s))
 
   return { cmcBuckets, colors, cardTypes, roleIds, ownershipStatuses }

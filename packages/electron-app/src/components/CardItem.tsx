@@ -24,10 +24,11 @@ import { getRoleColor } from '@/lib/constants'
 import { CardEditModal } from '@/components/CardEditModal'
 import type { DeckCard, OwnershipStatus, RoleDefinition } from '@/types'
 
+import { isCardFullyPulled } from '@/types'
+
 const ownershipLabels: Record<OwnershipStatus, string> = {
   unknown: 'Unknown',
   owned: 'Owned',
-  pulled: 'Pulled',
   need_to_buy: 'Need to Buy'
 }
 
@@ -181,7 +182,7 @@ export function CardItem({ card, deckId, listType }: CardItemProps) {
         {card.ownership === 'need_to_buy' && (
           <Badge variant="destructive" className="text-xs flex-shrink-0">Buy</Badge>
         )}
-        {card.ownership === 'pulled' && (
+        {isCardFullyPulled(card) && (
           <Badge variant="secondary" className="text-xs flex-shrink-0">Pulled</Badge>
         )}
       </div>
@@ -217,7 +218,7 @@ export function CardItem({ card, deckId, listType }: CardItemProps) {
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>Ownership</DropdownMenuSubTrigger>
               <DropdownMenuSubContent>
-                {(['unknown', 'owned', 'pulled', 'need_to_buy'] as OwnershipStatus[]).map(status => (
+                {(['unknown', 'owned', 'need_to_buy'] as OwnershipStatus[]).map(status => (
                   <DropdownMenuItem
                     key={status}
                     onClick={() => handleOwnershipChange(status)}

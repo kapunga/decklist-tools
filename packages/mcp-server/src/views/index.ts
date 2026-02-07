@@ -1,8 +1,9 @@
-import type { Deck, RoleDefinition, ScryfallCard, CardFilter } from '@mtg-deckbuilder/shared'
+import type { Deck, RoleDefinition, ScryfallCard, CardFilter, SetCollectionFile } from '@mtg-deckbuilder/shared'
 import { enrichCards, applyFilters } from '@mtg-deckbuilder/shared'
 import { renderFullView } from './full-view.js'
 import { renderCurveView } from './curve-view.js'
 import { renderNotesView } from './notes-view.js'
+import { renderPullListView } from './pull-list-view.js'
 import type { DetailLevel } from './formatters.js'
 
 export type { DetailLevel }
@@ -18,6 +19,7 @@ export function getViewDescriptions(): ViewDescription[] {
     { id: 'full', name: 'Full', description: 'Deck card list. Supports group_by (none/role/type), sort_by (name/set), and filters.' },
     { id: 'curve', name: 'Curve', description: 'Mana curve analysis with CMC distribution, pip counts, and type breakdown' },
     { id: 'notes', name: 'Notes', description: 'Deck notes documenting combos, synergies, and strategy' },
+    { id: 'pull-list', name: 'Pull List', description: 'Cards grouped by set for physical collection pulling. Shows pulled status.' },
   ]
 }
 
@@ -29,7 +31,8 @@ export function renderDeckView(
   groupBy?: string,
   filters?: CardFilter[],
   scryfallCache?: Map<string, ScryfallCard>,
-  detail?: DetailLevel
+  detail?: DetailLevel,
+  setCollection?: SetCollectionFile
 ): string {
   // If filters are provided, apply them to get filtered card IDs
   let filteredCardIds: Set<string> | undefined
@@ -47,6 +50,13 @@ export function renderDeckView(
       return renderCurveView(deck, scryfallCache, filteredCardIds)
     case 'notes':
       return renderNotesView(deck, globalRoles)
+    case 'pull-list':
+      return renderPullListView(
+        deck,
+        setCollection || { version: 1, updatedAt: '', sets: [] },
+        scryfallCache || new Map<string, ScryfallCard>(),
+        { showPulled: true }
+      )
     default:
       return renderFullView(deck, globalRoles, sortBy, groupBy, filteredCardIds, scryfallCache, detail)
   }

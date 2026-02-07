@@ -14,7 +14,7 @@ import { useStore, useGlobalRoles } from '@/hooks/useStore'
 import { useScryfallCache } from '@/hooks/useScryfallCache'
 import { getCardById } from '@/lib/scryfall'
 import type { DeckCard, ScryfallCard, Deck } from '@/types'
-import { getCardLimit } from '@/types'
+import { getCardLimit, isCardFullyPulled } from '@/types'
 import { getPrimaryType, CARD_TYPE_SORT_ORDER } from '@/lib/constants'
 import type { CardFilter } from '@mtg-deckbuilder/shared'
 import { enrichCards, applyFilters } from '@mtg-deckbuilder/shared'
@@ -493,7 +493,7 @@ function CardRow({
             Buy
           </Badge>
         )}
-        {card.ownership === 'pulled' && (
+        {isCardFullyPulled(card) && (
           <Badge variant="outline" className="text-blue-500 border-blue-500 text-xs">
             Pulled
           </Badge>
