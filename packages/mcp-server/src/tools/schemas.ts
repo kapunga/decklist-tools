@@ -141,7 +141,7 @@ export function getToolDefinitions(): Tool[] {
     // Views
     {
       name: 'view_deck',
-      description: `Render a deck using a specific view format. Available views: ${viewList}`,
+      description: `Render a deck using a specific view format. Use \`detail: "compact"\` to include Oracle text for all cards (recommended for deck analysis). Available views: ${viewList}`,
       inputSchema: {
         type: 'object',
         properties: {
