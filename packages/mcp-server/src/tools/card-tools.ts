@@ -132,6 +132,17 @@ export async function manageCard(storage: Storage, args: ManageCardArgs) {
       return { success: true, message: `Removed ${removed.join(', ')} from deck` }
     }
     case 'update': {
+      // Reject move-related parameters
+      if (args.to_alternates || args.to_sideboard) {
+        throw new Error('to_alternates/to_sideboard are not supported on update. Use action: "move" with from/to parameters to move cards between lists.')
+      }
+      if (args.from_alternates || args.from_sideboard) {
+        throw new Error('from_alternates/from_sideboard are not supported on update. Use action: "move" with from/to parameters to move cards between lists.')
+      }
+      if (args.from || args.to) {
+        throw new Error('from/to are not supported on update. Use action: "move" to move cards between lists.')
+      }
+
       const cardNames = resolveCards(args)
       const updated: Array<{ name: string; roles: string[] }> = []
 
