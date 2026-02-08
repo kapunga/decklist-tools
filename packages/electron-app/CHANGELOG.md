@@ -1,5 +1,33 @@
 # @mtg-deckbuilder/electron-app
 
+## 0.5.0
+
+### Minor Changes
+
+- d7760c7: Add Scryfall cache management for offline card data and images
+
+  - Cache index system enables lookup by card name or set+collector number
+  - Image caching stores card images locally for offline viewing
+  - New Cache Settings section in Settings page (under System tab)
+  - Display cache statistics (card data count/size, image count/size)
+  - "Load All Cards" button pre-caches all cards from all decks with progress bar
+  - Per-deck "Cache" dropdown to cache individual deck's cards and images
+  - Clear cache buttons for card data, images, or both
+  - Rebuild index button to regenerate cache lookups
+  - Custom `cached-image://` protocol serves cached images securely
+  - Content Security Policy added for production builds
+  - Settings page reorganized into tabs: Collection, Agent Integration, System
+
+### Patch Changes
+
+- 4ac1cc5: Add separator between mana costs for double-faced cards in Pull List
+
+  - Double-faced cards now display both faces' mana costs with a `//` separator
+  - For example, "Delver of Secrets" shows `{U} // {U}` instead of just `{U}`
+
+- Updated dependencies [d7760c7]
+  - @mtg-deckbuilder/shared@0.5.0
+
 ## 0.4.0
 
 ### Minor Changes

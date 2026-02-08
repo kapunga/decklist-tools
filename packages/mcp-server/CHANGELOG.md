@@ -1,5 +1,22 @@
 # @mtg-deckbuilder/mcp-server
 
+## 0.5.0
+
+### Patch Changes
+
+- 8e1f2e4: Document which parameters apply to which actions in manage_card tool
+- fb3c39b: Document valid list names (mainboard, sideboard, alternates) for manage_card move action in tool description and improve error message when invalid list name is provided.
+- 26b62fe: Improved tool descriptions for get_deck and view_deck to clarify when to use each
+- 189bb4e: Fix role creation bug that caused corrupted state when id is undefined. Add update_custom and delete_custom actions for managing deck-specific roles.
+- ad2ec7d: Reject incompatible move-related parameters on manage_card update action with clear error messages
+- d4e14d4: Document `detail` parameter in view_deck tool description
+
+  - Added note about `detail: "compact"` to include Oracle text for deck analysis
+  - Makes the feature more discoverable for AI agents scanning tool descriptions
+
+- Updated dependencies [d7760c7]
+  - @mtg-deckbuilder/shared@0.5.0
+
 ## 0.4.0
 
 ### Patch Changes
