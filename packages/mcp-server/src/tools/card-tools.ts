@@ -170,7 +170,7 @@ export async function manageCard(storage: Storage, args: ManageCardArgs) {
           case 'mainboard': return deck.cards
           case 'alternates': return deck.alternates
           case 'sideboard': return deck.sideboard
-          default: throw new Error(`Invalid list: ${name}`)
+          default: throw new Error(`Invalid list: "${name}". Valid lists are: mainboard, sideboard, alternates`)
         }
       }
 
