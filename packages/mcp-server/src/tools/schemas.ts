@@ -56,7 +56,7 @@ export function getToolDefinitions(): Tool[] {
     // Card Management
     {
       name: 'manage_card',
-      description: 'Add, remove, update, or move cards in a deck. Supports batch operations via the `cards` array. For add: each entry is "[Nx ]<set_code> <collector_number>" (e.g. "fdn 542", "2x woe 138"). For remove/update/move: each entry is a card name. For move: use `from` and `to` with list names: mainboard, sideboard, alternates.',
+      description: 'Add, remove, update, or move cards in a deck.\n\n**Cards array**: Use `cards` for batch operations. For add: "[Nx ]<set_code> <collector_number>" (e.g. "fdn 542", "2x woe 138"). For remove/update/move: card names.\n\n**Action parameters**:\n- add: cards, roles, status, ownership, to_sideboard, to_alternates\n- remove: cards, quantity, from_sideboard, from_alternates\n- update: cards, roles, add_roles, remove_roles, status, ownership, pinned, notes\n- move: cards, from (required), to (required) — list names: mainboard, sideboard, alternates',
       inputSchema: {
         type: 'object',
         properties: {
@@ -88,32 +88,34 @@ export function getToolDefinitions(): Tool[] {
             type: 'string',
             enum: ['unknown', 'owned', 'need_to_buy'],
           },
-          to_alternates: { type: 'boolean' },
-          to_sideboard: { type: 'boolean' },
+          to_alternates: { type: 'boolean', description: 'Add to alternates list (add only)' },
+          to_sideboard: { type: 'boolean', description: 'Add to sideboard (add only)' },
           // remove params
-          from_alternates: { type: 'boolean' },
-          from_sideboard: { type: 'boolean' },
+          from_alternates: { type: 'boolean', description: 'Remove from alternates list (remove only)' },
+          from_sideboard: { type: 'boolean', description: 'Remove from sideboard (remove only)' },
           // update params
           add_roles: {
             type: 'array',
             items: { type: 'string' },
-            description: 'Add these roles to existing roles',
+            description: 'Add these roles to existing roles (update only)',
           },
           remove_roles: {
             type: 'array',
             items: { type: 'string' },
-            description: 'Remove these roles from existing roles',
+            description: 'Remove these roles from existing roles (update only)',
           },
-          pinned: { type: 'boolean' },
-          notes: { type: 'string' },
+          pinned: { type: 'boolean', description: 'Pin card to top of list (update only)' },
+          notes: { type: 'string', description: 'Card notes (update only)' },
           // move params
           from: {
             type: 'string',
             enum: ['mainboard', 'alternates', 'sideboard'],
+            description: 'Source list (move only, required)',
           },
           to: {
             type: 'string',
             enum: ['mainboard', 'alternates', 'sideboard'],
+            description: 'Destination list (move only, required)',
           },
         },
         required: ['action', 'deck_id'],
