@@ -53,7 +53,7 @@ export interface ViewDeckArgs {
 }
 
 export interface ManageRoleArgs {
-  action: 'add_custom' | 'add_global' | 'update_global' | 'delete_global'
+  action: 'add_custom' | 'add_global' | 'update_global' | 'delete_global' | 'update_custom' | 'delete_custom'
   deck_id?: string
   id: string
   name?: string
