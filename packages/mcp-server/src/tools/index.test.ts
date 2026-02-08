@@ -490,6 +490,14 @@ describe('Roles', () => {
       await expect(call('manage_role', { action: 'add_custom', deck_id: deck.id, id: 'dup', name: 'Dup' }))
         .rejects.toThrow('Role already exists')
     })
+
+    it('throws when id is missing', async () => {
+      const deck = makeDeck()
+      mock._decks.set(deck.id, deck)
+
+      await expect(call('manage_role', { action: 'add_custom', deck_id: deck.id, name: 'No ID' }))
+        .rejects.toThrow('id is required for add_custom')
+    })
   })
 
   describe('manage_role add_global', () => {
@@ -504,6 +512,12 @@ describe('Roles', () => {
       mock._setGlobalRoles([{ id: 'existing', name: 'Existing' }])
       await expect(call('manage_role', { action: 'add_global', id: 'existing', name: 'Existing' }))
         .rejects.toThrow('Role already exists')
+    })
+
+    it('throws when id is missing', async () => {
+      mock._setGlobalRoles([])
+      await expect(call('manage_role', { action: 'add_global', name: 'No ID' }))
+        .rejects.toThrow('id is required for add_global')
     })
   })
 
@@ -531,6 +545,65 @@ describe('Roles', () => {
     it('throws when not found', async () => {
       mock._setGlobalRoles([])
       await expect(call('manage_role', { action: 'delete_global', id: 'nope' })).rejects.toThrow('Role not found')
+    })
+  })
+
+  describe('manage_role update_custom', () => {
+    it('updates custom role properties', async () => {
+      const deck = makeDeck()
+      deck.customRoles.push({ id: 'custom-role', name: 'Custom Role' })
+      mock._decks.set(deck.id, deck)
+
+      const result = await call('manage_role', {
+        action: 'update_custom', deck_id: deck.id, id: 'custom-role', name: 'Updated Name', description: 'New desc'
+      }) as any
+      expect(result.success).toBe(true)
+      expect(result.role.name).toBe('Updated Name')
+      expect(result.role.description).toBe('New desc')
+    })
+
+    it('throws when not found', async () => {
+      const deck = makeDeck()
+      mock._decks.set(deck.id, deck)
+
+      await expect(call('manage_role', { action: 'update_custom', deck_id: deck.id, id: 'nope' }))
+        .rejects.toThrow('Role not found')
+    })
+
+    it('throws when id is missing', async () => {
+      const deck = makeDeck()
+      mock._decks.set(deck.id, deck)
+
+      await expect(call('manage_role', { action: 'update_custom', deck_id: deck.id, name: 'Test' }))
+        .rejects.toThrow('id is required for update_custom')
+    })
+  })
+
+  describe('manage_role delete_custom', () => {
+    it('deletes a custom role', async () => {
+      const deck = makeDeck()
+      deck.customRoles.push({ id: 'custom-role', name: 'Custom Role' })
+      mock._decks.set(deck.id, deck)
+
+      const result = await call('manage_role', { action: 'delete_custom', deck_id: deck.id, id: 'custom-role' }) as any
+      expect(result.success).toBe(true)
+      expect(deck.customRoles).toHaveLength(0)
+    })
+
+    it('throws when not found', async () => {
+      const deck = makeDeck()
+      mock._decks.set(deck.id, deck)
+
+      await expect(call('manage_role', { action: 'delete_custom', deck_id: deck.id, id: 'nope' }))
+        .rejects.toThrow('Role not found')
+    })
+
+    it('throws when id is missing', async () => {
+      const deck = makeDeck()
+      mock._decks.set(deck.id, deck)
+
+      await expect(call('manage_role', { action: 'delete_custom', deck_id: deck.id }))
+        .rejects.toThrow('id is required for delete_custom')
     })
   })
 })

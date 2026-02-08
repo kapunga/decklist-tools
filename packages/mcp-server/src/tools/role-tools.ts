@@ -25,6 +25,7 @@ export function manageRole(storage: Storage, args: ManageRoleArgs) {
   switch (args.action) {
     case 'add_custom': {
       if (!args.deck_id) throw new Error('deck_id is required for add_custom')
+      if (!args.id) throw new Error('id is required for add_custom')
       if (!args.name) throw new Error('name is required for add_custom')
       const deck = getDeckOrThrow(storage, args.deck_id)
 
@@ -43,6 +44,7 @@ export function manageRole(storage: Storage, args: ManageRoleArgs) {
       return { success: true, role }
     }
     case 'add_global': {
+      if (!args.id) throw new Error('id is required for add_global')
       if (!args.name) throw new Error('name is required for add_global')
       const roles = storage.getGlobalRoles()
       if (roles.some((r) => r.id === args.id)) {
@@ -78,6 +80,31 @@ export function manageRole(storage: Storage, args: ManageRoleArgs) {
 
       roles.splice(roleIndex, 1)
       storage.saveGlobalRoles(roles)
+      return { success: true, message: `Role ${args.id} deleted` }
+    }
+    case 'update_custom': {
+      if (!args.deck_id) throw new Error('deck_id is required for update_custom')
+      if (!args.id) throw new Error('id is required for update_custom')
+      const deck = getDeckOrThrow(storage, args.deck_id)
+      const roleIndex = deck.customRoles.findIndex((r) => r.id === args.id)
+      if (roleIndex === -1) throw new Error(`Role not found: ${args.id}`)
+
+      if (args.name !== undefined) deck.customRoles[roleIndex].name = args.name
+      if (args.description !== undefined) deck.customRoles[roleIndex].description = args.description
+      if (args.color !== undefined) deck.customRoles[roleIndex].color = args.color
+
+      storage.saveDeck(deck)
+      return { success: true, role: deck.customRoles[roleIndex] }
+    }
+    case 'delete_custom': {
+      if (!args.deck_id) throw new Error('deck_id is required for delete_custom')
+      if (!args.id) throw new Error('id is required for delete_custom')
+      const deck = getDeckOrThrow(storage, args.deck_id)
+      const roleIndex = deck.customRoles.findIndex((r) => r.id === args.id)
+      if (roleIndex === -1) throw new Error(`Role not found: ${args.id}`)
+
+      deck.customRoles.splice(roleIndex, 1)
+      storage.saveDeck(deck)
       return { success: true, message: `Role ${args.id} deleted` }
     }
     default:

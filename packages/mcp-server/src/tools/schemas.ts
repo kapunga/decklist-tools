@@ -181,15 +181,15 @@ export function getToolDefinitions(): Tool[] {
     },
     {
       name: 'manage_role',
-      description: 'Add or manage roles. Actions: add_custom (deck-specific), add_global, update_global, delete_global.',
+      description: 'Add, update, or delete roles. Actions: add_custom (deck-specific), update_custom, delete_custom, add_global, update_global, delete_global.',
       inputSchema: {
         type: 'object',
         properties: {
           action: {
             type: 'string',
-            enum: ['add_custom', 'add_global', 'update_global', 'delete_global'],
+            enum: ['add_custom', 'add_global', 'update_global', 'delete_global', 'update_custom', 'delete_custom'],
           },
-          deck_id: { type: 'string', description: 'Required for add_custom' },
+          deck_id: { type: 'string', description: 'Required for add_custom, update_custom, delete_custom' },
           id: { type: 'string', description: 'Role ID (required for all actions)' },
           name: { type: 'string', description: 'Display name (required for add_custom, add_global)' },
           description: { type: 'string' },
