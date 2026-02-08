@@ -121,3 +121,23 @@ Detailed design docs in `specs/`:
 - `01-storage-format.md` - Complete JSON schema for all data structures
 - `02-mcp-server.md` - All 30+ MCP tools with input/output schemas
 - `03-electron-app.md` - UI/UX specification with keyboard shortcuts
+
+## Bug Fixing Workflow
+
+When asked to fix a bug, follow this workflow:
+
+1. **Read the bug file** from `bugs/` directory (e.g., `bugs/issue-name.md`)
+2. **Implement the fix** as described in the bug file
+3. **Verify the fix** by running:
+   - `pnpm build:mcp` or relevant package build
+   - `pnpm typecheck`
+4. **Delete the bug file** after successful verification
+5. **Create a changeset manually** in `.changeset/` (the interactive `pnpm changeset` CLI doesn't work in non-TTY environments):
+   ```markdown
+   ---
+   "@mtg-deckbuilder/package-name": patch
+   ---
+
+   Brief description of the fix
+   ```
+   Use `patch` for bug fixes, `minor` for new features, `major` for breaking changes.
