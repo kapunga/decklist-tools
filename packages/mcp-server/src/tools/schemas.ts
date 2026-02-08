@@ -17,7 +17,7 @@ export function getToolDefinitions(): Tool[] {
     },
     {
       name: 'get_deck',
-      description: 'Get a deck by ID or name. Includes format validation results.',
+      description: 'Returns raw deck JSON with Scryfall IDs, metadata, and format validation. Use for programmatic operations or exporting. For deck evaluation/analysis, use view_deck instead.',
       inputSchema: {
         type: 'object',
         properties: {
@@ -143,7 +143,7 @@ export function getToolDefinitions(): Tool[] {
     // Views
     {
       name: 'view_deck',
-      description: `Render a deck using a specific view format. Use \`detail: "compact"\` to include Oracle text for all cards (recommended for deck analysis). Available views: ${viewList}`,
+      description: `Returns human-readable deck views with Oracle text. **Start here when reviewing or analyzing a deck.** Use \`detail: "compact"\` for card analysis (includes Oracle text). Available views: ${viewList}`,
       inputSchema: {
         type: 'object',
         properties: {
