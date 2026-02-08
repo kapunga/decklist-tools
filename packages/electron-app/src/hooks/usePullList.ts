@@ -120,7 +120,16 @@ function compareByKey(
 
 // Get mana cost, handling dual-faced cards
 function getManaCost(card: ScryfallCard): string {
-  return card.mana_cost || card.card_faces?.[0]?.mana_cost || ''
+  // For double-faced cards, show both faces' mana costs with separator
+  if (card.card_faces && card.card_faces.length >= 2) {
+    const front = card.card_faces[0]?.mana_cost || ''
+    const back = card.card_faces[1]?.mana_cost || ''
+    if (front && back) {
+      return `${front} // ${back}`
+    }
+    return front || back
+  }
+  return card.mana_cost || ''
 }
 
 // Multi-column sort comparator

@@ -50,6 +50,34 @@ const sizeClasses = {
 export function ManaCost({ cost, size = 'md', className }: ManaCostProps) {
   if (!cost) return null
 
+  // Check for double-faced card separator
+  const faces = cost.split(' // ')
+
+  if (faces.length === 2) {
+    const frontSymbols = parseManaCost(faces[0])
+    const backSymbols = parseManaCost(faces[1])
+
+    return (
+      <span className={cn('inline-flex items-center gap-0.5', className)}>
+        {frontSymbols.map((symbol, index) => (
+          <ManaSymbol
+            key={`front-${symbol}-${index}`}
+            symbol={symbol}
+            size={size}
+          />
+        ))}
+        <span className="text-muted-foreground mx-0.5">//</span>
+        {backSymbols.map((symbol, index) => (
+          <ManaSymbol
+            key={`back-${symbol}-${index}`}
+            symbol={symbol}
+            size={size}
+          />
+        ))}
+      </span>
+    )
+  }
+
   const symbols = parseManaCost(cost)
 
   if (symbols.length === 0) return null
