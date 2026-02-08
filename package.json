@@ -10,6 +10,8 @@
     "build:electron": "pnpm --filter @mtg-deckbuilder/electron-app build",
     "dev": "pnpm build:shared && pnpm --filter @mtg-deckbuilder/electron-app electron:dev",
     "dev:mcp": "pnpm build:shared && pnpm --filter @mtg-deckbuilder/mcp-server dev",
+    "test": "pnpm -r test",
+    "test:shared": "pnpm --filter @mtg-deckbuilder/shared test",
     "test:mcp": "pnpm --filter @mtg-deckbuilder/mcp-server test",
     "typecheck": "pnpm -r typecheck",
     "clean": "pnpm -r clean",

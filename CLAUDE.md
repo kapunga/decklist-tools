@@ -135,9 +135,13 @@ When asked to fix a bug, follow this workflow:
 5. **Create a changeset manually** in `.changeset/` (the interactive `pnpm changeset` CLI doesn't work in non-TTY environments):
    ```markdown
    ---
-   "@mtg-deckbuilder/package-name": patch
+   "@mtg-deckbuilder/shared": patch
+   "@mtg-deckbuilder/mcp-server": patch
+   "@mtg-deckbuilder/electron-app": patch
    ---
 
    Brief description of the fix
    ```
    Use `patch` for bug fixes, `minor` for new features, `major` for breaking changes.
+
+   **Important:** All packages must use the same version bump level. If any package needs a `minor` bump, all packages should be `minor`. This keeps versions synchronized across the monorepo.

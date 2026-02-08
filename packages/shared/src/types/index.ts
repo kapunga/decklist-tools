@@ -294,6 +294,7 @@ export interface ScryfallCard {
   colors?: string[]
   color_identity: string[]
   set: string
+  set_name?: string  // Full set name (e.g., "Modern Horizons 2")
   collector_number: string
   power?: string
   toughness?: string
