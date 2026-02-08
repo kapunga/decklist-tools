@@ -56,7 +56,7 @@ export function getToolDefinitions(): Tool[] {
     // Card Management
     {
       name: 'manage_card',
-      description: 'Add, remove, update, or move cards in a deck. Supports batch operations via the `cards` array. For add: each entry is "[Nx ]<set_code> <collector_number>" (e.g. "fdn 542", "2x woe 138"). For remove/update/move: each entry is a card name.',
+      description: 'Add, remove, update, or move cards in a deck. Supports batch operations via the `cards` array. For add: each entry is "[Nx ]<set_code> <collector_number>" (e.g. "fdn 542", "2x woe 138"). For remove/update/move: each entry is a card name. For move: use `from` and `to` with list names: mainboard, sideboard, alternates.',
       inputSchema: {
         type: 'object',
         properties: {
