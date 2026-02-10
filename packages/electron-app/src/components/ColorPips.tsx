@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils'
+import { sortColorsWUBRG } from '@/lib/scryfall'
 import { ManaSymbol } from './ManaCost'
 
 interface ColorPipsProps {
@@ -6,13 +7,6 @@ interface ColorPipsProps {
   size?: 'sm' | 'md' | 'lg'
   className?: string
   showColorless?: boolean // Whether to show C for colorless decks
-}
-
-// WUBRG order for consistent display
-const WUBRG_ORDER = ['W', 'U', 'B', 'R', 'G']
-
-function sortColorsWUBRG(colors: string[]): string[] {
-  return [...colors].sort((a, b) => WUBRG_ORDER.indexOf(a) - WUBRG_ORDER.indexOf(b))
 }
 
 export function ColorPips({

@@ -2,7 +2,7 @@ import {
   Storage,
   type RoleDefinition,
 } from '@mtg-deckbuilder/shared'
-import { getDeckOrThrow } from './helpers.js'
+import { getDeckOrThrow, updateRoleInList, deleteRoleFromList } from './helpers.js'
 import type { ManageRoleArgs } from './types.js'
 
 export function listRoles(storage: Storage, deckId?: string) {
@@ -63,49 +63,39 @@ export function manageRole(storage: Storage, args: ManageRoleArgs) {
     }
     case 'update_global': {
       const roles = storage.getGlobalRoles()
-      const roleIndex = roles.findIndex((r) => r.id === args.id)
-      if (roleIndex === -1) throw new Error(`Role not found: ${args.id}`)
-
-      if (args.name !== undefined) roles[roleIndex].name = args.name
-      if (args.description !== undefined) roles[roleIndex].description = args.description
-      if (args.color !== undefined) roles[roleIndex].color = args.color
-
+      const role = updateRoleInList(roles, args.id!, {
+        name: args.name,
+        description: args.description,
+        color: args.color,
+      })
       storage.saveGlobalRoles(roles)
-      return { success: true, role: roles[roleIndex] }
+      return { success: true, role }
     }
     case 'delete_global': {
       const roles = storage.getGlobalRoles()
-      const roleIndex = roles.findIndex((r) => r.id === args.id)
-      if (roleIndex === -1) throw new Error(`Role not found: ${args.id}`)
-
-      roles.splice(roleIndex, 1)
+      const deletedId = deleteRoleFromList(roles, args.id!)
       storage.saveGlobalRoles(roles)
-      return { success: true, message: `Role ${args.id} deleted` }
+      return { success: true, message: `Role ${deletedId} deleted` }
     }
     case 'update_custom': {
       if (!args.deck_id) throw new Error('deck_id is required for update_custom')
       if (!args.id) throw new Error('id is required for update_custom')
       const deck = getDeckOrThrow(storage, args.deck_id)
-      const roleIndex = deck.customRoles.findIndex((r) => r.id === args.id)
-      if (roleIndex === -1) throw new Error(`Role not found: ${args.id}`)
-
-      if (args.name !== undefined) deck.customRoles[roleIndex].name = args.name
-      if (args.description !== undefined) deck.customRoles[roleIndex].description = args.description
-      if (args.color !== undefined) deck.customRoles[roleIndex].color = args.color
-
+      const role = updateRoleInList(deck.customRoles, args.id, {
+        name: args.name,
+        description: args.description,
+        color: args.color,
+      })
       storage.saveDeck(deck)
-      return { success: true, role: deck.customRoles[roleIndex] }
+      return { success: true, role }
     }
     case 'delete_custom': {
       if (!args.deck_id) throw new Error('deck_id is required for delete_custom')
       if (!args.id) throw new Error('id is required for delete_custom')
       const deck = getDeckOrThrow(storage, args.deck_id)
-      const roleIndex = deck.customRoles.findIndex((r) => r.id === args.id)
-      if (roleIndex === -1) throw new Error(`Role not found: ${args.id}`)
-
-      deck.customRoles.splice(roleIndex, 1)
+      const deletedId = deleteRoleFromList(deck.customRoles, args.id)
       storage.saveDeck(deck)
-      return { success: true, message: `Role ${args.id} deleted` }
+      return { success: true, message: `Role ${deletedId} deleted` }
     }
     default:
       throw new Error(`Unknown action: ${args.action}`)

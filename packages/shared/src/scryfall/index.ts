@@ -66,8 +66,19 @@ interface ScryfallSetsResponse {
   data: ScryfallSet[]
 }
 
-// Get all sets from Scryfall
+// Cache for all sets - stored in memory with expiry
+let setsCache: ScryfallSet[] | null = null
+let setsCacheTime = 0
+const SETS_CACHE_DURATION_MS = 24 * 60 * 60 * 1000 // 24 hours
+
+// Get all sets from Scryfall (cached)
 export async function getAllSets(): Promise<ScryfallSet[]> {
+  // Return cached data if still valid
+  const now = Date.now()
+  if (setsCache && now - setsCacheTime < SETS_CACHE_DURATION_MS) {
+    return setsCache
+  }
+
   try {
     const response = await rateLimitedFetch(`${BASE_URL}/sets`)
 
@@ -76,10 +87,13 @@ export async function getAllSets(): Promise<ScryfallSet[]> {
     }
 
     const result = await response.json() as ScryfallSetsResponse
-    return result.data || []
+    setsCache = result.data || []
+    setsCacheTime = now
+    return setsCache
   } catch (error) {
     console.error('Error fetching sets:', error)
-    return []
+    // Return cached data if available, even if expired
+    return setsCache || []
   }
 }
 
@@ -236,7 +250,7 @@ export function getColorIdentityString(colors: string[]): string {
 }
 
 // WUBRG order for consistent color sorting
-const WUBRG_ORDER = ['W', 'U', 'B', 'R', 'G']
+export const WUBRG_ORDER = ['W', 'U', 'B', 'R', 'G']
 
 // Sort colors in WUBRG order
 export function sortColorsWUBRG(colors: string[]): string[] {
@@ -318,6 +332,30 @@ export function getCardPrices(card: ScryfallCard): CardPrices {
     eur_foil: card.prices?.eur_foil || undefined,
     tcgplayer: card.purchase_uris?.tcgplayer || undefined,
     cardmarket: card.purchase_uris?.cardmarket || undefined
+  }
+}
+
+// Get all printings of a card by name
+export async function getCardPrintings(cardName: string): Promise<SearchResult | null> {
+  try {
+    // Query: !"Card Name" unique:prints order:released
+    // Returns all printings sorted by release date
+    const query = `!"${cardName}" unique:prints order:released`
+    const response = await rateLimitedFetch(
+      `${BASE_URL}/cards/search?q=${encodeURIComponent(query)}`
+    )
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        return { object: 'list', total_cards: 0, has_more: false, data: [] }
+      }
+      throw new Error(`Scryfall API error: ${response.status}`)
+    }
+
+    return await response.json() as SearchResult
+  } catch (error) {
+    console.error('Error fetching card printings:', error)
+    return null
   }
 }
 

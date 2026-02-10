@@ -269,7 +269,7 @@ export function CardEditModal({
                 <SelectContent>
                   {printings.map(printing => (
                     <SelectItem key={printing.id} value={printing.id}>
-                      {printing.set.toUpperCase()} #{printing.collector_number} — {printing.set_name}
+                      {printing.set.toUpperCase()} #{printing.collector_number}{printing.set_name ? ` — ${printing.set_name}` : ''}
                     </SelectItem>
                   ))}
                 </SelectContent>

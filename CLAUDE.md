@@ -121,6 +121,9 @@ Detailed design docs in `specs/`:
 - `01-storage-format.md` - Complete JSON schema for all data structures
 - `02-mcp-server.md` - All 30+ MCP tools with input/output schemas
 - `03-electron-app.md` - UI/UX specification with keyboard shortcuts
+- `04-project-rename.md` - Procedure for renaming the project
+
+**Note:** Specs for one-time procedures (like `04-project-rename.md`) should be deleted after implementation. Specs describing ongoing architecture (like storage format, MCP tools) should be kept up to date.
 
 ## Bug Fixing Workflow
 
@@ -135,9 +138,13 @@ When asked to fix a bug, follow this workflow:
 5. **Create a changeset manually** in `.changeset/` (the interactive `pnpm changeset` CLI doesn't work in non-TTY environments):
    ```markdown
    ---
-   "@mtg-deckbuilder/package-name": patch
+   "@mtg-deckbuilder/shared": patch
+   "@mtg-deckbuilder/mcp-server": patch
+   "@mtg-deckbuilder/electron-app": patch
    ---
 
    Brief description of the fix
    ```
    Use `patch` for bug fixes, `minor` for new features, `major` for breaking changes.
+
+   **Important:** All packages must use the same version bump level. If any package needs a `minor` bump, all packages should be `minor`. This keeps versions synchronized across the monorepo.
