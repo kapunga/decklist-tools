@@ -395,6 +395,7 @@ export function isBasicLand(name: string): boolean {
 
 // Pull List Configuration
 export type PullListSortKey = 'collectorNumber' | 'rarity' | 'type' | 'manaCost' | 'name'
+export type PullListSource = 'mainDeck' | 'maybeboard'
 
 export interface PullListConfig {
   version: number
@@ -402,6 +403,7 @@ export interface PullListConfig {
   sortColumns: PullListSortKey[]  // Order determines sort priority
   showPulledSection: boolean      // Show "Already Pulled" section
   hideBasicLands: boolean         // Hide basic lands from pull list (default: true)
+  source: PullListSource          // Which cards to show: main deck or maybeboard
 }
 
 export const DEFAULT_PULL_LIST_CONFIG: PullListConfig = {
@@ -409,5 +411,6 @@ export const DEFAULT_PULL_LIST_CONFIG: PullListConfig = {
   updatedAt: '',
   sortColumns: ['rarity', 'type', 'manaCost', 'name'],
   showPulledSection: true,
-  hideBasicLands: true
+  hideBasicLands: true,
+  source: 'mainDeck'
 }

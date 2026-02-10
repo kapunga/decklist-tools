@@ -14,7 +14,8 @@ export const createPullListSlice: SliceCreator<PullListSlice> = (set, get) => ({
       updatedAt: '',
       sortColumns: ['rarity', 'type', 'manaCost', 'name'] as const,
       showPulledSection: true,
-      hideBasicLands: true
+      hideBasicLands: true,
+      source: 'mainDeck' as const
     }
 
     const updated: PullListConfig = {

@@ -40,36 +40,52 @@ export function renderPullListView(
   deck: Deck,
   setCollection: SetCollectionFile,
   scryfallCache: Map<string, ScryfallCard>,
-  options?: { showPulled?: boolean; hideBasicLands?: boolean }
+  options?: { showPulled?: boolean; hideBasicLands?: boolean; source?: 'mainDeck' | 'maybeboard' }
 ): string {
   const lines: string[] = []
   const showPulled = options?.showPulled ?? true
   const hideBasicLands = options?.hideBasicLands ?? true
+  const source = options?.source ?? 'mainDeck'
 
-  lines.push(`# ${deck.name} - Pull List`)
+  const sourceLabel = source === 'maybeboard' ? 'Maybeboard' : 'Main Deck'
+  lines.push(`# ${deck.name} - Pull List (${sourceLabel})`)
   lines.push('')
 
-  // Get confirmed cards (including commanders), filtering basic lands if enabled
-  let mainCards = deck.cards.filter(c => c.inclusion === 'confirmed')
-  if (hideBasicLands) {
-    mainCards = mainCards.filter(c => !isBasicLand(c.card.name))
-  }
+  let confirmedCards: DeckCard[]
 
-  const confirmedCards: DeckCard[] = [
-    ...mainCards,
-    ...deck.commanders.map(cmd => ({
-      id: `commander-${cmd.name}`,
-      card: cmd,
-      quantity: 1,
-      inclusion: 'confirmed' as const,
-      ownership: 'unknown' as const,
-      roles: ['commander'],
-      typeLine: '',
-      isPinned: true,
-      addedAt: deck.createdAt,
-      addedBy: 'user' as const
-    }))
-  ]
+  if (source === 'maybeboard') {
+    // Maybeboard: only alternates (confirmed), no commanders
+    let alternateCards = deck.alternates.filter(c => c.inclusion === 'confirmed')
+    if (hideBasicLands) {
+      alternateCards = alternateCards.filter(c => !isBasicLand(c.card.name))
+    }
+    confirmedCards = alternateCards
+  } else {
+    // Main Deck: main + sideboard + commanders
+    let mainCards = deck.cards.filter(c => c.inclusion === 'confirmed')
+    let sideboardCards = deck.sideboard.filter(c => c.inclusion === 'confirmed')
+    if (hideBasicLands) {
+      mainCards = mainCards.filter(c => !isBasicLand(c.card.name))
+      sideboardCards = sideboardCards.filter(c => !isBasicLand(c.card.name))
+    }
+
+    confirmedCards = [
+      ...mainCards,
+      ...sideboardCards,
+      ...deck.commanders.map(cmd => ({
+        id: `commander-${cmd.name}`,
+        card: cmd,
+        quantity: 1,
+        inclusion: 'confirmed' as const,
+        ownership: 'unknown' as const,
+        roles: ['commander'],
+        typeLine: '',
+        isPinned: true,
+        addedAt: deck.createdAt,
+        addedBy: 'user' as const
+      }))
+    ]
+  }
 
   // Build set lookup maps
   const ownedSetCodes = new Set(
