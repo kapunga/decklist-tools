@@ -77,7 +77,8 @@ export function PullListView({ deck }: PullListViewProps) {
     isLoading,
     showPulledSection,
     hideBasicLands,
-    sortColumns
+    sortColumns,
+    source
   } = usePullList(deck)
 
   // Focus state for card preview
@@ -143,6 +144,7 @@ export function PullListView({ deck }: PullListViewProps) {
         sortColumns={sortColumns}
         showPulledSection={showPulledSection}
         hideBasicLands={hideBasicLands}
+        source={source}
       />
 
       <div className="flex-1 flex overflow-hidden">
@@ -189,7 +191,9 @@ export function PullListView({ deck }: PullListViewProps) {
               <Check className="h-12 w-12 text-green-500 mb-4" />
               <p className="text-lg font-medium text-green-500">All cards pulled!</p>
               <p className="text-sm text-muted-foreground mt-1">
-                Your deck is ready to play
+                {source === 'maybeboard'
+                  ? 'All maybeboard cards have been pulled'
+                  : 'Your deck is ready to play'}
               </p>
             </div>
           ) : (
@@ -235,9 +239,15 @@ export function PullListView({ deck }: PullListViewProps) {
         {unpulledGroups.length === 0 && pulledGroups.length === 0 && !allPulled && (
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <Package className="h-12 w-12 text-muted-foreground mb-4" />
-            <p className="text-lg font-medium">No cards in owned sets</p>
+            <p className="text-lg font-medium">
+              {source === 'maybeboard'
+                ? 'No maybeboard cards in owned sets'
+                : 'No cards in owned sets'}
+            </p>
             <p className="text-sm text-muted-foreground mt-1">
-              Add sets to your collection in Settings to see pull list options
+              {source === 'maybeboard'
+                ? 'Add confirmed cards to the maybeboard, or add sets to your collection'
+                : 'Add sets to your collection in Settings to see pull list options'}
             </p>
           </div>
         )}

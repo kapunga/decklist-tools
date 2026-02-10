@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { useQueries } from '@tanstack/react-query'
 import { useStore } from '@/hooks/useStore'
 import { getCardPrintings } from '@/lib/scryfall'
-import type { Deck, DeckCard, ScryfallCard, PullListSortKey, CollectionLevel } from '@/types'
+import type { Deck, DeckCard, ScryfallCard, PullListSortKey, PullListSource, CollectionLevel } from '@/types'
 import { getTotalPulledQuantity, COLLECTION_LEVEL_RARITIES, isBasicLand } from '@/types'
 
 export interface PullListItem {
@@ -148,16 +148,32 @@ export function usePullList(deck: Deck | null) {
   const pullListConfig = useStore(state => state.pullListConfig)
 
   const hideBasicLands = pullListConfig?.hideBasicLands ?? true
+  const source: PullListSource = pullListConfig?.source ?? 'mainDeck'
 
-  // Get all confirmed cards (including commanders)
+  // Get all confirmed cards based on source
   const confirmedCards = useMemo(() => {
     if (!deck) return []
 
-    let cards = deck.cards.filter(c => c.inclusion === 'confirmed')
+    if (source === 'maybeboard') {
+      // Maybeboard: only alternates (confirmed), no commanders
+      let cards = deck.alternates.filter(c => c.inclusion === 'confirmed')
+
+      // Filter out basic lands if option is enabled
+      if (hideBasicLands) {
+        cards = cards.filter(c => !isBasicLand(c.card.name))
+      }
+
+      return cards
+    }
+
+    // Main Deck: main + sideboard + commanders
+    let mainCards = deck.cards.filter(c => c.inclusion === 'confirmed')
+    let sideboardCards = deck.sideboard.filter(c => c.inclusion === 'confirmed')
 
     // Filter out basic lands if option is enabled
     if (hideBasicLands) {
-      cards = cards.filter(c => !isBasicLand(c.card.name))
+      mainCards = mainCards.filter(c => !isBasicLand(c.card.name))
+      sideboardCards = sideboardCards.filter(c => !isBasicLand(c.card.name))
     }
 
     // Add commanders as pseudo-cards for pulling
@@ -187,8 +203,8 @@ export function usePullList(deck: Deck | null) {
       }
     })
 
-    return [...cards, ...commanderCards]
-  }, [deck, hideBasicLands])
+    return [...mainCards, ...sideboardCards, ...commanderCards]
+  }, [deck, hideBasicLands, source])
 
   // Get unique card names that need printings fetched
   const cardNames = useMemo(() => {
@@ -383,6 +399,7 @@ export function usePullList(deck: Deck | null) {
     isLoading,
     showPulledSection,
     hideBasicLands,
-    sortColumns
+    sortColumns,
+    source
   }
 }

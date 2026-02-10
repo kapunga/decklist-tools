@@ -8,14 +8,16 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useStore } from '@/hooks/useStore'
-import type { PullListSortKey } from '@/types'
+import type { PullListSortKey, PullListSource } from '@/types'
 
 interface PullListToolbarProps {
   deckId: string
   sortColumns: PullListSortKey[]
   showPulledSection: boolean
   hideBasicLands: boolean
+  source: PullListSource
 }
 
 const SORT_OPTIONS: { key: PullListSortKey; label: string }[] = [
@@ -30,10 +32,15 @@ export function PullListToolbar({
   deckId,
   sortColumns,
   showPulledSection,
-  hideBasicLands
+  hideBasicLands,
+  source
 }: PullListToolbarProps) {
   const updatePullListConfig = useStore(state => state.updatePullListConfig)
   const resetPulledStatus = useStore(state => state.resetPulledStatus)
+
+  const handleSourceChange = async (value: string) => {
+    await updatePullListConfig({ source: value as PullListSource })
+  }
 
   const handleToggleSortColumn = async (key: PullListSortKey) => {
     const current = [...sortColumns]
@@ -69,6 +76,13 @@ export function PullListToolbar({
   return (
     <div className="flex items-center justify-between p-4 border-b">
       <div className="flex items-center gap-2">
+        <Tabs value={source} onValueChange={handleSourceChange}>
+          <TabsList>
+            <TabsTrigger value="mainDeck">Main Deck</TabsTrigger>
+            <TabsTrigger value="maybeboard">Maybeboard</TabsTrigger>
+          </TabsList>
+        </Tabs>
+
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="sm">
