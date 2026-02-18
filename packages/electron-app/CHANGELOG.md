@@ -1,5 +1,43 @@
 # @mtg-deckbuilder/electron-app
 
+## 0.6.0
+
+### Minor Changes
+
+- 08d9c54: Add Main Deck / Maybeboard toggle to Pull List view
+
+  The Pull List now includes a toggle to switch between viewing cards from the main deck (including sideboard and commanders) or from the maybeboard (alternates only). This makes it easier to pull cards for maybeboard options separately from the main deck.
+
+- 858b13f: Consolidate Scryfall module and add test coverage
+
+  Phase 1: Scryfall Module Consolidation
+
+  - Added `getCardPrintings()` function to shared package
+  - Added in-memory sets cache for `getAllSets()` (24-hour expiry)
+  - Exported `WUBRG_ORDER` constant
+  - Replaced electron-app's scryfall.ts with re-exports from shared (~300 lines removed)
+  - Added `set_name` optional field to `ScryfallCard` type
+
+  Phase 2: Test Coverage
+
+  - Added Vitest to shared package
+  - Created tests for scryfall utilities (sortColorsWUBRG, getCardImageUrl, getCardFaceImageUrl)
+  - Created tests for arena format parser
+  - Created tests for card-utils (consolidateDuplicateCards, findCardByName)
+  - 49 new tests added
+
+  Phase 3: Internal Deduplication
+
+  - Removed duplicate `migrateLegacyPulledCards` from storage (uses types export)
+  - ColorPips now imports `sortColorsWUBRG` from shared instead of defining locally
+  - Added `updateRoleInList` and `deleteRoleFromList` helpers to reduce role-tools duplication
+
+### Patch Changes
+
+- Updated dependencies [08d9c54]
+- Updated dependencies [858b13f]
+  - @mtg-deckbuilder/shared@0.6.0
+
 ## 0.5.0
 
 ### Minor Changes
