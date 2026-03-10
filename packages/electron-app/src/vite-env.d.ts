@@ -33,6 +33,21 @@ export interface CacheLoadProgress {
   errors: string[]
 }
 
+export interface CollectionExportResult {
+  success: boolean
+  cancelled?: boolean
+  filePath?: string
+  error?: string
+}
+
+export interface CollectionImportResult {
+  success: boolean
+  cancelled?: boolean
+  deckCount?: number
+  warnings?: string[]
+  error?: string
+}
+
 export interface ElectronAPI {
   listDecks: () => Promise<unknown[]>
   getDeck: (id: string) => Promise<unknown | null>
@@ -65,6 +80,8 @@ export interface ElectronAPI {
   loadAllCardsToCache: (includeImages: boolean) => Promise<void>
   onCacheProgress: (callback: (progress: CacheLoadProgress) => void) => () => void
   cancelCacheLoad: () => Promise<void>
+  exportCollection: () => Promise<CollectionExportResult>
+  importCollection: () => Promise<CollectionImportResult>
 }
 
 declare global {

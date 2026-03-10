@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, protocol, session } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, protocol, session } from 'electron'
 import path from 'path'
 import fs from 'fs'
 import os from 'os'
@@ -343,5 +343,71 @@ function setupIpcHandlers() {
 
   ipcMain.handle('cache:load-cancel', async () => {
     storage!.cancelCacheLoad()
+  })
+
+  // Collection export/import
+  ipcMain.handle('collection:export', async () => {
+    try {
+      const date = new Date().toISOString().split('T')[0]
+      const result = await dialog.showSaveDialog({
+        title: 'Export Collection',
+        defaultPath: `mtg-collection-${date}.mtgbackup`,
+        filters: [
+          { name: 'MTG Backup', extensions: ['mtgbackup'] },
+          { name: 'JSON', extensions: ['json'] },
+          { name: 'All Files', extensions: ['*'] }
+        ]
+      })
+
+      if (result.canceled || !result.filePath) {
+        return { success: false, cancelled: true }
+      }
+
+      const data = storage!.exportCollection()
+      fs.writeFileSync(result.filePath, JSON.stringify(data, null, 2), 'utf-8')
+      return { success: true, filePath: result.filePath }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }
+    }
+  })
+
+  ipcMain.handle('collection:import', async () => {
+    try {
+      const result = await dialog.showOpenDialog({
+        title: 'Import Collection',
+        filters: [
+          { name: 'MTG Backup', extensions: ['mtgbackup'] },
+          { name: 'JSON', extensions: ['json'] },
+          { name: 'All Files', extensions: ['*'] }
+        ],
+        properties: ['openFile']
+      })
+
+      if (result.canceled || result.filePaths.length === 0) {
+        return { success: false, cancelled: true }
+      }
+
+      const content = fs.readFileSync(result.filePaths[0], 'utf-8')
+      const data = JSON.parse(content)
+
+      if (!data.formatVersion) {
+        return { success: false, error: 'Invalid backup file: missing formatVersion' }
+      }
+
+      const importResult = storage!.importCollection(data)
+      return {
+        success: true,
+        deckCount: importResult.deckCount,
+        warnings: importResult.warnings
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }
+    }
   })
 }

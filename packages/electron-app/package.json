@@ -8,6 +8,8 @@
     "build": "tsc && vite build && electron-builder",
     "preview": "vite preview",
     "electron:dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist dist-electron release"
   },
@@ -52,6 +54,7 @@
     "typescript": "^5.2.2",
     "vite": "^6.0.0",
     "vite-plugin-electron": "^0.28.0",
+    "vitest": "^4.0.18",
     "wait-on": "^7.2.0"
   },
   "overrides": {
