@@ -844,6 +844,90 @@ export class Storage {
     }
   }
 
+  // Collection Export/Import
+  exportCollection(): Record<string, unknown> {
+    const config = this.readJson(path.join(this.baseDir, 'config.json'))
+    const taxonomy = this.readJson(path.join(this.baseDir, 'taxonomy.json'))
+    const globalRoles = this.readJson(this.globalRolesPath)
+    const interestList = this.readJson(path.join(this.baseDir, 'interest-list.json'))
+    const setCollection = this.readJson(path.join(this.baseDir, 'set-collection.json'))
+    const pullListConfig = this.readJson(path.join(this.baseDir, 'pull-list-config.json'))
+    const decks = this.listDecks()
+
+    return {
+      formatVersion: 1,
+      exportedAt: new Date().toISOString(),
+      ...(config && { config }),
+      ...(taxonomy && { taxonomy }),
+      ...(globalRoles && { globalRoles }),
+      ...(interestList && { interestList }),
+      ...(setCollection && { setCollection }),
+      ...(pullListConfig && { pullListConfig }),
+      decks
+    }
+  }
+
+  importCollection(data: Record<string, unknown>): { deckCount: number; warnings: string[] } {
+    const warnings: string[] = []
+
+    // Validate format version
+    if (!data.formatVersion || typeof data.formatVersion !== 'number') {
+      throw new Error('Invalid backup file: missing formatVersion')
+    }
+    if (data.formatVersion > 1) {
+      throw new Error(`Unsupported backup format version: ${data.formatVersion}. Please update the app.`)
+    }
+
+    // Validate decks is an array
+    if (data.decks !== undefined && !Array.isArray(data.decks)) {
+      throw new Error('Invalid backup file: decks must be an array')
+    }
+
+    // Delete all existing deck files
+    try {
+      const existingFiles = fs.readdirSync(this.decksDir).filter(f => f.endsWith('.json'))
+      for (const file of existingFiles) {
+        fs.unlinkSync(path.join(this.decksDir, file))
+      }
+    } catch (error) {
+      console.error('Error clearing existing decks:', error)
+    }
+
+    // Write each data section if present
+    if (data.config) {
+      this.writeJson(path.join(this.baseDir, 'config.json'), data.config)
+    }
+    if (data.taxonomy) {
+      this.writeJson(path.join(this.baseDir, 'taxonomy.json'), data.taxonomy)
+    }
+    if (data.globalRoles) {
+      this.writeJson(this.globalRolesPath, data.globalRoles)
+    }
+    if (data.interestList) {
+      this.writeJson(path.join(this.baseDir, 'interest-list.json'), data.interestList)
+    }
+    if (data.setCollection) {
+      this.writeJson(path.join(this.baseDir, 'set-collection.json'), data.setCollection)
+    }
+    if (data.pullListConfig) {
+      this.writeJson(path.join(this.baseDir, 'pull-list-config.json'), data.pullListConfig)
+    }
+
+    // Write deck files
+    let deckCount = 0
+    const decks = (data.decks as Array<Record<string, unknown>>) || []
+    for (const deck of decks) {
+      if (!deck.id || typeof deck.id !== 'string') {
+        warnings.push(`Skipped deck without valid id: ${deck.name || 'unnamed'}`)
+        continue
+      }
+      this.writeJson(path.join(this.decksDir, `${deck.id}.json`), deck)
+      deckCount++
+    }
+
+    return { deckCount, warnings }
+  }
+
   cancelCacheLoad(): void {
     this.cacheLoadCancelled = true
   }
