@@ -1,10 +1,12 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import type { Deck } from '@/types'
 import { getAllRoles } from '@/lib/constants'
 import { useGlobalRoles } from '@/hooks/useStore'
 import { useScryfallCache } from '@/hooks/useScryfallCache'
 import { ManaCurve } from '@/components/ManaCurve'
+import { ConsistencyMatrix } from '@/components/ConsistencyMatrix'
+import { cn } from '@/lib/utils'
 
 interface DeckStatsProps {
   deck: Deck
@@ -12,6 +14,7 @@ interface DeckStatsProps {
 
 export function DeckStats({ deck }: DeckStatsProps) {
   const globalRoles = useGlobalRoles()
+  const [matrixRoles, setMatrixRoles] = useState<string[]>([])
   const confirmedCards = useMemo(
     () => deck.cards.filter(c => c.inclusion === 'confirmed'),
     [deck.cards]
@@ -69,18 +72,46 @@ export function DeckStats({ deck }: DeckStatsProps) {
         <h3 className="text-lg font-semibold mb-4">Cards by Role</h3>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           {sortedRoles.map(([roleId, count]) => (
-            <div
+            <button
               key={roleId}
-              className="bg-secondary rounded-lg p-4 text-center"
+              type="button"
+              className={cn(
+                'bg-secondary rounded-lg p-4 text-center transition-all',
+                roleId !== 'Unassigned' && 'cursor-pointer hover:bg-secondary/80',
+                matrixRoles.includes(roleId) && 'ring-2 ring-primary'
+              )}
+              onClick={() => {
+                if (roleId !== 'Unassigned') {
+                  setMatrixRoles(prev =>
+                    prev.includes(roleId)
+                      ? prev.filter(r => r !== roleId)
+                      : [...prev, roleId]
+                  )
+                }
+              }}
             >
               <div className="text-2xl font-bold">{count}</div>
               <div className="text-sm text-muted-foreground">
                 {getRoleName(roleId)}
               </div>
-            </div>
+            </button>
           ))}
         </div>
       </div>
+
+      <ConsistencyMatrix
+        deck={deck}
+        confirmedCards={confirmedCards}
+        byRole={byRole}
+        selectedRoles={matrixRoles}
+        onToggleRole={role =>
+          setMatrixRoles(prev =>
+            prev.includes(role)
+              ? prev.filter(r => r !== role)
+              : [...prev, role]
+          )
+        }
+      />
 
       {totalNeedToBuy > 0 && (
         <div>

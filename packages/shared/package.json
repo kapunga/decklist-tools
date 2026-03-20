@@ -33,6 +33,10 @@
     "./filters": {
       "types": "./dist/filters/index.d.ts",
       "import": "./dist/filters/index.js"
+    },
+    "./stats": {
+      "types": "./dist/stats/index.d.ts",
+      "import": "./dist/stats/index.js"
     }
   },
   "scripts": {
