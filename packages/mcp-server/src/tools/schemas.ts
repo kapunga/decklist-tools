@@ -203,20 +203,30 @@ export function getToolDefinitions(): Tool[] {
 
     // Commanders
     {
-      name: 'set_commanders',
-      description: 'Set the commanders for a Commander format deck',
+      name: 'manage_commander',
+      description: 'Add, remove, or swap commanders for a Commander format deck.\n\n**Actions**:\n- add: Add a commander to the deck\n- remove: Remove a commander from the deck\n- swap: Replace an existing commander with a new one (requires new_commander_name)',
       inputSchema: {
         type: 'object',
         properties: {
+          action: {
+            type: 'string',
+            enum: ['add', 'remove', 'swap'],
+          },
           deck_id: { type: 'string' },
           commander_name: {
             type: 'string',
-            description: 'Name of the commander card',
+            description: 'Commander card name (to add, remove, or replace)',
           },
-          set_code: { type: 'string' },
-          collector_number: { type: 'string' },
+          set_code: { type: 'string', description: 'Set code for add/remove' },
+          collector_number: { type: 'string', description: 'Collector number for add/remove' },
+          new_commander_name: {
+            type: 'string',
+            description: 'New commander name (swap only, required)',
+          },
+          new_set_code: { type: 'string', description: 'Set code for new commander (swap only)' },
+          new_collector_number: { type: 'string', description: 'Collector number for new commander (swap only)' },
         },
-        required: ['deck_id', 'commander_name'],
+        required: ['action', 'deck_id', 'commander_name'],
       },
     },
 

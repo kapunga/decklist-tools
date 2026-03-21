@@ -61,11 +61,15 @@ export interface ManageRoleArgs {
   color?: string
 }
 
-export interface SetCommandersArgs {
+export interface ManageCommanderArgs {
+  action: 'add' | 'remove' | 'swap'
   deck_id: string
   commander_name: string
   set_code?: string
   collector_number?: string
+  new_commander_name?: string
+  new_set_code?: string
+  new_collector_number?: string
 }
 
 export interface ManageInterestListArgs {

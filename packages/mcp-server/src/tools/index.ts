@@ -3,7 +3,7 @@ import { getToolDefinitions } from './schemas.js'
 import { listDecks, getDeck, manageDeck, viewDeck, searchDecksForCard } from './deck-tools.js'
 import { manageCard, searchCardsHandler } from './card-tools.js'
 import { listRoles, manageRole } from './role-tools.js'
-import { setCommanders } from './commander-tools.js'
+import { manageCommander } from './commander-tools.js'
 import { getInterestList, manageInterestList } from './interest-tools.js'
 import { listDeckNotes, manageDeckNote } from './note-tools.js'
 import { getCollectionFilter } from './collection-tools.js'
@@ -13,7 +13,7 @@ import type {
   SearchCardsArgs,
   ViewDeckArgs,
   ManageRoleArgs,
-  SetCommandersArgs,
+  ManageCommanderArgs,
   ManageInterestListArgs,
   ManageDeckNoteArgs,
 } from './types.js'
@@ -42,8 +42,8 @@ export async function handleToolCall(
       return listRoles(storage, args.deck_id as string | undefined)
     case 'manage_role':
       return manageRole(storage, args as unknown as ManageRoleArgs)
-    case 'set_commanders':
-      return setCommanders(storage, args as unknown as SetCommandersArgs)
+    case 'manage_commander':
+      return manageCommander(storage, args as unknown as ManageCommanderArgs)
     case 'get_interest_list':
       return getInterestList(storage)
     case 'manage_interest_list':

@@ -611,17 +611,18 @@ describe('Roles', () => {
 // ─── Commander ─────────────────────────────────────────────────
 
 describe('Commander', () => {
-  describe('set_commanders', () => {
-    it('sets commander and color identity', async () => {
+  describe('manage_commander add', () => {
+    it('adds commander and color identity', async () => {
       const kenrith = mockScryfallCard('Kenrith, the Returned King', {
         color_identity: ['W', 'U', 'B', 'R', 'G'],
       })
       mockSearchCardByName.mockResolvedValue(kenrith)
+      mockGetCardBySetAndNumber.mockResolvedValue(kenrith)
       const deck = makeDeck()
       mock._decks.set(deck.id, deck)
 
-      const result = await call('set_commanders', {
-        deck_id: deck.id, commander_name: 'Kenrith, the Returned King'
+      const result = await call('manage_commander', {
+        action: 'add', deck_id: deck.id, commander_name: 'Kenrith, the Returned King'
       }) as any
       expect(result.success).toBe(true)
       expect(result.commanders).toContain('Kenrith, the Returned King')
@@ -633,8 +634,8 @@ describe('Commander', () => {
       deck.format = { type: 'standard', deckSize: 60, sideboardSize: 15, cardLimit: 4, unlimitedCards: [] }
       mock._decks.set(deck.id, deck)
 
-      await expect(call('set_commanders', { deck_id: deck.id, commander_name: 'X' }))
-        .rejects.toThrow('Commanders can only be set for Commander format decks')
+      await expect(call('manage_commander', { action: 'add', deck_id: deck.id, commander_name: 'X' }))
+        .rejects.toThrow('Commanders can only be managed for Commander format decks')
     })
 
     it('rejects duplicate commander', async () => {
@@ -648,9 +649,86 @@ describe('Commander', () => {
       })
       mock._decks.set(deck.id, deck)
 
-      await expect(call('set_commanders', {
-        deck_id: deck.id, commander_name: 'Kenrith, the Returned King'
+      await expect(call('manage_commander', {
+        action: 'add', deck_id: deck.id, commander_name: 'Kenrith, the Returned King'
       })).rejects.toThrow('already a commander')
+    })
+  })
+
+  describe('manage_commander remove', () => {
+    it('removes a commander and updates color identity', async () => {
+      const kenrith = mockScryfallCard('Kenrith, the Returned King', {
+        color_identity: ['W', 'U', 'B', 'R', 'G'],
+      })
+      mockSearchCardByName.mockResolvedValue(kenrith)
+      const deck = makeDeck()
+      deck.commanders.push({
+        name: 'Kenrith, the Returned King', setCode: 'eld', collectorNumber: '303',
+      })
+      mock._decks.set(deck.id, deck)
+
+      const result = await call('manage_commander', {
+        action: 'remove', deck_id: deck.id, commander_name: 'Kenrith, the Returned King'
+      }) as any
+      expect(result.success).toBe(true)
+      expect(result.commanders).toEqual([])
+      expect(deck.colorIdentity).toEqual([])
+    })
+
+    it('rejects removing a commander that is not in the deck', async () => {
+      const deck = makeDeck()
+      mock._decks.set(deck.id, deck)
+
+      await expect(call('manage_commander', {
+        action: 'remove', deck_id: deck.id, commander_name: 'Kenrith, the Returned King'
+      })).rejects.toThrow('is not a commander in this deck')
+    })
+  })
+
+  describe('manage_commander swap', () => {
+    it('swaps one commander for another', async () => {
+      const atraxa = mockScryfallCard('Atraxa, Praetors\' Voice', {
+        color_identity: ['W', 'U', 'B', 'G'],
+      })
+      mockSearchCardByName.mockResolvedValue(atraxa)
+      mockGetCardBySetAndNumber.mockResolvedValue(atraxa)
+      const deck = makeDeck()
+      deck.commanders.push({
+        name: 'Kenrith, the Returned King', setCode: 'eld', collectorNumber: '303',
+      })
+      mock._decks.set(deck.id, deck)
+
+      const result = await call('manage_commander', {
+        action: 'swap', deck_id: deck.id,
+        commander_name: 'Kenrith, the Returned King',
+        new_commander_name: 'Atraxa, Praetors\' Voice',
+      }) as any
+      expect(result.success).toBe(true)
+      expect(result.commanders).toEqual(['Atraxa, Praetors\' Voice'])
+      expect(deck.colorIdentity).toEqual(['W', 'U', 'B', 'G'])
+    })
+
+    it('rejects swap without new_commander_name', async () => {
+      const deck = makeDeck()
+      deck.commanders.push({
+        name: 'Kenrith, the Returned King', setCode: 'eld', collectorNumber: '303',
+      })
+      mock._decks.set(deck.id, deck)
+
+      await expect(call('manage_commander', {
+        action: 'swap', deck_id: deck.id, commander_name: 'Kenrith, the Returned King'
+      })).rejects.toThrow('new_commander_name is required')
+    })
+
+    it('rejects swap when old commander not found', async () => {
+      const deck = makeDeck()
+      mock._decks.set(deck.id, deck)
+
+      await expect(call('manage_commander', {
+        action: 'swap', deck_id: deck.id,
+        commander_name: 'Kenrith, the Returned King',
+        new_commander_name: 'Atraxa',
+      })).rejects.toThrow('is not a commander in this deck')
     })
   })
 })
