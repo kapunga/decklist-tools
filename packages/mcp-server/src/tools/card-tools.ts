@@ -50,7 +50,7 @@ export async function manageCard(storage: Storage, args: ManageCardArgs) {
           quantity = args.quantity || 1
         }
 
-        const scryfallCard = await fetchScryfallCard(cardStr, setCode, collectorNumber)
+        const scryfallCard = await fetchScryfallCard(storage, cardStr, setCode, collectorNumber)
         const cardIdentifier = createCardIdentifier(scryfallCard)
 
         // Determine target list

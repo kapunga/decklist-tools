@@ -44,31 +44,21 @@ export function getCachedScryfallClient(storage: Storage): CachedScryfallClient 
   return cachedClient
 }
 
+/** Reset the singleton client — used in tests to ensure a fresh mock per test. */
+export function resetCachedScryfallClient(): void {
+  cachedClient = null
+}
+
 export async function fetchScryfallCard(
+  storage: Storage,
   name: string,
   setCode?: string,
   collectorNumber?: string,
-  storage?: Storage
 ): Promise<ScryfallCard> {
-  let scryfallCard: ScryfallCard | null = null
-
-  // Use cached client if storage is provided
-  if (storage) {
-    const client = getCachedScryfallClient(storage)
-    if (setCode && collectorNumber) {
-      scryfallCard = await client.getCardBySetCollector(setCode, collectorNumber)
-    } else {
-      scryfallCard = await client.getCardByName(name)
-    }
-  } else {
-    // Fallback to direct API calls without caching
-    const { searchCardByName, getCardBySetAndNumber } = await import('@mtg-deckbuilder/shared')
-    if (setCode && collectorNumber) {
-      scryfallCard = await getCardBySetAndNumber(setCode, collectorNumber)
-    } else {
-      scryfallCard = await searchCardByName(name)
-    }
-  }
+  const client = getCachedScryfallClient(storage)
+  const scryfallCard = setCode && collectorNumber
+    ? await client.getCardBySetCollector(setCode, collectorNumber)
+    : await client.getCardByName(name)
 
   if (!scryfallCard) throw new Error(`Card not found: ${name}`)
   return scryfallCard

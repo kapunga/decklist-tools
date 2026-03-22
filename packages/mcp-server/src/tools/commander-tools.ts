@@ -3,11 +3,12 @@ import { getDeckOrThrow, fetchScryfallCard, createCardIdentifier } from './helpe
 import type { ManageCommanderArgs } from './types.js'
 
 async function recomputeColorIdentity(
+  storage: Storage,
   commanders: { name: string; setCode: string; collectorNumber: string }[]
 ): Promise<string[]> {
   const colors = new Set<string>()
   for (const cmd of commanders) {
-    const card = await fetchScryfallCard(cmd.name, cmd.setCode, cmd.collectorNumber)
+    const card = await fetchScryfallCard(storage, cmd.name, cmd.setCode, cmd.collectorNumber)
     for (const c of card.color_identity) {
       colors.add(c)
     }
@@ -24,7 +25,7 @@ export async function manageCommander(storage: Storage, args: ManageCommanderArg
 
   switch (args.action) {
     case 'add': {
-      const scryfallCard = await fetchScryfallCard(args.commander_name, args.set_code, args.collector_number)
+      const scryfallCard = await fetchScryfallCard(storage, args.commander_name, args.set_code, args.collector_number)
       const commander = createCardIdentifier(scryfallCard)
 
       const existingIndex = deck.commanders.findIndex(
@@ -33,7 +34,7 @@ export async function manageCommander(storage: Storage, args: ManageCommanderArg
       if (existingIndex >= 0) throw new Error(`${commander.name} is already a commander`)
 
       deck.commanders.push(commander)
-      deck.colorIdentity = await recomputeColorIdentity(deck.commanders)
+      deck.colorIdentity = await recomputeColorIdentity(storage, deck.commanders)
 
       storage.saveDeck(deck)
 
@@ -52,7 +53,7 @@ export async function manageCommander(storage: Storage, args: ManageCommanderArg
 
       deck.commanders.splice(removeIndex, 1)
       deck.colorIdentity = deck.commanders.length > 0
-        ? await recomputeColorIdentity(deck.commanders)
+        ? await recomputeColorIdentity(storage, deck.commanders)
         : []
 
       storage.saveDeck(deck)
@@ -75,7 +76,7 @@ export async function manageCommander(storage: Storage, args: ManageCommanderArg
       if (swapIndex < 0) throw new Error(`${args.commander_name} is not a commander in this deck`)
 
       const newScryfallCard = await fetchScryfallCard(
-        args.new_commander_name, args.new_set_code, args.new_collector_number
+        storage, args.new_commander_name, args.new_set_code, args.new_collector_number
       )
       const newCommander = createCardIdentifier(newScryfallCard)
 
@@ -86,7 +87,7 @@ export async function manageCommander(storage: Storage, args: ManageCommanderArg
       if (duplicateIndex >= 0) throw new Error(`${newCommander.name} is already a commander`)
 
       deck.commanders[swapIndex] = newCommander
-      deck.colorIdentity = await recomputeColorIdentity(deck.commanders)
+      deck.colorIdentity = await recomputeColorIdentity(storage, deck.commanders)
 
       storage.saveDeck(deck)
 

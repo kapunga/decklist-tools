@@ -53,7 +53,10 @@ export function createMockStorage() {
     })),
     saveConfig: vi.fn(),
     getCachedCard: vi.fn(() => null),
+    getCachedCardByName: vi.fn(() => null),
+    getCachedCardBySetCollector: vi.fn(() => null),
     cacheCard: vi.fn(),
+    cacheCardWithIndex: vi.fn(),
     getBasePath: vi.fn(() => '/tmp/test'),
     getDecksPath: vi.fn(() => '/tmp/test/decks'),
   }

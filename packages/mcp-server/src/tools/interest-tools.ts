@@ -12,7 +12,7 @@ export async function manageInterestList(storage: Storage, args: ManageInterestL
       if (!args.name) throw new Error('name is required for add')
       const interestList = storage.getInterestList()
 
-      const scryfallCard = await fetchScryfallCard(args.name, args.set_code, args.collector_number)
+      const scryfallCard = await fetchScryfallCard(storage, args.name, args.set_code, args.collector_number)
 
       const item = {
         id: generateDeckCardId(),
