@@ -44,6 +44,11 @@ export function getCachedScryfallClient(storage: Storage): CachedScryfallClient 
   return cachedClient
 }
 
+/** Reset the singleton client — used in tests to ensure a fresh mock per test. */
+export function resetCachedScryfallClient(): void {
+  cachedClient = null
+}
+
 export async function fetchScryfallCard(
   storage: Storage,
   name: string,

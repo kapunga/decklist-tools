@@ -3,20 +3,36 @@ import { createMockStorage, mockScryfallCard, makeDeck, makeDeckCard } from '../
 import { handleToolCall, getToolDefinitions } from './index.js'
 import type { Storage } from '@mtg-deckbuilder/shared'
 
-// Mock only the Scryfall functions
+// Mock Scryfall functions and CachedScryfallClient.
+// CachedScryfallClient uses relative imports internally, so the mocked
+// module-level functions wouldn't be reached. We replace the class with
+// one that delegates directly to the mocked functions.
+// vi.hoisted() ensures these are available when vi.mock's factory runs (it's hoisted).
+const _mockFns = vi.hoisted(() => ({
+  searchCardByName: vi.fn(),
+  searchCardByNameExact: vi.fn(),
+  getCardBySetAndNumber: vi.fn(),
+  getCardById: vi.fn(),
+  searchCards: vi.fn(),
+}))
+
 vi.mock('@mtg-deckbuilder/shared', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@mtg-deckbuilder/shared')>()
   return {
     ...actual,
-    searchCardByName: vi.fn(),
-    searchCardByNameExact: vi.fn(),
-    getCardBySetAndNumber: vi.fn(),
-    getCardById: vi.fn(),
-    searchCards: vi.fn(),
+    ..._mockFns,
+    CachedScryfallClient: class MockCachedScryfallClient {
+      async getCardByName(name: string) { return _mockFns.searchCardByName(name) }
+      async getCardBySetCollector(setCode: string, collectorNumber: string) {
+        return _mockFns.getCardBySetAndNumber(setCode, collectorNumber)
+      }
+      async getCardById(id: string) { return _mockFns.getCardById(id) }
+    },
   }
 })
 
 import { searchCardByName, searchCardByNameExact, getCardBySetAndNumber, getCardById, searchCards } from '@mtg-deckbuilder/shared'
+import { resetCachedScryfallClient } from './helpers.js'
 const mockSearchCardByName = vi.mocked(searchCardByName)
 const mockSearchCardByNameExact = vi.mocked(searchCardByNameExact)
 const mockGetCardBySetAndNumber = vi.mocked(getCardBySetAndNumber)
@@ -28,6 +44,7 @@ let mock: ReturnType<typeof createMockStorage>
 
 beforeEach(() => {
   vi.clearAllMocks()
+  resetCachedScryfallClient()
   mock = createMockStorage()
   storage = mock.storage
 })
