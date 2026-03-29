@@ -1,5 +1,5 @@
 import type { DeckCard, RoleDefinition, ScryfallCard } from '@mtg-deckbuilder/shared'
-import { getPrimaryType, getRoleById, isCardFullyPulled, getOracleText } from '@mtg-deckbuilder/shared'
+import { getPrimaryType, getRoleById, isCardFullyPulled, getOracleText, OWNERSHIP_STATUS } from '@mtg-deckbuilder/shared'
 
 export type DetailLevel = 'summary' | 'compact' | 'full'
 
@@ -8,7 +8,8 @@ export function formatCardLine(
   globalRoles: RoleDefinition[],
   customRoles: RoleDefinition[],
   scryfallCache?: Map<string, ScryfallCard>,
-  detail?: DetailLevel
+  detail?: DetailLevel,
+  roleLookup?: Map<string, RoleDefinition>
 ): string {
   const level = detail || 'summary'
   const cached = scryfallCache && card.card.scryfallId
@@ -41,14 +42,14 @@ export function formatCardLine(
   if (card.roles.length > 0) {
     const roleNames = card.roles
       .map((r) => {
-        const role = getRoleById(r, globalRoles, customRoles)
+        const role = roleLookup ? roleLookup.get(r) : getRoleById(r, globalRoles, customRoles)
         return role?.name || r
       })
       .join(', ')
     headerParts.push(`(${roleNames})`)
   }
 
-  if (card.ownership === 'need_to_buy') {
+  if (card.ownership === OWNERSHIP_STATUS.NEED_TO_BUY) {
     headerParts.push('[NEED TO BUY]')
   } else if (isCardFullyPulled(card)) {
     headerParts.push('[PULLED]')

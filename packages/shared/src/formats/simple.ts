@@ -1,6 +1,32 @@
 import type { Deck } from '../types/index.js'
+import { FORMAT_TYPE } from '../types/index.js'
 import type { DeckExportFormat, ParsedCard, RenderOptions } from './types.js'
-import { prepareLines, getConfirmedCards } from './utils.js'
+import { getConfirmedCards, parseLinesWithSections, PARSER_SECTION, consumed, type LineParserConfig } from './utils.js'
+
+const simpleConfig: LineParserConfig = {
+  detectSection(line: string) {
+    if (line.toLowerCase().startsWith(PARSER_SECTION.SIDEBOARD)) return consumed(PARSER_SECTION.SIDEBOARD)
+    return null
+  },
+  cardPatterns: [
+    {
+      // "4 Lightning Bolt"
+      pattern: /^(\d+)\s+(.+)$/,
+      extract: (m: RegExpMatchArray) => ({
+        name: m[2].trim(),
+        quantity: parseInt(m[1], 10),
+      }),
+    },
+    {
+      // Bare card name (no quantity) — but skip lines containing "deck"
+      pattern: /^([A-Za-z].+)$/,
+      extract: (m: RegExpMatchArray) => {
+        if (m[1].toLowerCase().includes('deck')) return null
+        return { name: m[1].trim(), quantity: 1 }
+      },
+    },
+  ],
+}
 
 export const simpleFormat: DeckExportFormat = {
   id: 'simple',
@@ -8,55 +34,13 @@ export const simpleFormat: DeckExportFormat = {
   description: 'Simple format: 4 Lightning Bolt',
 
   parse(text: string): ParsedCard[] {
-    const cards: ParsedCard[] = []
-    const lines = prepareLines(text)
-
-    const cardPattern = /^(\d+)\s+(.+)$/
-    const cardNoQtyPattern = /^([A-Za-z].+)$/
-    let inSideboard = false
-
-    for (const line of lines) {
-      if (!line) continue
-
-      if (line.toLowerCase().startsWith('sideboard')) {
-        inSideboard = true
-        continue
-      }
-
-      let match = line.match(cardPattern)
-      if (match) {
-        cards.push({
-          name: match[2].trim(),
-          quantity: parseInt(match[1], 10),
-          isSideboard: inSideboard,
-          isMaybeboard: false,
-          isCommander: false,
-          roles: []
-        })
-        continue
-      }
-
-      match = line.match(cardNoQtyPattern)
-      if (match && !match[1].toLowerCase().includes('deck')) {
-        cards.push({
-          name: match[1].trim(),
-          quantity: 1,
-          isSideboard: inSideboard,
-          isMaybeboard: false,
-          isCommander: false,
-          roles: []
-        })
-      }
-    }
-
-    return cards
+    return parseLinesWithSections(text, simpleConfig)
   },
 
   render(deck: Deck, options: RenderOptions): string {
     const lines: string[] = []
 
-    // Commander section for Commander format
-    if (deck.format.type === 'commander' && deck.commanders.length > 0) {
+    if (deck.format.type === FORMAT_TYPE.COMMANDER && deck.commanders.length > 0) {
       lines.push('Commander:')
       deck.commanders.forEach(c => {
         lines.push(`1 ${c.name}`)

@@ -1,5 +1,6 @@
 import type { PullListSlice, SliceCreator } from './types'
 import type { PullListConfig, DeckCard, PulledPrinting } from '@/types'
+import { OWNERSHIP_STATUS } from '@/types'
 
 export const createPullListSlice: SliceCreator<PullListSlice> = (set, get) => ({
   loadPullListConfig: async () => {
@@ -100,7 +101,7 @@ export const createPullListSlice: SliceCreator<PullListSlice> = (set, get) => ({
         return {
           ...card,
           pulledPrintings,
-          ownership: 'owned' as const
+          ownership: OWNERSHIP_STATUS.OWNED
         }
       })
     }

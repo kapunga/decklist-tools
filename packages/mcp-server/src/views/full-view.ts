@@ -1,5 +1,5 @@
 import type { Deck, DeckCard, RoleDefinition, ScryfallCard } from '@mtg-deckbuilder/shared'
-import { getPrimaryType, getCardCount, getRoleById, CARD_TYPE_ORDER, isCardFullyPulled } from '@mtg-deckbuilder/shared'
+import { getPrimaryType, getCardCount, buildRoleLookup, CARD_TYPE_ORDER, isCardFullyPulled, INCLUSION_STATUS } from '@mtg-deckbuilder/shared'
 import { formatCardLine, type DetailLevel } from './formatters.js'
 
 export function renderFullView(
@@ -12,6 +12,7 @@ export function renderFullView(
   detail?: DetailLevel
 ): string {
   const lines: string[] = []
+  const roleLookup = buildRoleLookup(globalRoles, deck.customRoles)
 
   lines.push(`# ${deck.name}`)
   lines.push('')
@@ -29,17 +30,17 @@ export function renderFullView(
     lines.push('')
   }
 
-  let confirmedCards = deck.cards.filter(c => c.inclusion === 'confirmed')
+  let confirmedCards = deck.cards.filter(c => c.inclusion === INCLUSION_STATUS.CONFIRMED)
   if (filteredCardIds) {
     confirmedCards = confirmedCards.filter(c => filteredCardIds.has(c.id))
   }
 
   const consideringCards = filteredCardIds
-    ? deck.cards.filter(c => c.inclusion === 'considering' && filteredCardIds.has(c.id))
-    : deck.cards.filter(c => c.inclusion === 'considering')
+    ? deck.cards.filter(c => c.inclusion === INCLUSION_STATUS.CONSIDERING && filteredCardIds.has(c.id))
+    : deck.cards.filter(c => c.inclusion === INCLUSION_STATUS.CONSIDERING)
 
   if (groupBy === 'role') {
-    renderByRole(lines, confirmedCards, globalRoles, deck.customRoles)
+    renderByRole(lines, confirmedCards, roleLookup)
   } else if (groupBy === 'type') {
     renderByType(lines, confirmedCards)
   } else if (sortBy === 'set') {
@@ -50,14 +51,14 @@ export function renderFullView(
       if (confirmedCards.length > 0) {
         lines.push('### Confirmed')
         for (const c of confirmedCards) {
-          lines.push(formatCardLine(c, globalRoles, deck.customRoles, scryfallCache, detail))
+          lines.push(formatCardLine(c, globalRoles, deck.customRoles, scryfallCache, detail, roleLookup))
         }
         lines.push('')
       }
       if (consideringCards.length > 0) {
         lines.push('### Considering')
         for (const c of consideringCards) {
-          lines.push(formatCardLine(c, globalRoles, deck.customRoles, scryfallCache, detail))
+          lines.push(formatCardLine(c, globalRoles, deck.customRoles, scryfallCache, detail, roleLookup))
         }
         lines.push('')
       }
@@ -68,7 +69,7 @@ export function renderFullView(
     if (deck.alternates.length > 0) {
       lines.push('## Alternates')
       for (const c of deck.alternates) {
-        lines.push(formatCardLine(c, globalRoles, deck.customRoles, scryfallCache, detail))
+        lines.push(formatCardLine(c, globalRoles, deck.customRoles, scryfallCache, detail, roleLookup))
       }
       lines.push('')
     }
@@ -76,7 +77,7 @@ export function renderFullView(
     if (deck.sideboard.length > 0) {
       lines.push('## Sideboard')
       for (const c of deck.sideboard) {
-        lines.push(formatCardLine(c, globalRoles, deck.customRoles, scryfallCache, detail))
+        lines.push(formatCardLine(c, globalRoles, deck.customRoles, scryfallCache, detail, roleLookup))
       }
       lines.push('')
     }
@@ -88,8 +89,7 @@ export function renderFullView(
 function renderByRole(
   lines: string[],
   cards: DeckCard[],
-  globalRoles: RoleDefinition[],
-  customRoles: RoleDefinition[]
+  roleLookup: Map<string, RoleDefinition>
 ): void {
   const byRole = new Map<string, DeckCard[]>()
   const noRole: DeckCard[] = []
@@ -110,7 +110,7 @@ function renderByRole(
   const sortedRoles = [...byRole.entries()].sort((a, b) => a[0].localeCompare(b[0]))
 
   for (const [roleId, roleCards] of sortedRoles) {
-    const role = getRoleById(roleId, globalRoles, customRoles)
+    const role = roleLookup.get(roleId)
     const roleName = role?.name || roleId
     const count = roleCards.reduce((sum, c) => sum + c.quantity, 0)
     lines.push(`## ${roleName} (${count})`)

@@ -39,12 +39,52 @@ export interface CardIdentifier {
   collectorNumber: string
 }
 
-// Enums
-export type InclusionStatus = 'confirmed' | 'considering' | 'cut'
-export type OwnershipStatus = 'unknown' | 'owned' | 'need_to_buy'
-export type AddedBy = 'user' | 'import'
-export type FormatType = 'commander' | 'standard' | 'modern' | 'kitchen_table'
-export type NoteType = 'combo' | 'synergy' | 'theme' | 'strategy' | 'general'
+// Discriminator constants — single source of truth; types derived via typeof
+
+export const INCLUSION_STATUS = {
+  CONFIRMED: 'confirmed',
+  CONSIDERING: 'considering',
+  CUT: 'cut',
+} as const
+export type InclusionStatus = typeof INCLUSION_STATUS[keyof typeof INCLUSION_STATUS]
+
+export const OWNERSHIP_STATUS = {
+  UNKNOWN: 'unknown',
+  OWNED: 'owned',
+  NEED_TO_BUY: 'need_to_buy',
+} as const
+export type OwnershipStatus = typeof OWNERSHIP_STATUS[keyof typeof OWNERSHIP_STATUS]
+
+export const ADDED_BY = {
+  USER: 'user',
+  IMPORT: 'import',
+} as const
+export type AddedBy = typeof ADDED_BY[keyof typeof ADDED_BY]
+
+export const FORMAT_TYPE = {
+  COMMANDER: 'commander',
+  STANDARD: 'standard',
+  MODERN: 'modern',
+  KITCHEN_TABLE: 'kitchen_table',
+} as const
+export type FormatType = typeof FORMAT_TYPE[keyof typeof FORMAT_TYPE]
+
+export const NOTE_TYPE = {
+  COMBO: 'combo',
+  SYNERGY: 'synergy',
+  THEME: 'theme',
+  STRATEGY: 'strategy',
+  GENERAL: 'general',
+} as const
+export type NoteType = typeof NOTE_TYPE[keyof typeof NOTE_TYPE]
+
+// Values match Deck property names for use as property accessors (deck[DECK_LIST.MAINBOARD])
+export const DECK_LIST = {
+  MAINBOARD: 'cards',
+  SIDEBOARD: 'sideboard',
+  ALTERNATES: 'alternates',
+} as const
+export type DeckListName = typeof DECK_LIST[keyof typeof DECK_LIST]
 
 // Role Definition - used for both global and deck-specific custom roles
 export interface RoleDefinition {
@@ -65,8 +105,8 @@ export interface DeckFormat {
 }
 
 export const formatDefaults: Record<FormatType, DeckFormat> = {
-  commander: {
-    type: 'commander',
+  [FORMAT_TYPE.COMMANDER]: {
+    type: FORMAT_TYPE.COMMANDER,
     deckSize: 100,
     sideboardSize: 0,
     cardLimit: 1,
@@ -79,8 +119,8 @@ export const formatDefaults: Record<FormatType, DeckFormat> = {
       'Nazgûl': 9
     }
   },
-  standard: {
-    type: 'standard',
+  [FORMAT_TYPE.STANDARD]: {
+    type: FORMAT_TYPE.STANDARD,
     deckSize: 60,
     sideboardSize: 15,
     cardLimit: 4,
@@ -89,8 +129,8 @@ export const formatDefaults: Record<FormatType, DeckFormat> = {
       'Seven Dwarves': 7
     }
   },
-  modern: {
-    type: 'modern',
+  [FORMAT_TYPE.MODERN]: {
+    type: FORMAT_TYPE.MODERN,
     deckSize: 60,
     sideboardSize: 15,
     cardLimit: 4,
@@ -100,8 +140,8 @@ export const formatDefaults: Record<FormatType, DeckFormat> = {
       'Nazgûl': 9
     }
   },
-  kitchen_table: {
-    type: 'kitchen_table',
+  [FORMAT_TYPE.KITCHEN_TABLE]: {
+    type: FORMAT_TYPE.KITCHEN_TABLE,
     deckSize: 60,
     sideboardSize: 15,
     cardLimit: Infinity,
@@ -152,7 +192,7 @@ export function migrateLegacyPulledCards(deck: Deck): boolean {
       // Check for legacy 'pulled' value (cast to handle old data)
       if ((card.ownership as string) === 'pulled') {
         // Convert to 'owned' and add pulledPrintings entry
-        card.ownership = 'owned'
+        card.ownership = OWNERSHIP_STATUS.OWNED
         card.pulledPrintings = card.pulledPrintings ?? []
 
         // Add entry for the card's current printing if not already tracked
@@ -208,7 +248,7 @@ export interface DeckNote {
 export function migrateDeckNote(note: Partial<DeckNote> & { id: string; title: string; content: string; createdAt: string; updatedAt: string }): DeckNote {
   return {
     ...note,
-    noteType: note.noteType ?? 'general',
+    noteType: note.noteType ?? NOTE_TYPE.GENERAL,
     cardRefs: note.cardRefs ?? [],
     roleId: note.roleId ?? undefined,
   }
@@ -375,7 +415,7 @@ export function getCardLimit(cardName: string, format: DeckFormat): number {
 
 export function getCardCount(deck: Deck): number {
   const mainDeckCount = deck.cards
-    .filter(c => c.inclusion === 'confirmed')
+    .filter(c => c.inclusion === INCLUSION_STATUS.CONFIRMED)
     .reduce((sum, c) => sum + c.quantity, 0)
 
   // Commanders count towards deck size in Commander format

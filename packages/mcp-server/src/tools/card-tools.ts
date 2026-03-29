@@ -11,8 +11,14 @@ import {
   getCardById,
   searchCards,
   getOracleText,
+  findCardByName,
+  findCardIndexByName,
+  INCLUSION_STATUS,
+  OWNERSHIP_STATUS,
+  ADDED_BY,
+  DECK_LIST,
 } from '@mtg-deckbuilder/shared'
-import { getDeckOrThrow, fetchScryfallCard, createCardIdentifier, findCardInList, findCardIndexInList, parseCardString } from './helpers.js'
+import { getDeckOrThrow, fetchScryfallCard, createCardIdentifier, parseCardString } from './helpers.js'
 import type { ManageCardArgs, SearchCardsArgs } from './types.js'
 
 // Scryfall operator patterns for detecting search queries
@@ -62,7 +68,7 @@ export async function manageCard(storage: Storage, args: ManageCardArgs) {
             : deck.cards
 
         // Check if card already exists in the target list
-        const existingCard = findCardInList(targetList, scryfallCard.name)
+        const existingCard = findCardByName(targetList, scryfallCard.name)
 
         if (existingCard) {
           // Merge with existing card: increment quantity and merge roles
@@ -83,13 +89,13 @@ export async function manageCard(storage: Storage, args: ManageCardArgs) {
             id: generateDeckCardId(),
             card: cardIdentifier,
             quantity,
-            inclusion: (args.status as InclusionStatus) || 'confirmed',
-            ownership: (args.ownership as OwnershipStatus) || 'unknown',
+            inclusion: (args.status as InclusionStatus) || INCLUSION_STATUS.CONFIRMED,
+            ownership: (args.ownership as OwnershipStatus) || OWNERSHIP_STATUS.UNKNOWN,
             roles: args.roles || [],
             typeLine: scryfallCard.type_line,
             isPinned: false,
             addedAt: new Date().toISOString(),
-            addedBy: 'user',
+            addedBy: ADDED_BY.USER,
           }
 
           targetList.push(deckCard)
@@ -118,7 +124,7 @@ export async function manageCard(storage: Storage, args: ManageCardArgs) {
 
       const removed: string[] = []
       for (const cardName of cardNames) {
-        const cardIndex = findCardIndexInList(targetList, cardName)
+        const cardIndex = findCardIndexByName(targetList, cardName)
         if (cardIndex === -1) throw new Error(`Card not found in deck: ${cardName}`)
 
         if (args.quantity && args.quantity < targetList[cardIndex].quantity) {
@@ -150,7 +156,7 @@ export async function manageCard(storage: Storage, args: ManageCardArgs) {
       for (const cardName of cardNames) {
         let card: DeckCard | undefined
         for (const list of [deck.cards, deck.alternates, deck.sideboard]) {
-          card = findCardInList(list, cardName)
+          card = findCardByName(list, cardName)
           if (card) break
         }
         if (!card) throw new Error(`Card not found in deck: ${cardName}`)
@@ -175,17 +181,17 @@ export async function manageCard(storage: Storage, args: ManageCardArgs) {
     }
     case 'move': {
       if (!args.from || !args.to) throw new Error('from and to are required for move')
-      if (args.to === 'sideboard' && deck.format.sideboardSize === 0) {
+      if (args.to === DECK_LIST.SIDEBOARD && deck.format.sideboardSize === 0) {
         throw new Error(`Cannot move cards to sideboard: ${deck.format.type} format has no sideboard`)
       }
       const cardNames = resolveCards(args)
 
       const getList = (name: string): DeckCard[] => {
         switch (name) {
-          case 'mainboard': return deck.cards
-          case 'alternates': return deck.alternates
-          case 'sideboard': return deck.sideboard
-          default: throw new Error(`Invalid list: "${name}". Valid lists are: mainboard, sideboard, alternates`)
+          case DECK_LIST.MAINBOARD: return deck.cards
+          case DECK_LIST.ALTERNATES: return deck.alternates
+          case DECK_LIST.SIDEBOARD: return deck.sideboard
+          default: throw new Error(`Invalid list: "${name}". Valid lists are: ${Object.values(DECK_LIST).join(', ')}`)
         }
       }
 
@@ -195,13 +201,13 @@ export async function manageCard(storage: Storage, args: ManageCardArgs) {
       const merged: string[] = []
 
       for (const cardName of cardNames) {
-        const cardIndex = findCardIndexInList(fromList, cardName)
+        const cardIndex = findCardIndexByName(fromList, cardName)
         if (cardIndex === -1) throw new Error(`Card not found in ${args.from}: ${cardName}`)
 
         const [card] = fromList.splice(cardIndex, 1)
 
         // Check if card already exists in target list
-        const existingCard = findCardInList(toList, cardName)
+        const existingCard = findCardByName(toList, cardName)
         if (existingCard) {
           // Merge with existing card
           existingCard.quantity += card.quantity

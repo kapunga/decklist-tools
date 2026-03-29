@@ -7,15 +7,16 @@ import { manageCommander } from './commander-tools.js'
 import { getInterestList, manageInterestList } from './interest-tools.js'
 import { listDeckNotes, manageDeckNote } from './note-tools.js'
 import { getCollectionFilter } from './collection-tools.js'
-import type {
-  ManageDeckArgs,
-  ManageCardArgs,
-  SearchCardsArgs,
-  ViewDeckArgs,
-  ManageRoleArgs,
-  ManageCommanderArgs,
-  ManageInterestListArgs,
-  ManageDeckNoteArgs,
+import { validateInputLengths } from './helpers.js'
+import {
+  validateManageDeckArgs,
+  validateManageCardArgs,
+  validateSearchCardsArgs,
+  validateViewDeckArgs,
+  validateManageRoleArgs,
+  validateManageCommanderArgs,
+  validateManageInterestListArgs,
+  validateManageDeckNoteArgs,
 } from './types.js'
 
 export { getToolDefinitions }
@@ -25,33 +26,35 @@ export async function handleToolCall(
   args: Record<string, unknown>,
   storage: Storage
 ): Promise<unknown> {
+  validateInputLengths(args)
+
   switch (name) {
     case 'list_decks':
       return listDecks(storage)
     case 'get_deck':
       return getDeck(storage, args.identifier as string)
     case 'manage_deck':
-      return manageDeck(storage, args as unknown as ManageDeckArgs)
+      return manageDeck(storage, validateManageDeckArgs(args))
     case 'manage_card':
-      return manageCard(storage, args as unknown as ManageCardArgs)
+      return manageCard(storage, validateManageCardArgs(args))
     case 'search_cards':
-      return searchCardsHandler(args as unknown as SearchCardsArgs)
+      return searchCardsHandler(validateSearchCardsArgs(args))
     case 'view_deck':
-      return viewDeck(storage, args as unknown as ViewDeckArgs)
+      return viewDeck(storage, validateViewDeckArgs(args))
     case 'list_roles':
       return listRoles(storage, args.deck_id as string | undefined)
     case 'manage_role':
-      return manageRole(storage, args as unknown as ManageRoleArgs)
+      return manageRole(storage, validateManageRoleArgs(args))
     case 'manage_commander':
-      return manageCommander(storage, args as unknown as ManageCommanderArgs)
+      return manageCommander(storage, validateManageCommanderArgs(args))
     case 'get_interest_list':
       return getInterestList(storage)
     case 'manage_interest_list':
-      return manageInterestList(storage, args as unknown as ManageInterestListArgs)
+      return manageInterestList(storage, validateManageInterestListArgs(args))
     case 'list_deck_notes':
       return listDeckNotes(storage, args.deck_id as string)
     case 'manage_deck_note':
-      return manageDeckNote(storage, args as unknown as ManageDeckNoteArgs)
+      return manageDeckNote(storage, validateManageDeckNoteArgs(args))
     case 'search_decks_for_card':
       return searchDecksForCard(storage, args.card_name as string)
     case 'get_collection_filter':

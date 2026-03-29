@@ -3,7 +3,7 @@ import { useQueries } from '@tanstack/react-query'
 import { useStore } from '@/hooks/useStore'
 import { getCardPrintings } from '@/lib/scryfall'
 import type { Deck, DeckCard, ScryfallCard, PullListSortKey, PullListSource, CollectionLevel } from '@/types'
-import { getTotalPulledQuantity, COLLECTION_LEVEL_RARITIES, isBasicLand } from '@/types'
+import { getTotalPulledQuantity, COLLECTION_LEVEL_RARITIES, isBasicLand, INCLUSION_STATUS, OWNERSHIP_STATUS, ADDED_BY } from '@/types'
 
 export interface PullListItem {
   deckCardId: string
@@ -156,7 +156,7 @@ export function usePullList(deck: Deck | null) {
 
     if (source === 'maybeboard') {
       // Maybeboard: only alternates (confirmed), no commanders
-      let cards = deck.alternates.filter(c => c.inclusion === 'confirmed')
+      let cards = deck.alternates.filter(c => c.inclusion === INCLUSION_STATUS.CONFIRMED)
 
       // Filter out basic lands if option is enabled
       if (hideBasicLands) {
@@ -167,8 +167,8 @@ export function usePullList(deck: Deck | null) {
     }
 
     // Main Deck: main + sideboard + commanders
-    let mainCards = deck.cards.filter(c => c.inclusion === 'confirmed')
-    let sideboardCards = deck.sideboard.filter(c => c.inclusion === 'confirmed')
+    let mainCards = deck.cards.filter(c => c.inclusion === INCLUSION_STATUS.CONFIRMED)
+    let sideboardCards = deck.sideboard.filter(c => c.inclusion === INCLUSION_STATUS.CONFIRMED)
 
     // Filter out basic lands if option is enabled
     if (hideBasicLands) {
@@ -192,13 +192,13 @@ export function usePullList(deck: Deck | null) {
         id: `commander-${cmd.name}`,
         card: cmd,
         quantity: 1,
-        inclusion: 'confirmed' as const,
-        ownership: 'unknown' as const,
+        inclusion: INCLUSION_STATUS.CONFIRMED,
+        ownership: OWNERSHIP_STATUS.UNKNOWN,
         roles: ['commander'],
         typeLine: '',
         isPinned: true,
         addedAt: deck.createdAt,
-        addedBy: 'user' as const,
+        addedBy: ADDED_BY.USER,
         pulledPrintings: pulledPrintings.length > 0 ? pulledPrintings : undefined
       }
     })

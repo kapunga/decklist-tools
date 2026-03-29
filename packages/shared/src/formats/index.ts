@@ -1,11 +1,11 @@
-export type { ParsedCard, DeckExportFormat, RenderOptions } from './types.js'
+export type { ParsedCard, DeckExportFormat, RenderOptions, DetectedFormat } from './types.js'
 
 import { arenaFormat } from './arena.js'
 import { moxfieldFormat } from './moxfield.js'
 import { mtgoFormat } from './mtgo.js'
 import { simpleFormat } from './simple.js'
 import { archidektFormat } from './archidekt.js'
-import type { DeckExportFormat } from './types.js'
+import type { DeckExportFormat, DetectedFormat } from './types.js'
 
 // All formats
 export const formats: DeckExportFormat[] = [
@@ -20,27 +20,27 @@ export function getFormat(id: string): DeckExportFormat | undefined {
   return formats.find(f => f.id === id)
 }
 
-export function detectFormat(text: string): DeckExportFormat {
+export function detectFormat(text: string): DetectedFormat {
   const lines = text.split('\n').map(l => l.trim()).filter(l => l)
 
   // Archidekt: has [Category] and ^tag^
   if (lines.some(l => l.includes('[') && l.includes(']') && l.includes('x '))) {
-    return archidektFormat
+    return { format: archidektFormat, confidence: 'high' }
   }
 
   // Moxfield CSV: starts with header
   if (lines[0]?.toLowerCase().startsWith('count,')) {
-    return moxfieldFormat
+    return { format: moxfieldFormat, confidence: 'high' }
   }
 
   // Arena/Mythic Tools: has set code in parentheses with collector number
   // Handles collector numbers like 123, 81p, 248s
   if (lines.some(l => /\([A-Za-z0-9]+\)\s+\S+/.test(l))) {
-    return arenaFormat
+    return { format: arenaFormat, confidence: 'high' }
   }
 
-  // Default to simple
-  return simpleFormat
+  // Default to simple — no specific format markers detected
+  return { format: simpleFormat, confidence: 'low' }
 }
 
 // Re-export individual formats for direct access if needed

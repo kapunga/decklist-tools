@@ -1,9 +1,9 @@
 import { useState, useCallback, useRef } from 'react'
-import { formats, detectFormat, type ParsedCard } from '@/lib/formats'
+import { formats, detectFormat, type ParsedCard, type DetectedFormat } from '@/lib/formats'
 import { searchCardByName, getCardBySetAndNumber } from '@/lib/scryfall'
 import { SCRYFALL, IMPORT_PREVIEW } from '@/lib/constants'
-import type { DeckCard } from '@/types'
-import { generateDeckCardId } from '@/types'
+import type { DeckCard, DeckListName } from '@/types'
+import { generateDeckCardId, INCLUSION_STATUS, OWNERSHIP_STATUS, ADDED_BY, DECK_LIST } from '@/types'
 
 export interface ImportProgress {
   current: number
@@ -12,7 +12,7 @@ export interface ImportProgress {
 
 export interface ResolvedCard {
   card: DeckCard
-  listType: 'cards' | 'alternates' | 'sideboard'
+  listType: DeckListName
 }
 
 export interface UseImportCardsResult {
@@ -28,7 +28,7 @@ export interface UseImportCardsResult {
   mainDeckCount: number
   sideboardCount: number
   maybeboardCount: number
-  detectedFormat: ReturnType<typeof detectFormat> | null
+  detectedFormat: DetectedFormat | null
   totalCardCount: number
 
   // Actions
@@ -63,21 +63,21 @@ export function useImportCards(sideboardSize?: number): UseImportCardsResult {
       return
     }
 
-    const format = formatId === 'auto'
-      ? detectFormat(value)
-      : formats.find(f => f.id === formatId) || detectFormat(value)
+    const resolved = formatId === 'auto'
+      ? detectFormat(value).format
+      : formats.find(f => f.id === formatId) || detectFormat(value).format
 
-    const cards = format.parse(value)
+    const cards = resolved.parse(value)
     setParsedCards(cards)
   }, [formatId])
 
   const handleFormatChange = useCallback((value: string) => {
     setFormatId(value)
     if (text.trim()) {
-      const format = value === 'auto'
-        ? detectFormat(text)
-        : formats.find(f => f.id === value) || detectFormat(text)
-      setParsedCards(format.parse(text))
+      const resolved = value === 'auto'
+        ? detectFormat(text).format
+        : formats.find(f => f.id === value) || detectFormat(text).format
+      setParsedCards(resolved.parse(text))
     }
   }, [text])
 
@@ -138,20 +138,20 @@ export function useImportCards(sideboardSize?: number): UseImportCardsResult {
             collectorNumber: parsed.collectorNumber || scryfallCard.collector_number
           },
           quantity: parsed.quantity,
-          inclusion: parsed.isMaybeboard ? 'considering' : 'confirmed',
-          ownership: 'owned',
+          inclusion: parsed.isMaybeboard ? INCLUSION_STATUS.CONSIDERING : INCLUSION_STATUS.CONFIRMED,
+          ownership: OWNERSHIP_STATUS.OWNED,
           roles,
           typeLine: scryfallCard.type_line,  // Store type line for grouping
           isPinned: false,
           addedAt: new Date().toISOString(),
-          addedBy: 'import'
+          addedBy: ADDED_BY.IMPORT
         }
 
         const hasSideboard = sideboardSize !== undefined && sideboardSize > 0
         const listType = parsed.isSideboard
-          ? (hasSideboard ? 'sideboard' : 'alternates')
-          : parsed.isMaybeboard ? 'alternates'
-          : 'cards'
+          ? (hasSideboard ? DECK_LIST.SIDEBOARD : DECK_LIST.ALTERNATES)
+          : parsed.isMaybeboard ? DECK_LIST.ALTERNATES
+          : DECK_LIST.MAINBOARD
 
         resolvedCards.push({ card: deckCard, listType })
 

@@ -10,13 +10,14 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useStore, useGlobalRoles } from '@/hooks/useStore'
 import { getAllRoles, getRoleColor } from '@/lib/constants'
-import type { OwnershipStatus } from '@/types'
+import type { OwnershipStatus, DeckListName } from '@/types'
+import { OWNERSHIP_STATUS, DECK_LIST } from '@/types'
 
 interface BatchOperationsToolbarProps {
   deckId: string
   selectedCount: number
   selectedCardNames: string[]
-  currentListType: 'cards' | 'alternates' | 'sideboard'
+  currentListType: DeckListName
   hasSideboard: boolean
 }
 
@@ -48,7 +49,7 @@ export function BatchOperationsToolbar({
     await batchRemoveCards(deckId, selectedCardNames, currentListType)
   }
 
-  const handleMove = async (to: 'cards' | 'alternates' | 'sideboard') => {
+  const handleMove = async (to: DeckListName) => {
     await batchMoveCards(deckId, selectedCardNames, currentListType, to)
   }
 
@@ -57,10 +58,10 @@ export function BatchOperationsToolbar({
   }
 
   // Determine available move targets (can't move to current list)
-  const moveTargets: { value: 'cards' | 'alternates' | 'sideboard'; label: string }[] = []
-  if (currentListType !== 'cards') moveTargets.push({ value: 'cards', label: 'Main Deck' })
-  if (currentListType !== 'alternates') moveTargets.push({ value: 'alternates', label: 'Alternates' })
-  if (currentListType !== 'sideboard' && hasSideboard) moveTargets.push({ value: 'sideboard', label: 'Sideboard' })
+  const moveTargets: { value: DeckListName; label: string }[] = []
+  if (currentListType !== DECK_LIST.MAINBOARD) moveTargets.push({ value: DECK_LIST.MAINBOARD, label: 'Main Deck' })
+  if (currentListType !== DECK_LIST.ALTERNATES) moveTargets.push({ value: DECK_LIST.ALTERNATES, label: 'Alternates' })
+  if (currentListType !== DECK_LIST.SIDEBOARD && hasSideboard) moveTargets.push({ value: DECK_LIST.SIDEBOARD, label: 'Sideboard' })
 
   return (
     <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50">
@@ -82,15 +83,15 @@ export function BatchOperationsToolbar({
           <DropdownMenuContent>
             <DropdownMenuLabel>Ownership Status</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => handleSetOwnership('unknown')}>
+            <DropdownMenuItem onClick={() => handleSetOwnership(OWNERSHIP_STATUS.UNKNOWN)}>
               <Check className="w-4 h-4 mr-2 text-gray-400" />
               Unknown
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleSetOwnership('owned')}>
+            <DropdownMenuItem onClick={() => handleSetOwnership(OWNERSHIP_STATUS.OWNED)}>
               <Check className="w-4 h-4 mr-2 text-green-500" />
               Owned
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleSetOwnership('need_to_buy')}>
+            <DropdownMenuItem onClick={() => handleSetOwnership(OWNERSHIP_STATUS.NEED_TO_BUY)}>
               <DollarSign className="w-4 h-4 mr-2 text-yellow-500" />
               Need to Buy
             </DropdownMenuItem>

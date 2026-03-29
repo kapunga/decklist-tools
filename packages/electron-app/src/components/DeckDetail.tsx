@@ -19,8 +19,8 @@ import { NotesView } from '@/components/NotesView'
 import { RoleEditModal } from '@/components/RoleEditModal'
 import { ColorPips } from '@/components/ColorPips'
 import { PullListView } from '@/components/PullListView'
-import { getCardCount } from '@/types'
-import type { RoleDefinition } from '@/types'
+import { getCardCount, FORMAT_TYPE, DECK_LIST } from '@/types'
+import type { RoleDefinition, DeckListName } from '@/types'
 
 export function DeckDetail() {
   const deck = useSelectedDeck()
@@ -30,13 +30,13 @@ export function DeckDetail() {
 
   const [isEditingName, setIsEditingName] = useState(false)
   const [editedName, setEditedName] = useState('')
-  const [activeTab, setActiveTab] = useState('cards')
+  const [activeTab, setActiveTab] = useState<DeckListName>(DECK_LIST.MAINBOARD)
   const [showRoleModal, setShowRoleModal] = useState(false)
   const [isCaching, setIsCaching] = useState(false)
   const [cacheResult, setCacheResult] = useState<{ success: boolean; cachedCards: number; cachedImages: number; errors: string[] } | null>(null)
 
   const handleTabChange = useCallback((value: string) => {
-    setActiveTab(value)
+    setActiveTab(value as DeckListName)
     clearSelection() // Clear selection when switching tabs
   }, [clearSelection])
 
@@ -149,7 +149,7 @@ export function DeckDetail() {
           )}
 
           {/* Commander display for Commander format */}
-          {deck.format.type === 'commander' && deck.commanders.length > 0 && (
+          {deck.format.type === FORMAT_TYPE.COMMANDER && deck.commanders.length > 0 && (
             <div className="flex items-center gap-1">
               <Crown className="w-4 h-4 text-yellow-500" />
               <span className="text-sm">
@@ -241,14 +241,14 @@ export function DeckDetail() {
       <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col overflow-hidden">
         <div className="border-b px-4 flex-shrink-0">
           <TabsList>
-            <TabsTrigger value="cards">
+            <TabsTrigger value={DECK_LIST.MAINBOARD}>
               Cards ({getCardCount(deck)})
             </TabsTrigger>
-            <TabsTrigger value="alternates">
+            <TabsTrigger value={DECK_LIST.ALTERNATES}>
               Alternates ({deck.alternates.length})
             </TabsTrigger>
             {deck.format.sideboardSize > 0 && (
-              <TabsTrigger value="sideboard">
+              <TabsTrigger value={DECK_LIST.SIDEBOARD}>
                 Sideboard ({deck.sideboard.length})
               </TabsTrigger>
             )}
@@ -261,16 +261,16 @@ export function DeckDetail() {
         </div>
 
         <div className="flex-1 overflow-hidden">
-          <TabsContent value="cards" className="m-0 h-full">
+          <TabsContent value={DECK_LIST.MAINBOARD} className="m-0 h-full">
             <DeckListView deck={deck} listType="cards" />
           </TabsContent>
 
-          <TabsContent value="alternates" className="m-0 h-full">
+          <TabsContent value={DECK_LIST.ALTERNATES} className="m-0 h-full">
             <DeckListView deck={deck} listType="alternates" />
           </TabsContent>
 
           {deck.format.sideboardSize > 0 && (
-            <TabsContent value="sideboard" className="m-0 h-full">
+            <TabsContent value={DECK_LIST.SIDEBOARD} className="m-0 h-full">
               <DeckListView deck={deck} listType="sideboard" />
             </TabsContent>
           )}

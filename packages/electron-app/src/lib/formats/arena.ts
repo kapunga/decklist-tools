@@ -1,5 +1,6 @@
-import type { Deck } from '@/types'
+import { INCLUSION_STATUS, FORMAT_TYPE, type Deck } from '@/types'
 import type { DeckFormat, ParsedCard, RenderOptions } from './types'
+import { PARSER_SECTION } from './types'
 
 export const arenaFormat: DeckFormat = {
   id: 'arena',
@@ -23,25 +24,25 @@ export const arenaFormat: DeckFormat = {
       if (!line) continue
 
       const lower = line.toLowerCase()
-      if (lower === 'deck') {
+      if (lower === PARSER_SECTION.DECK) {
         inCommander = false
         inSideboard = false
         inMaybeboard = false
         continue
       }
-      if (lower === 'commander') {
+      if (lower === PARSER_SECTION.COMMANDER) {
         inCommander = true
         inSideboard = false
         inMaybeboard = false
         continue
       }
-      if (lower === 'sideboard') {
+      if (lower === PARSER_SECTION.SIDEBOARD) {
         inSideboard = true
         inMaybeboard = false
         inCommander = false
         continue
       }
-      if (lower === 'maybeboard' || lower === 'considering') {
+      if (lower === PARSER_SECTION.MAYBEBOARD || lower === 'considering') {
         inMaybeboard = true
         inSideboard = false
         inCommander = false
@@ -83,7 +84,7 @@ export const arenaFormat: DeckFormat = {
     const lines: string[] = []
 
     // Commander section for Commander format
-    if (deck.format.type === 'commander' && deck.commanders.length > 0) {
+    if (deck.format.type === FORMAT_TYPE.COMMANDER && deck.commanders.length > 0) {
       lines.push('Commander')
       deck.commanders.forEach(c => {
         lines.push(
@@ -95,7 +96,7 @@ export const arenaFormat: DeckFormat = {
 
     lines.push('Deck')
     deck.cards
-      .filter(c => c.inclusion === 'confirmed')
+      .filter(c => c.inclusion === INCLUSION_STATUS.CONFIRMED)
       .forEach(c => {
         lines.push(
           `${c.quantity} ${c.card.name} (${c.card.setCode.toUpperCase()}) ${c.card.collectorNumber}`
@@ -113,7 +114,7 @@ export const arenaFormat: DeckFormat = {
 
     if (options.includeMaybeboard) {
       const maybe = [
-        ...deck.cards.filter(c => c.inclusion === 'considering'),
+        ...deck.cards.filter(c => c.inclusion === INCLUSION_STATUS.CONSIDERING),
         ...deck.alternates
       ]
       if (maybe.length > 0) {

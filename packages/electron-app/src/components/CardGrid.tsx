@@ -1,13 +1,14 @@
 import { Badge } from '@/components/ui/badge'
 import { CardItem } from '@/components/CardItem'
-import type { DeckCard, RoleDefinition } from '@/types'
+import type { DeckCard, RoleDefinition, DeckListName } from '@/types'
+import { INCLUSION_STATUS } from '@/types'
 import { getRoleColor, getAllRoles, CARD_TYPE_SORT_ORDER } from '@/lib/constants'
 import { useGlobalRoles } from '@/hooks/useStore'
 
 interface CardGridProps {
   cards: DeckCard[]
   deckId: string
-  listType: 'cards' | 'alternates' | 'sideboard'
+  listType: DeckListName
   customRoles?: RoleDefinition[]
   groupBy?: 'role' | 'type' | 'none'
 }
@@ -15,7 +16,7 @@ interface CardGridProps {
 export function CardGrid({ cards, deckId, listType, customRoles, groupBy = 'role' }: CardGridProps) {
   const globalRoles = useGlobalRoles()
   const confirmedCards = listType === 'cards'
-    ? cards.filter(c => c.inclusion !== 'cut')
+    ? cards.filter(c => c.inclusion !== INCLUSION_STATUS.CUT)
     : cards
 
   if (confirmedCards.length === 0) {

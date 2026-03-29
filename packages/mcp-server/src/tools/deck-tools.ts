@@ -7,6 +7,8 @@ import {
   getCardLimit,
   getCardCount,
   type ScryfallCard,
+  FORMAT_TYPE,
+  DECK_LIST,
 } from '@mtg-deckbuilder/shared'
 import { renderDeckView } from '../views/index.js'
 import type { ManageDeckArgs, ViewDeckArgs } from './types.js'
@@ -49,7 +51,7 @@ function validateDeck(deck: Deck) {
   const cardCount = getCardCount(deck)
   if (cardCount < format.deckSize) {
     issues.push(`Deck has ${cardCount} cards, needs ${format.deckSize}`)
-  } else if (cardCount > format.deckSize && format.type === 'commander') {
+  } else if (cardCount > format.deckSize && format.type === FORMAT_TYPE.COMMANDER) {
     issues.push(`Commander deck has ${cardCount} cards, should be exactly ${format.deckSize}`)
   }
 
@@ -71,7 +73,7 @@ function validateDeck(deck: Deck) {
     }
   }
 
-  if (format.type === 'commander' && deck.commanders.length === 0) {
+  if (format.type === FORMAT_TYPE.COMMANDER && deck.commanders.length === 0) {
     issues.push('No commander set for Commander format deck')
   }
 
@@ -151,9 +153,9 @@ export function searchDecksForCard(storage: Storage, cardName: string) {
 
   for (const deck of decks) {
     const lists: [string, { card: { name: string }; quantity: number }[]][] = [
-      ['mainboard', deck.cards],
-      ['alternates', deck.alternates],
-      ['sideboard', deck.sideboard],
+      [DECK_LIST.MAINBOARD, deck.cards],
+      [DECK_LIST.ALTERNATES, deck.alternates],
+      [DECK_LIST.SIDEBOARD, deck.sideboard],
     ]
 
     for (const [location, list] of lists) {

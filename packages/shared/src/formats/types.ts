@@ -23,3 +23,8 @@ export interface RenderOptions {
   includeMaybeboard?: boolean
   includeSideboard?: boolean
 }
+
+export interface DetectedFormat {
+  format: DeckExportFormat
+  confidence: 'high' | 'low'
+}

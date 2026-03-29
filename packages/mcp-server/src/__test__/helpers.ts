@@ -9,12 +9,14 @@ import {
   type FormatType,
   type RoleDefinition,
   type InterestList,
+  type SetCollectionFile,
 } from '@mtg-deckbuilder/shared'
 
 export function createMockStorage() {
   const decks = new Map<string, Deck>()
   let globalRoles: RoleDefinition[] = []
   let interestList: InterestList = { version: 1, updatedAt: '', items: [] }
+  let setCollection: SetCollectionFile = { version: 1, updatedAt: '', sets: [] }
 
   const storage = {
     listDecks: vi.fn(() => [...decks.values()]),
@@ -57,6 +59,8 @@ export function createMockStorage() {
     getCachedCardBySetCollector: vi.fn(() => null),
     cacheCard: vi.fn(),
     cacheCardWithIndex: vi.fn(),
+    getSetCollection: vi.fn(() => setCollection),
+    saveSetCollection: vi.fn(),
     getBasePath: vi.fn(() => '/tmp/test'),
     getDecksPath: vi.fn(() => '/tmp/test/decks'),
   }
@@ -66,6 +70,7 @@ export function createMockStorage() {
     _decks: decks,
     _setGlobalRoles: (roles: RoleDefinition[]) => { globalRoles = roles },
     _setInterestList: (list: InterestList) => { interestList = list },
+    _setSetCollection: (col: SetCollectionFile) => { setCollection = col },
   }
 }
 

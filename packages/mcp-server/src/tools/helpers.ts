@@ -6,6 +6,44 @@ import {
   CachedScryfallClient,
 } from '@mtg-deckbuilder/shared'
 
+// Input length limits for tool arguments
+const INPUT_LIMITS = {
+  name: 200,
+  description: 2000,
+  notes: 10000,
+  content: 10000,
+  title: 200,
+  query: 500,
+  source: 500,
+  card_name: 200,
+  commander_name: 200,
+  new_commander_name: 200,
+  archetype: 200,
+} as const
+
+/**
+ * Validate that string arguments don't exceed reasonable length limits.
+ * Throws on the first field that exceeds its limit.
+ */
+export function validateInputLengths(args: Record<string, unknown>): void {
+  for (const [key, maxLength] of Object.entries(INPUT_LIMITS)) {
+    const value = args[key]
+    if (typeof value === 'string' && value.length > maxLength) {
+      throw new Error(`'${key}' exceeds maximum length of ${maxLength} characters (got ${value.length})`)
+    }
+  }
+
+  // Validate card arrays — each entry should be short
+  const cards = args.cards
+  if (Array.isArray(cards)) {
+    for (const card of cards) {
+      if (typeof card === 'string' && card.length > 200) {
+        throw new Error(`Card string exceeds maximum length of 200 characters`)
+      }
+    }
+  }
+}
+
 export interface ParsedCardString {
   quantity: number
   setCode: string
@@ -73,38 +111,39 @@ export function createCardIdentifier(scryfallCard: ScryfallCard): CardIdentifier
   }
 }
 
-// Re-export from shared with legacy names for backwards compatibility
-export { findCardByName as findCardInList, findCardIndexByName as findCardIndexInList } from '@mtg-deckbuilder/shared'
-
 import type { RoleDefinition } from '@mtg-deckbuilder/shared'
 
 /**
  * Update a role's properties in a list of roles.
- * Returns the updated role or throws if not found.
+ * Returns { updatedRoles, updatedRole } with a new array. Does not mutate the input.
  */
 export function updateRoleInList(
   roles: RoleDefinition[],
   roleId: string,
   updates: { name?: string; description?: string; color?: string }
-): RoleDefinition {
+): { updatedRoles: RoleDefinition[]; updatedRole: RoleDefinition } {
   const roleIndex = roles.findIndex((r) => r.id === roleId)
   if (roleIndex === -1) throw new Error(`Role not found: ${roleId}`)
 
-  if (updates.name !== undefined) roles[roleIndex].name = updates.name
-  if (updates.description !== undefined) roles[roleIndex].description = updates.description
-  if (updates.color !== undefined) roles[roleIndex].color = updates.color
+  const updatedRole: RoleDefinition = {
+    ...roles[roleIndex],
+    ...(updates.name !== undefined && { name: updates.name }),
+    ...(updates.description !== undefined && { description: updates.description }),
+    ...(updates.color !== undefined && { color: updates.color }),
+  }
 
-  return roles[roleIndex]
+  const updatedRoles = [...roles]
+  updatedRoles[roleIndex] = updatedRole
+  return { updatedRoles, updatedRole }
 }
 
 /**
  * Delete a role from a list of roles.
- * Returns the deleted role's id or throws if not found.
+ * Returns the new array without the deleted role. Does not mutate the input.
  */
-export function deleteRoleFromList(roles: RoleDefinition[], roleId: string): string {
+export function deleteRoleFromList(roles: RoleDefinition[], roleId: string): RoleDefinition[] {
   const roleIndex = roles.findIndex((r) => r.id === roleId)
   if (roleIndex === -1) throw new Error(`Role not found: ${roleId}`)
 
-  roles.splice(roleIndex, 1)
-  return roleId
+  return roles.filter((_, i) => i !== roleIndex)
 }

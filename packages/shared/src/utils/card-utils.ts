@@ -33,20 +33,19 @@ export function consolidateDuplicateCards(cards: DeckCard[]): DeckCard[] {
     const existing = cardMap.get(key)
 
     if (existing) {
-      // Merge: sum quantities, union roles, keep earlier addedAt
-      existing.quantity += card.quantity
-      existing.roles = [...new Set([...existing.roles, ...card.roles])]
-      if (new Date(card.addedAt) < new Date(existing.addedAt)) {
-        existing.addedAt = card.addedAt
-      }
-      // If either is pinned, keep it pinned
-      existing.isPinned = existing.isPinned || card.isPinned
-      // Merge notes if both have them
-      if (card.notes && existing.notes && card.notes !== existing.notes) {
-        existing.notes = `${existing.notes}\n${card.notes}`
-      } else if (card.notes && !existing.notes) {
-        existing.notes = card.notes
-      }
+      // Build a new merged card instead of mutating the existing entry
+      const mergedNotes = card.notes && existing.notes && card.notes !== existing.notes
+        ? `${existing.notes}\n${card.notes}`
+        : card.notes || existing.notes
+
+      cardMap.set(key, {
+        ...existing,
+        quantity: existing.quantity + card.quantity,
+        roles: [...new Set([...existing.roles, ...card.roles])],
+        addedAt: new Date(card.addedAt) < new Date(existing.addedAt) ? card.addedAt : existing.addedAt,
+        isPinned: existing.isPinned || card.isPinned,
+        notes: mergedNotes,
+      })
     } else {
       // Clone the card to avoid mutating the original
       cardMap.set(key, { ...card, roles: [...card.roles] })

@@ -1,6 +1,24 @@
 import type { Deck } from '../types/index.js'
+import { FORMAT_TYPE } from '../types/index.js'
 import type { DeckExportFormat, ParsedCard, RenderOptions } from './types.js'
-import { prepareLines, getConfirmedCards } from './utils.js'
+import { getConfirmedCards, parseLinesWithSections, PARSER_SECTION, consumed, implicit, type LineParserConfig } from './utils.js'
+
+const mtgoConfig: LineParserConfig = {
+  detectSection(line: string, prevBlank: boolean) {
+    if (line.toLowerCase() === PARSER_SECTION.SIDEBOARD) return consumed(PARSER_SECTION.SIDEBOARD)
+    if (prevBlank) return implicit(PARSER_SECTION.SIDEBOARD)
+    return null
+  },
+  cardPatterns: [
+    {
+      pattern: /^(\d+)\s+(.+)$/,
+      extract: (m: RegExpMatchArray) => ({
+        name: m[2].trim(),
+        quantity: parseInt(m[1], 10),
+      }),
+    },
+  ],
+}
 
 export const mtgoFormat: DeckExportFormat = {
   id: 'mtgo',
@@ -8,51 +26,13 @@ export const mtgoFormat: DeckExportFormat = {
   description: 'MTGO format: 4 Lightning Bolt',
 
   parse(text: string): ParsedCard[] {
-    const cards: ParsedCard[] = []
-    const lines = prepareLines(text)
-
-    const cardPattern = /^(\d+)\s+(.+)$/
-    let inSideboard = false
-    let sawBlankLine = false
-
-    for (const line of lines) {
-      if (!line) {
-        sawBlankLine = true
-        continue
-      }
-
-      if (line.toLowerCase() === 'sideboard') {
-        inSideboard = true
-        continue
-      }
-
-      // MTGO style: blank line indicates sideboard
-      if (sawBlankLine && !inSideboard) {
-        inSideboard = true
-      }
-      sawBlankLine = false
-
-      const match = line.match(cardPattern)
-      if (match) {
-        cards.push({
-          name: match[2].trim(),
-          quantity: parseInt(match[1], 10),
-          isSideboard: inSideboard,
-          isMaybeboard: false,
-          isCommander: false,
-          roles: []
-        })
-      }
-    }
-
-    return cards
+    return parseLinesWithSections(text, mtgoConfig)
   },
 
   render(deck: Deck, options: RenderOptions): string {
     const lines: string[] = []
 
-    // Commander section for Commander format
-    if (deck.format.type === 'commander' && deck.commanders.length > 0) {
+    if (deck.format.type === FORMAT_TYPE.COMMANDER && deck.commanders.length > 0) {
       lines.push('Commander')
       deck.commanders.forEach(c => {
         lines.push(`1 ${c.name}`)

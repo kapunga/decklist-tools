@@ -1,4 +1,4 @@
-import type { Storage } from '@mtg-deckbuilder/shared'
+import { FORMAT_TYPE, type Storage } from '@mtg-deckbuilder/shared'
 import { getDeckOrThrow, fetchScryfallCard, createCardIdentifier } from './helpers.js'
 import type { ManageCommanderArgs } from './types.js'
 
@@ -19,7 +19,7 @@ async function recomputeColorIdentity(
 export async function manageCommander(storage: Storage, args: ManageCommanderArgs) {
   const deck = getDeckOrThrow(storage, args.deck_id)
 
-  if (deck.format.type !== 'commander') {
+  if (deck.format.type !== FORMAT_TYPE.COMMANDER) {
     throw new Error('Commanders can only be managed for Commander format decks')
   }
 
