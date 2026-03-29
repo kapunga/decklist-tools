@@ -21,8 +21,11 @@ export function InterestListView() {
   const [suggestions, setSuggestions] = useState<string[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [selectedCard, setSelectedCard] = useState<string | null>(null)
   const [hoveredCard, setHoveredCard] = useState<string | null>(null)
-  const [hoveredImageUrl, setHoveredImageUrl] = useState<string | null>(null)
+  const [activeImageUrl, setActiveImageUrl] = useState<string | null>(null)
+
+  const activeCard = selectedCard ?? hoveredCard
 
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -53,27 +56,26 @@ export function InterestListView() {
     return () => clearTimeout(timer)
   }, [searchQuery])
 
-  // Fetch image on hover
+  // Fetch image for active card (hovered or selected)
   useEffect(() => {
-    if (!hoveredCard) {
-      setHoveredImageUrl(null)
+    if (!activeCard) {
+      setActiveImageUrl(null)
       return
     }
 
-    const item = interestList?.items.find(i => i.card.name === hoveredCard)
+    const item = interestList?.items.find(i => i.card.name === activeCard)
     if (!item) return
 
     if (item.card.scryfallId) {
-      setHoveredImageUrl(`https://api.scryfall.com/cards/${item.card.scryfallId}?format=image&version=normal`)
+      setActiveImageUrl(`https://api.scryfall.com/cards/${item.card.scryfallId}?format=image&version=normal`)
     } else {
-      // Fetch from name
       searchCardByName(item.card.name).then(card => {
         if (card) {
-          setHoveredImageUrl(getCardImageUrl(card))
+          setActiveImageUrl(getCardImageUrl(card))
         }
       })
     }
-  }, [hoveredCard, interestList])
+  }, [activeCard, interestList])
 
   const handleAddCard = useCallback(async (name: string) => {
     setIsLoading(true)
@@ -158,16 +160,16 @@ export function InterestListView() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-auto p-4">
-        {items.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
-            <p className="mb-2">No cards in your interest list yet.</p>
-            <p className="text-sm">Use the search above to add cards you're interested in.</p>
-          </div>
-        ) : (
-          <div className="flex gap-4">
-            {/* Card List */}
-            <div className="flex-1 space-y-2">
+      <div className="flex-1 flex min-h-0">
+        {/* Card List Pane */}
+        <div className="flex-1 overflow-auto p-4">
+          {items.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
+              <p className="mb-2">No cards in your interest list yet.</p>
+              <p className="text-sm">Use the search above to add cards you're interested in.</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
               {items.map(item => (
                 <InterestListItem
                   key={item.id}
@@ -177,23 +179,29 @@ export function InterestListView() {
                   onNotesChange={handleNotesChange}
                   onNavigateToDeck={handleNavigateToDeck}
                   onHover={setHoveredCard}
+                  onSelect={setSelectedCard}
                   isHovered={hoveredCard === item.card.name}
+                  isSelected={selectedCard === item.card.name}
                 />
               ))}
             </div>
+          )}
+        </div>
 
-            {/* Hover Preview */}
-            {hoveredImageUrl && (
-              <div className="w-64 sticky top-0 shrink-0">
-                <img
-                  src={hoveredImageUrl}
-                  alt="Card preview"
-                  className="rounded-lg shadow-lg"
-                />
-              </div>
-            )}
-          </div>
-        )}
+        {/* Preview Pane */}
+        <div className="w-72 p-4 border-l shrink-0">
+          {activeImageUrl ? (
+            <img
+              src={activeImageUrl}
+              alt="Card preview"
+              className="rounded-lg shadow-lg w-full"
+            />
+          ) : (
+            <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">
+              Select a card to preview
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
@@ -206,7 +214,9 @@ interface InterestListItemProps {
   onNotesChange: (cardName: string, notes: string) => void
   onNavigateToDeck: (deckId: string) => void
   onHover: (cardName: string | null) => void
+  onSelect: (cardName: string) => void
   isHovered: boolean
+  isSelected: boolean
 }
 
 function InterestListItem({
@@ -216,7 +226,9 @@ function InterestListItem({
   onNotesChange,
   onNavigateToDeck,
   onHover,
-  isHovered
+  onSelect,
+  isHovered,
+  isSelected
 }: InterestListItemProps) {
   const [isEditingNotes, setIsEditingNotes] = useState(false)
   const [notesValue, setNotesValue] = useState(item.notes || '')
@@ -235,7 +247,8 @@ function InterestListItem({
 
   return (
     <Card
-      className={`transition-colors ${isHovered ? 'bg-accent/50' : ''}`}
+      className={`transition-colors cursor-pointer ${isSelected ? 'ring-2 ring-primary' : ''} ${isHovered ? 'bg-accent/50' : ''}`}
+      onClick={() => onSelect(item.card.name)}
       onMouseEnter={() => onHover(item.card.name)}
       onMouseLeave={() => onHover(null)}
     >
