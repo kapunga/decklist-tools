@@ -11,9 +11,14 @@ import {
   getCardById,
   searchCards,
   getOracleText,
+  findCardByName,
+  findCardIndexByName,
+  INCLUSION_STATUS,
+  OWNERSHIP_STATUS,
+  ADDED_BY,
+  DECK_LIST,
 } from '@mtg-deckbuilder/shared'
 import { getDeckOrThrow, fetchScryfallCard, createCardIdentifier, parseCardString } from './helpers.js'
-import { findCardByName, findCardIndexByName } from '@mtg-deckbuilder/shared'
 import type { ManageCardArgs, SearchCardsArgs } from './types.js'
 
 // Scryfall operator patterns for detecting search queries
@@ -84,13 +89,13 @@ export async function manageCard(storage: Storage, args: ManageCardArgs) {
             id: generateDeckCardId(),
             card: cardIdentifier,
             quantity,
-            inclusion: (args.status as InclusionStatus) || 'confirmed',
-            ownership: (args.ownership as OwnershipStatus) || 'unknown',
+            inclusion: (args.status as InclusionStatus) || INCLUSION_STATUS.CONFIRMED,
+            ownership: (args.ownership as OwnershipStatus) || OWNERSHIP_STATUS.UNKNOWN,
             roles: args.roles || [],
             typeLine: scryfallCard.type_line,
             isPinned: false,
             addedAt: new Date().toISOString(),
-            addedBy: 'user',
+            addedBy: ADDED_BY.USER,
           }
 
           targetList.push(deckCard)
@@ -176,17 +181,17 @@ export async function manageCard(storage: Storage, args: ManageCardArgs) {
     }
     case 'move': {
       if (!args.from || !args.to) throw new Error('from and to are required for move')
-      if (args.to === 'sideboard' && deck.format.sideboardSize === 0) {
+      if (args.to === DECK_LIST.SIDEBOARD && deck.format.sideboardSize === 0) {
         throw new Error(`Cannot move cards to sideboard: ${deck.format.type} format has no sideboard`)
       }
       const cardNames = resolveCards(args)
 
       const getList = (name: string): DeckCard[] => {
         switch (name) {
-          case 'mainboard': return deck.cards
-          case 'alternates': return deck.alternates
-          case 'sideboard': return deck.sideboard
-          default: throw new Error(`Invalid list: "${name}". Valid lists are: mainboard, sideboard, alternates`)
+          case DECK_LIST.MAINBOARD: return deck.cards
+          case DECK_LIST.ALTERNATES: return deck.alternates
+          case DECK_LIST.SIDEBOARD: return deck.sideboard
+          default: throw new Error(`Invalid list: "${name}". Valid lists are: ${Object.values(DECK_LIST).join(', ')}`)
         }
       }
 

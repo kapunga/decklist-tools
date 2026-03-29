@@ -1,12 +1,19 @@
 import type { Deck, DeckCard } from '../types/index.js'
+import { INCLUSION_STATUS } from '../types/index.js'
 import type { ParsedCard } from './types.js'
 
 export function prepareLines(text: string): string[] {
   return text.split('\n').map(l => l.trim())
 }
 
-// Section state for line-based parsers
-type Section = 'deck' | 'sideboard' | 'maybeboard' | 'commander'
+// Section state for line-based parsers — these represent external format sections, not internal data model names
+export const PARSER_SECTION = {
+  DECK: 'deck',
+  SIDEBOARD: 'sideboard',
+  MAYBEBOARD: 'maybeboard',
+  COMMANDER: 'commander',
+} as const
+export type ParserSection = typeof PARSER_SECTION[keyof typeof PARSER_SECTION]
 
 // A card extraction result without section flags (those come from the parser loop)
 interface ExtractedCard {
@@ -18,11 +25,15 @@ interface ExtractedCard {
 }
 
 // A section detection result. 'consume' means the line is a header (skip card matching).
-// 'continue' means section changed but the line should still be parsed as a card.
+// 'implicit' means section changed but the line should still be parsed as a card.
 type SectionResult =
-  | { section: Section; consume: boolean }
+  | { section: ParserSection; consume: boolean }
   | 'skip'
   | null
+
+// Helpers for building SectionResult values
+export const consumed = (section: ParserSection): SectionResult => ({ section, consume: true })
+export const implicit = (section: ParserSection): SectionResult => ({ section, consume: false })
 
 // Configuration for the shared line-based parser
 export interface LineParserConfig {
@@ -45,7 +56,7 @@ export function parseLinesWithSections(text: string, config: LineParserConfig): 
   const cards: ParsedCard[] = []
   const lines = prepareLines(text)
 
-  let section: Section = 'deck'
+  let section: ParserSection = PARSER_SECTION.DECK
   let prevBlank = false
 
   for (const line of lines) {
@@ -71,9 +82,9 @@ export function parseLinesWithSections(text: string, config: LineParserConfig): 
           cards.push({
             ...extracted,
             roles: extracted.roles || [],
-            isSideboard: section === 'sideboard',
-            isMaybeboard: section === 'maybeboard',
-            isCommander: section === 'commander',
+            isSideboard: section === PARSER_SECTION.SIDEBOARD,
+            isMaybeboard: section === PARSER_SECTION.MAYBEBOARD,
+            isCommander: section === PARSER_SECTION.COMMANDER,
           })
         }
         break
@@ -85,12 +96,12 @@ export function parseLinesWithSections(text: string, config: LineParserConfig): 
 }
 
 export function getConfirmedCards(deck: Deck): DeckCard[] {
-  return deck.cards.filter(c => c.inclusion === 'confirmed')
+  return deck.cards.filter(c => c.inclusion === INCLUSION_STATUS.CONFIRMED)
 }
 
 export function getMaybeboardCards(deck: Deck): DeckCard[] {
   return [
-    ...deck.cards.filter(c => c.inclusion === 'considering'),
+    ...deck.cards.filter(c => c.inclusion === INCLUSION_STATUS.CONSIDERING),
     ...deck.alternates
   ]
 }

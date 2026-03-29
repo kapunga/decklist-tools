@@ -1,14 +1,15 @@
 import type { Deck } from '../types/index.js'
+import { FORMAT_TYPE } from '../types/index.js'
 import type { DeckExportFormat, ParsedCard, RenderOptions } from './types.js'
-import { getConfirmedCards, getMaybeboardCards, parseLinesWithSections, type LineParserConfig } from './utils.js'
+import { getConfirmedCards, getMaybeboardCards, parseLinesWithSections, PARSER_SECTION, consumed, type LineParserConfig } from './utils.js'
 
 const arenaConfig: LineParserConfig = {
   detectSection(line: string) {
     const lower = line.toLowerCase()
-    if (lower === 'deck') return { section: 'deck', consume: true }
-    if (lower === 'commander') return { section: 'commander', consume: true }
-    if (lower === 'sideboard') return { section: 'sideboard', consume: true }
-    if (lower === 'maybeboard' || lower === 'considering') return { section: 'maybeboard', consume: true }
+    if (lower === PARSER_SECTION.DECK) return consumed(PARSER_SECTION.DECK)
+    if (lower === PARSER_SECTION.COMMANDER) return consumed(PARSER_SECTION.COMMANDER)
+    if (lower === PARSER_SECTION.SIDEBOARD) return consumed(PARSER_SECTION.SIDEBOARD)
+    if (lower === PARSER_SECTION.MAYBEBOARD || lower === 'considering') return consumed(PARSER_SECTION.MAYBEBOARD)
     return null
   },
   cardPatterns: [
@@ -46,7 +47,7 @@ export const arenaFormat: DeckExportFormat = {
     const lines: string[] = []
 
     // Commander section for Commander format
-    if (deck.format.type === 'commander' && deck.commanders.length > 0) {
+    if (deck.format.type === FORMAT_TYPE.COMMANDER && deck.commanders.length > 0) {
       lines.push('Commander')
       deck.commanders.forEach(c => {
         lines.push(

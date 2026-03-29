@@ -1,12 +1,12 @@
 import type { Deck } from '../types/index.js'
+import { FORMAT_TYPE } from '../types/index.js'
 import type { DeckExportFormat, ParsedCard, RenderOptions } from './types.js'
-import { getConfirmedCards, parseLinesWithSections, type LineParserConfig } from './utils.js'
+import { getConfirmedCards, parseLinesWithSections, PARSER_SECTION, consumed, implicit, type LineParserConfig } from './utils.js'
 
 const mtgoConfig: LineParserConfig = {
   detectSection(line: string, prevBlank: boolean) {
-    if (line.toLowerCase() === 'sideboard') return { section: 'sideboard', consume: true }
-    // MTGO style: blank line before a card line indicates sideboard (implicit, don't consume)
-    if (prevBlank) return { section: 'sideboard', consume: false }
+    if (line.toLowerCase() === PARSER_SECTION.SIDEBOARD) return consumed(PARSER_SECTION.SIDEBOARD)
+    if (prevBlank) return implicit(PARSER_SECTION.SIDEBOARD)
     return null
   },
   cardPatterns: [
@@ -32,7 +32,7 @@ export const mtgoFormat: DeckExportFormat = {
   render(deck: Deck, options: RenderOptions): string {
     const lines: string[] = []
 
-    if (deck.format.type === 'commander' && deck.commanders.length > 0) {
+    if (deck.format.type === FORMAT_TYPE.COMMANDER && deck.commanders.length > 0) {
       lines.push('Commander')
       deck.commanders.forEach(c => {
         lines.push(`1 ${c.name}`)

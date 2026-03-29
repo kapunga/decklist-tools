@@ -1,4 +1,6 @@
 import type { Deck, DeckCard } from '../types/index.js'
+import { FORMAT_TYPE } from '../types/index.js'
+import { PARSER_SECTION } from './utils.js'
 import type { DeckExportFormat, ParsedCard, RenderOptions } from './types.js'
 import { prepareLines, getConfirmedCards, getMaybeboardCards } from './utils.js'
 
@@ -27,7 +29,7 @@ export const archidektFormat: DeckExportFormat = {
         }
 
         const category = match[5]?.toLowerCase()
-        const isCommander = category === 'commander'
+        const isCommander = category === PARSER_SECTION.COMMANDER
 
         // Add land role if in Lands category
         if ((category === 'lands' || category === 'land') && !roles.includes('land')) {
@@ -39,8 +41,8 @@ export const archidektFormat: DeckExportFormat = {
           setCode: match[3].toLowerCase(),
           collectorNumber: match[4],
           quantity: parseInt(match[1], 10),
-          isSideboard: category === 'sideboard',
-          isMaybeboard: category === 'maybeboard' || category === 'considering',
+          isSideboard: category === PARSER_SECTION.SIDEBOARD,
+          isMaybeboard: category === PARSER_SECTION.MAYBEBOARD || category === 'considering',
           isCommander,
           roles
         })
@@ -72,7 +74,7 @@ export const archidektFormat: DeckExportFormat = {
     }
 
     // Commanders section
-    if (deck.format.type === 'commander' && deck.commanders.length > 0) {
+    if (deck.format.type === FORMAT_TYPE.COMMANDER && deck.commanders.length > 0) {
       deck.commanders.forEach(c => {
         lines.push(`1x ${c.name} (${(c.setCode || '???').toUpperCase()}) ${c.collectorNumber || '0'} [Commander]`)
       })

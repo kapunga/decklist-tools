@@ -1,5 +1,5 @@
 import type { Deck, DeckCard, SetCollectionFile, ScryfallCard, CollectionLevel } from '@mtg-deckbuilder/shared'
-import { getTotalPulledQuantity, COLLECTION_LEVEL_RARITIES, isBasicLand } from '@mtg-deckbuilder/shared'
+import { getTotalPulledQuantity, COLLECTION_LEVEL_RARITIES, isBasicLand, INCLUSION_STATUS, OWNERSHIP_STATUS, ADDED_BY } from '@mtg-deckbuilder/shared'
 
 interface PullListItem {
   cardName: string
@@ -55,15 +55,15 @@ export function renderPullListView(
 
   if (source === 'maybeboard') {
     // Maybeboard: only alternates (confirmed), no commanders
-    let alternateCards = deck.alternates.filter(c => c.inclusion === 'confirmed')
+    let alternateCards = deck.alternates.filter(c => c.inclusion === INCLUSION_STATUS.CONFIRMED)
     if (hideBasicLands) {
       alternateCards = alternateCards.filter(c => !isBasicLand(c.card.name))
     }
     confirmedCards = alternateCards
   } else {
     // Main Deck: main + sideboard + commanders
-    let mainCards = deck.cards.filter(c => c.inclusion === 'confirmed')
-    let sideboardCards = deck.sideboard.filter(c => c.inclusion === 'confirmed')
+    let mainCards = deck.cards.filter(c => c.inclusion === INCLUSION_STATUS.CONFIRMED)
+    let sideboardCards = deck.sideboard.filter(c => c.inclusion === INCLUSION_STATUS.CONFIRMED)
     if (hideBasicLands) {
       mainCards = mainCards.filter(c => !isBasicLand(c.card.name))
       sideboardCards = sideboardCards.filter(c => !isBasicLand(c.card.name))
@@ -76,13 +76,13 @@ export function renderPullListView(
         id: `commander-${cmd.name}`,
         card: cmd,
         quantity: 1,
-        inclusion: 'confirmed' as const,
-        ownership: 'unknown' as const,
+        inclusion: INCLUSION_STATUS.CONFIRMED,
+        ownership: OWNERSHIP_STATUS.UNKNOWN,
         roles: ['commander'],
         typeLine: '',
         isPinned: true,
         addedAt: deck.createdAt,
-        addedBy: 'user' as const
+        addedBy: ADDED_BY.USER
       }))
     ]
   }

@@ -1,10 +1,11 @@
 import type { Deck } from '../types/index.js'
+import { FORMAT_TYPE } from '../types/index.js'
 import type { DeckExportFormat, ParsedCard, RenderOptions } from './types.js'
-import { getConfirmedCards, parseLinesWithSections, type LineParserConfig } from './utils.js'
+import { getConfirmedCards, parseLinesWithSections, PARSER_SECTION, consumed, type LineParserConfig } from './utils.js'
 
 const simpleConfig: LineParserConfig = {
   detectSection(line: string) {
-    if (line.toLowerCase().startsWith('sideboard')) return { section: 'sideboard', consume: true }
+    if (line.toLowerCase().startsWith(PARSER_SECTION.SIDEBOARD)) return consumed(PARSER_SECTION.SIDEBOARD)
     return null
   },
   cardPatterns: [
@@ -39,7 +40,7 @@ export const simpleFormat: DeckExportFormat = {
   render(deck: Deck, options: RenderOptions): string {
     const lines: string[] = []
 
-    if (deck.format.type === 'commander' && deck.commanders.length > 0) {
+    if (deck.format.type === FORMAT_TYPE.COMMANDER && deck.commanders.length > 0) {
       lines.push('Commander:')
       deck.commanders.forEach(c => {
         lines.push(`1 ${c.name}`)

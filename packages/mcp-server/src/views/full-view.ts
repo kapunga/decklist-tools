@@ -1,5 +1,5 @@
 import type { Deck, DeckCard, RoleDefinition, ScryfallCard } from '@mtg-deckbuilder/shared'
-import { getPrimaryType, getCardCount, buildRoleLookup, CARD_TYPE_ORDER, isCardFullyPulled } from '@mtg-deckbuilder/shared'
+import { getPrimaryType, getCardCount, buildRoleLookup, CARD_TYPE_ORDER, isCardFullyPulled, INCLUSION_STATUS } from '@mtg-deckbuilder/shared'
 import { formatCardLine, type DetailLevel } from './formatters.js'
 
 export function renderFullView(
@@ -30,14 +30,14 @@ export function renderFullView(
     lines.push('')
   }
 
-  let confirmedCards = deck.cards.filter(c => c.inclusion === 'confirmed')
+  let confirmedCards = deck.cards.filter(c => c.inclusion === INCLUSION_STATUS.CONFIRMED)
   if (filteredCardIds) {
     confirmedCards = confirmedCards.filter(c => filteredCardIds.has(c.id))
   }
 
   const consideringCards = filteredCardIds
-    ? deck.cards.filter(c => c.inclusion === 'considering' && filteredCardIds.has(c.id))
-    : deck.cards.filter(c => c.inclusion === 'considering')
+    ? deck.cards.filter(c => c.inclusion === INCLUSION_STATUS.CONSIDERING && filteredCardIds.has(c.id))
+    : deck.cards.filter(c => c.inclusion === INCLUSION_STATUS.CONSIDERING)
 
   if (groupBy === 'role') {
     renderByRole(lines, confirmedCards, roleLookup)

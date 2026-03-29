@@ -1,4 +1,5 @@
 import type { ScryfallCard } from '../types/index.js'
+import { FORMAT_TYPE } from '../types/index.js'
 import { SCRYFALL } from '../constants/index.js'
 
 // Export cached client
@@ -250,7 +251,7 @@ export async function searchCardsWithFilters(
   let fullQuery = query
 
   // Add format legality filter (skip for kitchen_table)
-  if (format && format !== 'kitchen_table') {
+  if (format && format !== FORMAT_TYPE.KITCHEN_TABLE) {
     const scryfallFormat = format.replace('_', '')
     if (!VALID_SCRYFALL_FORMATS.has(scryfallFormat)) {
       throw new Error(`Unknown format: ${format}`)

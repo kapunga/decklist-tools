@@ -1,5 +1,5 @@
 import type { DeckCard, RoleDefinition, ScryfallCard } from '@mtg-deckbuilder/shared'
-import { getPrimaryType, getRoleById, isCardFullyPulled, getOracleText } from '@mtg-deckbuilder/shared'
+import { getPrimaryType, getRoleById, isCardFullyPulled, getOracleText, OWNERSHIP_STATUS } from '@mtg-deckbuilder/shared'
 
 export type DetailLevel = 'summary' | 'compact' | 'full'
 
@@ -49,7 +49,7 @@ export function formatCardLine(
     headerParts.push(`(${roleNames})`)
   }
 
-  if (card.ownership === 'need_to_buy') {
+  if (card.ownership === OWNERSHIP_STATUS.NEED_TO_BUY) {
     headerParts.push('[NEED TO BUY]')
   } else if (isCardFullyPulled(card)) {
     headerParts.push('[PULLED]')
