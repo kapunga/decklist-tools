@@ -344,6 +344,21 @@ export function isDoubleFacedCard(card: ScryfallCard): boolean {
   return dfcLayouts.includes(card.layout || '')
 }
 
+// Extract oracle text, handling multi-faced cards (Rooms, DFCs, split, adventure, etc.)
+export function getOracleText(card: ScryfallCard): string | undefined {
+  if (card.card_faces && card.card_faces.length >= 2) {
+    const faceTexts = card.card_faces
+      .filter(face => face.oracle_text)
+      .map(face => `[${face.name}]\n${face.oracle_text}`)
+
+    if (faceTexts.length > 0) {
+      return faceTexts.join('\n\n')
+    }
+  }
+
+  return card.oracle_text
+}
+
 // Helper functions
 export function createEmptyDeck(name: string, formatType: FormatType): Deck {
   const now = new Date().toISOString()
