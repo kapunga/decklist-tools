@@ -19,5 +19,8 @@ export * from './utils/index.js'
 // Stats
 export * from './stats/index.js'
 
+// Domain layer
+export * from './domain/index.js'
+
 // Storage
 export { Storage, getStorageBasePath } from './storage/index.js'

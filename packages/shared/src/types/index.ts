@@ -37,6 +37,7 @@ export interface CardIdentifier {
   name: string
   setCode: string
   collectorNumber: string
+  colorIdentity?: string[]
 }
 
 // Discriminator constants — single source of truth; types derived via typeof
