@@ -1,8 +1,11 @@
 import {
   Storage,
   type RoleDefinition,
+  addRoleToList,
+  updateRoleInList,
+  deleteRoleFromList,
 } from '@mtg-deckbuilder/shared'
-import { getDeckOrThrow, updateRoleInList, deleteRoleFromList } from './helpers.js'
+import { getDeckOrThrow } from './helpers.js'
 import type { ManageRoleArgs } from './types.js'
 
 export function listRoles(storage: Storage, deckId?: string) {
@@ -28,34 +31,26 @@ export function manageRole(storage: Storage, args: ManageRoleArgs) {
       if (!args.name) throw new Error('name is required for add_custom')
       const deck = getDeckOrThrow(storage, args.deck_id)
 
-      if (deck.customRoles.some((r) => r.id === args.id)) {
-        throw new Error(`Role already exists: ${args.id}`)
-      }
-
       const role: RoleDefinition = {
         id: args.id,
         name: args.name,
         description: args.description,
         color: args.color,
       }
-      deck.customRoles = [...deck.customRoles, role]
+      deck.customRoles = addRoleToList(deck.customRoles, role)
       storage.saveDeck(deck)
       return { success: true, role }
     }
     case 'add_global': {
       if (!args.name) throw new Error('name is required for add_global')
-      const roles = storage.getGlobalRoles()
-      if (roles.some((r) => r.id === args.id)) {
-        throw new Error(`Role already exists: ${args.id}`)
-      }
-
       const role: RoleDefinition = {
         id: args.id,
         name: args.name,
         description: args.description,
         color: args.color,
       }
-      storage.saveGlobalRoles([...roles, role])
+      const roles = storage.getGlobalRoles()
+      storage.saveGlobalRoles(addRoleToList(roles, role))
       return { success: true, role }
     }
     case 'update_global': {

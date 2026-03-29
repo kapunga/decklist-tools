@@ -180,7 +180,7 @@ describe('Card Management', () => {
       const result = await call('manage_card', { action: 'add', deck_id: deck.id, name: 'Lightning Bolt' }) as any
       expect(result.success).toBe(true)
       expect(result.cards[0].name).toBe('Lightning Bolt')
-      expect(deck.cards).toHaveLength(1)
+      expect(mock._decks.get(deck.id)!.cards).toHaveLength(1)
     })
 
     it('adds a card by set + collector number', async () => {
@@ -200,8 +200,9 @@ describe('Card Management', () => {
       mock._decks.set(deck.id, deck)
 
       await call('manage_card', { action: 'add', deck_id: deck.id, name: 'Lightning Bolt', to_sideboard: true })
-      expect(deck.sideboard).toHaveLength(1)
-      expect(deck.cards).toHaveLength(0)
+      const saved = mock._decks.get(deck.id)!
+      expect(saved.sideboard).toHaveLength(1)
+      expect(saved.cards).toHaveLength(0)
     })
 
     it('redirects to_sideboard to alternates when format has no sideboard', async () => {
@@ -210,8 +211,9 @@ describe('Card Management', () => {
       mock._decks.set(deck.id, deck)
 
       await call('manage_card', { action: 'add', deck_id: deck.id, name: 'Lightning Bolt', to_sideboard: true })
-      expect(deck.sideboard).toHaveLength(0)
-      expect(deck.alternates).toHaveLength(1)
+      const saved = mock._decks.get(deck.id)!
+      expect(saved.sideboard).toHaveLength(0)
+      expect(saved.alternates).toHaveLength(1)
     })
 
     it('adds to alternates', async () => {
@@ -220,7 +222,7 @@ describe('Card Management', () => {
       mock._decks.set(deck.id, deck)
 
       await call('manage_card', { action: 'add', deck_id: deck.id, name: 'Lightning Bolt', to_alternates: true })
-      expect(deck.alternates).toHaveLength(1)
+      expect(mock._decks.get(deck.id)!.alternates).toHaveLength(1)
     })
 
     it('throws when card not found on Scryfall', async () => {
@@ -243,8 +245,9 @@ describe('Card Management', () => {
       mock._decks.set(deck.id, deck)
 
       await call('manage_card', { action: 'add', deck_id: deck.id, name: 'Lightning Bolt', quantity: 3, roles: ['removal'] })
-      expect(deck.cards[0].quantity).toBe(3)
-      expect(deck.cards[0].roles).toEqual(['removal'])
+      const saved = mock._decks.get(deck.id)!
+      expect(saved.cards[0].quantity).toBe(3)
+      expect(saved.cards[0].roles).toEqual(['removal'])
     })
   })
 
@@ -256,7 +259,7 @@ describe('Card Management', () => {
 
       const result = await call('manage_card', { action: 'remove', deck_id: deck.id, name: 'Lightning Bolt' }) as any
       expect(result.success).toBe(true)
-      expect(deck.cards).toHaveLength(0)
+      expect(mock._decks.get(deck.id)!.cards).toHaveLength(0)
     })
 
     it('decreases quantity when partial remove', async () => {
@@ -265,14 +268,14 @@ describe('Card Management', () => {
       mock._decks.set(deck.id, deck)
 
       await call('manage_card', { action: 'remove', deck_id: deck.id, name: 'Lightning Bolt', quantity: 2 })
-      expect(deck.cards[0].quantity).toBe(2)
+      expect(mock._decks.get(deck.id)!.cards[0].quantity).toBe(2)
     })
 
     it('throws when card not in deck', async () => {
       const deck = makeDeck()
       mock._decks.set(deck.id, deck)
       await expect(call('manage_card', { action: 'remove', deck_id: deck.id, name: 'Nope' }))
-        .rejects.toThrow('Card not found in deck')
+        .rejects.toThrow('Card not found')
     })
 
     it('removes from sideboard', async () => {
@@ -281,7 +284,7 @@ describe('Card Management', () => {
       mock._decks.set(deck.id, deck)
 
       await call('manage_card', { action: 'remove', deck_id: deck.id, name: 'Lightning Bolt', from_sideboard: true })
-      expect(deck.sideboard).toHaveLength(0)
+      expect(mock._decks.get(deck.id)!.sideboard).toHaveLength(0)
     })
   })
 
@@ -353,8 +356,9 @@ describe('Card Management', () => {
         action: 'move', deck_id: deck.id, name: 'Lightning Bolt', from: 'mainboard', to: 'sideboard'
       }) as any
       expect(result.success).toBe(true)
-      expect(deck.cards).toHaveLength(0)
-      expect(deck.sideboard).toHaveLength(1)
+      const saved = mock._decks.get(deck.id)!
+      expect(saved.cards).toHaveLength(0)
+      expect(saved.sideboard).toHaveLength(1)
     })
 
     it('throws when moving to sideboard in format with no sideboard', async () => {
@@ -372,7 +376,7 @@ describe('Card Management', () => {
       mock._decks.set(deck.id, deck)
       await expect(call('manage_card', {
         action: 'move', deck_id: deck.id, name: 'Nope', from: 'mainboard', to: 'sideboard'
-      })).rejects.toThrow('Card not found in mainboard')
+      })).rejects.toThrow('Card not found')
     })
   })
 })
@@ -663,7 +667,7 @@ describe('Commander', () => {
       }) as any
       expect(result.success).toBe(true)
       expect(result.commanders).toContain('Kenrith, the Returned King')
-      expect(deck.colorIdentity).toEqual(['W', 'U', 'B', 'R', 'G'])
+      expect(result.colorIdentity).toEqual(['W', 'U', 'B', 'R', 'G'])
     })
 
     it('rejects non-commander format', async () => {
@@ -709,7 +713,7 @@ describe('Commander', () => {
       }) as any
       expect(result.success).toBe(true)
       expect(result.commanders).toEqual([])
-      expect(deck.colorIdentity).toEqual([])
+      expect(result.colorIdentity).toEqual([])
     })
 
     it('rejects removing a commander that is not in the deck', async () => {
@@ -742,7 +746,7 @@ describe('Commander', () => {
       }) as any
       expect(result.success).toBe(true)
       expect(result.commanders).toEqual(['Atraxa, Praetors\' Voice'])
-      expect(deck.colorIdentity).toEqual(['W', 'U', 'B', 'G'])
+      expect(result.colorIdentity).toEqual(['W', 'U', 'B', 'G'])
     })
 
     it('rejects swap without new_commander_name', async () => {

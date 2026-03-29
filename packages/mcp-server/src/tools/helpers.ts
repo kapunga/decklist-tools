@@ -108,6 +108,7 @@ export function createCardIdentifier(scryfallCard: ScryfallCard): CardIdentifier
     name: scryfallCard.name,
     setCode: scryfallCard.set,
     collectorNumber: scryfallCard.collector_number,
+    colorIdentity: scryfallCard.color_identity,
   }
 }
 

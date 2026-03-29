@@ -4,6 +4,7 @@ import {
   type InclusionStatus,
   type OwnershipStatus,
   type ScryfallCard,
+  type DeckListName,
   generateDeckCardId,
   searchCardByNameExact,
   searchCardByName,
@@ -11,12 +12,14 @@ import {
   getCardById,
   searchCards,
   getOracleText,
-  findCardByName,
-  findCardIndexByName,
   INCLUSION_STATUS,
   OWNERSHIP_STATUS,
   ADDED_BY,
   DECK_LIST,
+  addCardToDeck,
+  removeCardFromDeck,
+  moveCard,
+  findCardAcrossLists,
 } from '@mtg-deckbuilder/shared'
 import { getDeckOrThrow, fetchScryfallCard, createCardIdentifier, parseCardString } from './helpers.js'
 import type { ManageCardArgs, SearchCardsArgs } from './types.js'
@@ -30,8 +33,31 @@ function resolveCards(args: ManageCardArgs): string[] {
   throw new Error('Either "cards" or "name" must be provided')
 }
 
+function resolveTargetList(args: ManageCardArgs, sideboardSize: number): DeckListName {
+  const useSideboard = args.to_sideboard && sideboardSize > 0
+  if (useSideboard) return DECK_LIST.SIDEBOARD
+  if (args.to_alternates || (args.to_sideboard && sideboardSize === 0)) return DECK_LIST.ALTERNATES
+  return DECK_LIST.MAINBOARD
+}
+
+function resolveSourceList(args: ManageCardArgs): DeckListName {
+  if (args.from_sideboard) return DECK_LIST.SIDEBOARD
+  if (args.from_alternates) return DECK_LIST.ALTERNATES
+  return DECK_LIST.MAINBOARD
+}
+
+// Map user-facing list names (from MCP schema) to DeckListName constants
+function toListName(name: string): DeckListName {
+  switch (name) {
+    case 'mainboard': return DECK_LIST.MAINBOARD
+    case 'alternates': return DECK_LIST.ALTERNATES
+    case 'sideboard': return DECK_LIST.SIDEBOARD
+    default: throw new Error(`Invalid list: "${name}". Valid lists are: mainboard, sideboard, alternates`)
+  }
+}
+
 export async function manageCard(storage: Storage, args: ManageCardArgs) {
-  const deck = getDeckOrThrow(storage, args.deck_id)
+  let deck = getDeckOrThrow(storage, args.deck_id)
 
   switch (args.action) {
     case 'add': {
@@ -43,14 +69,12 @@ export async function manageCard(storage: Storage, args: ManageCardArgs) {
         let collectorNumber: string | undefined
         let quantity = 1
 
-        // If using the new cards array format, parse the card string
         if (args.cards && args.cards.length > 0) {
           const parsed = parseCardString(cardStr)
           setCode = parsed.setCode
           collectorNumber = parsed.collectorNumber
           quantity = parsed.quantity
         } else {
-          // Legacy single-card via name field
           setCode = args.set_code
           collectorNumber = args.collector_number
           quantity = args.quantity || 1
@@ -58,80 +82,46 @@ export async function manageCard(storage: Storage, args: ManageCardArgs) {
 
         const scryfallCard = await fetchScryfallCard(storage, cardStr, setCode, collectorNumber)
         const cardIdentifier = createCardIdentifier(scryfallCard)
+        const target = resolveTargetList(args, deck.format.sideboardSize)
 
-        // Determine target list (redirect sideboard to alternates if format has no sideboard)
-        const useSideboard = args.to_sideboard && deck.format.sideboardSize > 0
-        const targetList = useSideboard
-          ? deck.sideboard
-          : args.to_alternates || (args.to_sideboard && deck.format.sideboardSize === 0)
-            ? deck.alternates
-            : deck.cards
-
-        // Check if card already exists in the target list
-        const existingCard = findCardByName(targetList, scryfallCard.name)
-
-        if (existingCard) {
-          // Merge with existing card: increment quantity and merge roles
-          existingCard.quantity += quantity
-          if (args.roles && args.roles.length > 0) {
-            existingCard.roles = [...new Set([...existingCard.roles, ...args.roles])]
-          }
-          results.push({
-            name: scryfallCard.name,
-            set: scryfallCard.set,
-            collectorNumber: scryfallCard.collector_number,
-            quantity: existingCard.quantity,
-            merged: true,
-          })
-        } else {
-          // Create new card entry
-          const deckCard: DeckCard = {
-            id: generateDeckCardId(),
-            card: cardIdentifier,
-            quantity,
-            inclusion: (args.status as InclusionStatus) || INCLUSION_STATUS.CONFIRMED,
-            ownership: (args.ownership as OwnershipStatus) || OWNERSHIP_STATUS.UNKNOWN,
-            roles: args.roles || [],
-            typeLine: scryfallCard.type_line,
-            isPinned: false,
-            addedAt: new Date().toISOString(),
-            addedBy: ADDED_BY.USER,
-          }
-
-          targetList.push(deckCard)
-          results.push({
-            name: scryfallCard.name,
-            set: scryfallCard.set,
-            collectorNumber: scryfallCard.collector_number,
-            quantity: deckCard.quantity,
-          })
+        const deckCard: DeckCard = {
+          id: generateDeckCardId(),
+          card: cardIdentifier,
+          quantity,
+          inclusion: (args.status as InclusionStatus) || INCLUSION_STATUS.CONFIRMED,
+          ownership: (args.ownership as OwnershipStatus) || OWNERSHIP_STATUS.UNKNOWN,
+          roles: args.roles || [],
+          typeLine: scryfallCard.type_line,
+          isPinned: false,
+          addedAt: new Date().toISOString(),
+          addedBy: ADDED_BY.USER,
         }
+
+        const result = addCardToDeck(deck, deckCard, target)
+        deck = result.deck
+
+        results.push({
+          name: scryfallCard.name,
+          set: scryfallCard.set,
+          collectorNumber: scryfallCard.collector_number,
+          quantity: result.meta.merged
+            ? (findCardAcrossLists(deck, scryfallCard.name)?.card.quantity ?? quantity)
+            : quantity,
+          merged: result.meta.merged,
+        })
       }
 
       storage.saveDeck(deck)
-      return {
-        success: true,
-        cards: results,
-      }
+      return { success: true, cards: results }
     }
     case 'remove': {
       const cardNames = resolveCards(args)
-      const targetList = args.from_sideboard
-        ? deck.sideboard
-        : args.from_alternates
-          ? deck.alternates
-          : deck.cards
-
+      const target = resolveSourceList(args)
       const removed: string[] = []
-      for (const cardName of cardNames) {
-        const cardIndex = findCardIndexByName(targetList, cardName)
-        if (cardIndex === -1) throw new Error(`Card not found in deck: ${cardName}`)
 
-        if (args.quantity && args.quantity < targetList[cardIndex].quantity) {
-          targetList[cardIndex].quantity -= args.quantity
-        } else {
-          targetList.splice(cardIndex, 1)
-        }
+      for (const cardName of cardNames) {
+        const result = removeCardFromDeck(deck, cardName, target, args.quantity)
+        deck = result.deck
         removed.push(cardName)
       }
 
@@ -139,7 +129,6 @@ export async function manageCard(storage: Storage, args: ManageCardArgs) {
       return { success: true, message: `Removed ${removed.join(', ')} from deck` }
     }
     case 'update': {
-      // Reject move-related parameters
       if (args.to_alternates || args.to_sideboard) {
         throw new Error('to_alternates/to_sideboard are not supported on update. Use action: "move" with from/to parameters to move cards between lists.')
       }
@@ -154,12 +143,9 @@ export async function manageCard(storage: Storage, args: ManageCardArgs) {
       const updated: Array<{ name: string; roles: string[] }> = []
 
       for (const cardName of cardNames) {
-        let card: DeckCard | undefined
-        for (const list of [deck.cards, deck.alternates, deck.sideboard]) {
-          card = findCardByName(list, cardName)
-          if (card) break
-        }
-        if (!card) throw new Error(`Card not found in deck: ${cardName}`)
+        const found = findCardAcrossLists(deck, cardName)
+        if (!found) throw new Error(`Card not found in deck: ${cardName}`)
+        const card = found.card
 
         if (args.roles !== undefined) card.roles = args.roles
         if (args.add_roles) {
@@ -181,48 +167,26 @@ export async function manageCard(storage: Storage, args: ManageCardArgs) {
     }
     case 'move': {
       if (!args.from || !args.to) throw new Error('from and to are required for move')
-      if (args.to === DECK_LIST.SIDEBOARD && deck.format.sideboardSize === 0) {
+      const fromList = toListName(args.from)
+      const toList = toListName(args.to)
+      if (toList === DECK_LIST.SIDEBOARD && deck.format.sideboardSize === 0) {
         throw new Error(`Cannot move cards to sideboard: ${deck.format.type} format has no sideboard`)
       }
       const cardNames = resolveCards(args)
-
-      const getList = (name: string): DeckCard[] => {
-        switch (name) {
-          case DECK_LIST.MAINBOARD: return deck.cards
-          case DECK_LIST.ALTERNATES: return deck.alternates
-          case DECK_LIST.SIDEBOARD: return deck.sideboard
-          default: throw new Error(`Invalid list: "${name}". Valid lists are: ${Object.values(DECK_LIST).join(', ')}`)
-        }
-      }
-
-      const fromList = getList(args.from)
-      const toList = getList(args.to)
-      const moved: string[] = []
-      const merged: string[] = []
+      const allMoved: string[] = []
+      const allMerged: string[] = []
 
       for (const cardName of cardNames) {
-        const cardIndex = findCardIndexByName(fromList, cardName)
-        if (cardIndex === -1) throw new Error(`Card not found in ${args.from}: ${cardName}`)
-
-        const [card] = fromList.splice(cardIndex, 1)
-
-        // Check if card already exists in target list
-        const existingCard = findCardByName(toList, cardName)
-        if (existingCard) {
-          // Merge with existing card
-          existingCard.quantity += card.quantity
-          existingCard.roles = [...new Set([...existingCard.roles, ...card.roles])]
-          merged.push(cardName)
-        } else {
-          toList.push(card)
-          moved.push(cardName)
-        }
+        const result = moveCard(deck, cardName, fromList, toList)
+        deck = result.deck
+        allMoved.push(...result.meta.moved)
+        allMerged.push(...result.meta.merged)
       }
 
       storage.saveDeck(deck)
       const messages: string[] = []
-      if (moved.length > 0) messages.push(`Moved ${moved.join(', ')} from ${args.from} to ${args.to}`)
-      if (merged.length > 0) messages.push(`Merged ${merged.join(', ')} with existing cards in ${args.to}`)
+      if (allMoved.length > 0) messages.push(`Moved ${allMoved.join(', ')} from ${args.from} to ${args.to}`)
+      if (allMerged.length > 0) messages.push(`Merged ${allMerged.join(', ')} with existing cards in ${args.to}`)
       return { success: true, message: messages.join('. ') }
     }
     default:

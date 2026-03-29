@@ -79,8 +79,9 @@ export const NOTE_TYPE = {
 } as const
 export type NoteType = typeof NOTE_TYPE[keyof typeof NOTE_TYPE]
 
+// Values match Deck property names for use as property accessors (deck[DECK_LIST.MAINBOARD])
 export const DECK_LIST = {
-  MAINBOARD: 'mainboard',
+  MAINBOARD: 'cards',
   SIDEBOARD: 'sideboard',
   ALTERNATES: 'alternates',
 } as const
