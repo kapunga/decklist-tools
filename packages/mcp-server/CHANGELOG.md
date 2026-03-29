@@ -1,5 +1,19 @@
 # @mtg-deckbuilder/mcp-server
 
+## 0.6.1
+
+### Patch Changes
+
+- cf4e5d1: Fixed missing oracle text for multi-faced cards (Rooms, split, flip, adventure, DFCs) by adding getOracleText utility that reads from card_faces when present
+- b75c62b: Split interest list into separate scrollable list pane and fixed preview pane so card preview stays visible when scrolling. Added click-to-select so preview persists after clicking a card.
+- 6838900: Fix Scryfall data not being cached when adding cards via MCP server
+- 6b61f9d: Fix sideboard cards being invisible in Commander format decks by redirecting them to alternates when sideboardSize is 0
+- Updated dependencies [cf4e5d1]
+- Updated dependencies [b75c62b]
+- Updated dependencies [6838900]
+- Updated dependencies [6b61f9d]
+  - @mtg-deckbuilder/shared@0.6.1
+
 ## 0.6.0
 
 ### Minor Changes
