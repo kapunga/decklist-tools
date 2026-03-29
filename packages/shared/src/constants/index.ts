@@ -154,6 +154,18 @@ export function getRoleById(roleId: string, globalRoles?: RoleDefinition[], cust
   return globals.find(r => r.id === roleId)
 }
 
+// Build a lookup map for efficient role access in loops.
+// Custom roles take precedence over globals with the same ID.
+export function buildRoleLookup(globalRoles?: RoleDefinition[], customRoles?: RoleDefinition[]): Map<string, RoleDefinition> {
+  const lookup = new Map<string, RoleDefinition>()
+  const globals = globalRoles && globalRoles.length > 0 ? globalRoles : DEFAULT_GLOBAL_ROLES
+  for (const role of globals) lookup.set(role.id, role)
+  if (customRoles) {
+    for (const role of customRoles) lookup.set(role.id, role)
+  }
+  return lookup
+}
+
 // Get all available roles (global + custom)
 export function getAllRoles(globalRoles?: RoleDefinition[], customRoles?: RoleDefinition[]): RoleDefinition[] {
   const globals = globalRoles && globalRoles.length > 0 ? globalRoles : DEFAULT_GLOBAL_ROLES

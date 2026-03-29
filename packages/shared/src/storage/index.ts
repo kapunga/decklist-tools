@@ -401,6 +401,16 @@ export class Storage {
   }
 
   getCacheStats(): CacheStats {
+    // Try to derive stats from the cache index (avoids per-file statSync calls)
+    const index = this.getCacheIndex()
+    if (index && Object.keys(index.entries).length > 0) {
+      return this.getCacheStatsFromIndex(index)
+    }
+    // Fallback: stat files directly (for when index doesn't exist yet)
+    return this.getCacheStatsByScanning()
+  }
+
+  private getCacheStatsFromIndex(index: CacheIndex): CacheStats {
     let jsonCacheCount = 0
     let jsonCacheSizeBytes = 0
     let imageCacheCount = 0
@@ -408,7 +418,40 @@ export class Storage {
     let oldestEntry: string | undefined
     let newestEntry: string | undefined
 
-    // Count JSON cache files
+    for (const entry of Object.values(index.entries)) {
+      jsonCacheCount++
+      jsonCacheSizeBytes += entry.jsonSize || 0
+
+      if (entry.cachedAt) {
+        if (!oldestEntry || entry.cachedAt < oldestEntry) oldestEntry = entry.cachedAt
+        if (!newestEntry || entry.cachedAt > newestEntry) newestEntry = entry.cachedAt
+      }
+
+      if (entry.hasImage) {
+        imageCacheCount += entry.imageFaces || 1
+        imageCacheSizeBytes += entry.imageSize || 0
+      }
+    }
+
+    return {
+      jsonCacheCount,
+      jsonCacheSizeBytes,
+      imageCacheCount,
+      imageCacheSizeBytes,
+      totalSizeBytes: jsonCacheSizeBytes + imageCacheSizeBytes,
+      oldestEntry,
+      newestEntry,
+    }
+  }
+
+  private getCacheStatsByScanning(): CacheStats {
+    let jsonCacheCount = 0
+    let jsonCacheSizeBytes = 0
+    let imageCacheCount = 0
+    let imageCacheSizeBytes = 0
+    let oldestEntry: string | undefined
+    let newestEntry: string | undefined
+
     try {
       const jsonFiles = fs.readdirSync(this.cacheDir).filter(f => f.endsWith('.json') && f !== 'index.json')
       jsonCacheCount = jsonFiles.length
@@ -426,7 +469,6 @@ export class Storage {
       // Directory might not exist
     }
 
-    // Count image cache files
     try {
       const imageFiles = fs.readdirSync(this.imageCacheDir).filter(f => f.endsWith('.jpg'))
       imageCacheCount = imageFiles.length
@@ -447,7 +489,7 @@ export class Storage {
       imageCacheSizeBytes,
       totalSizeBytes: jsonCacheSizeBytes + imageCacheSizeBytes,
       oldestEntry,
-      newestEntry
+      newestEntry,
     }
   }
 

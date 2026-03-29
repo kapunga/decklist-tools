@@ -111,9 +111,6 @@ export function createCardIdentifier(scryfallCard: ScryfallCard): CardIdentifier
   }
 }
 
-// Re-export from shared with legacy names for backwards compatibility
-export { findCardByName as findCardInList, findCardIndexByName as findCardIndexInList } from '@mtg-deckbuilder/shared'
-
 import type { RoleDefinition } from '@mtg-deckbuilder/shared'
 
 /**

@@ -8,7 +8,8 @@ export function formatCardLine(
   globalRoles: RoleDefinition[],
   customRoles: RoleDefinition[],
   scryfallCache?: Map<string, ScryfallCard>,
-  detail?: DetailLevel
+  detail?: DetailLevel,
+  roleLookup?: Map<string, RoleDefinition>
 ): string {
   const level = detail || 'summary'
   const cached = scryfallCache && card.card.scryfallId
@@ -41,7 +42,7 @@ export function formatCardLine(
   if (card.roles.length > 0) {
     const roleNames = card.roles
       .map((r) => {
-        const role = getRoleById(r, globalRoles, customRoles)
+        const role = roleLookup ? roleLookup.get(r) : getRoleById(r, globalRoles, customRoles)
         return role?.name || r
       })
       .join(', ')
