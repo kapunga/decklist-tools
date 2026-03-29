@@ -28,7 +28,7 @@ export const moxfieldFormat: DeckExportFormat = {
       if (!line) continue
 
       const parts = line.split(',').map(p => p.trim().replace(/^"|"$/g, ''))
-      if (parts.length >= 4) {
+      if (parts.length >= 4 && parts[1]) {
         const category = categoryIndex >= 0 ? parts[categoryIndex]?.toLowerCase() : ''
         const isCommander = category === 'commander'
         const isSideboard = category === 'sideboard'
@@ -36,8 +36,8 @@ export const moxfieldFormat: DeckExportFormat = {
 
         cards.push({
           name: parts[1],
-          setCode: parts[2].toLowerCase(),
-          collectorNumber: parts[3],
+          setCode: (parts[2] || '').toLowerCase(),
+          collectorNumber: parts[3] || '',
           quantity: parseInt(parts[0], 10) || 1,
           isSideboard,
           isMaybeboard,

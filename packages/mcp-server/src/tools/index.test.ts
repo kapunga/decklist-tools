@@ -533,7 +533,7 @@ describe('Roles', () => {
       mock._decks.set(deck.id, deck)
 
       await expect(call('manage_role', { action: 'add_custom', deck_id: deck.id, name: 'No ID' }))
-        .rejects.toThrow('id is required for add_custom')
+        .rejects.toThrow("'id' is required")
     })
   })
 
@@ -554,7 +554,7 @@ describe('Roles', () => {
     it('throws when id is missing', async () => {
       mock._setGlobalRoles([])
       await expect(call('manage_role', { action: 'add_global', name: 'No ID' }))
-        .rejects.toThrow('id is required for add_global')
+        .rejects.toThrow("'id' is required")
     })
   })
 
@@ -612,7 +612,7 @@ describe('Roles', () => {
       mock._decks.set(deck.id, deck)
 
       await expect(call('manage_role', { action: 'update_custom', deck_id: deck.id, name: 'Test' }))
-        .rejects.toThrow('id is required for update_custom')
+        .rejects.toThrow("'id' is required")
     })
   })
 
@@ -640,7 +640,7 @@ describe('Roles', () => {
       mock._decks.set(deck.id, deck)
 
       await expect(call('manage_role', { action: 'delete_custom', deck_id: deck.id }))
-        .rejects.toThrow('id is required for delete_custom')
+        .rejects.toThrow("'id' is required")
     })
   })
 })

@@ -55,7 +55,7 @@ export const archidektFormat: DeckExportFormat = {
 
     const renderCard = (c: DeckCard, category: string) => {
       const roleStr = c.roles.map(r => `^${r}^`).join(' ')
-      let line = `${c.quantity}x ${c.card.name} (${c.card.setCode.toUpperCase()}) ${c.card.collectorNumber} [${category}]`
+      let line = `${c.quantity}x ${c.card.name} (${(c.card.setCode || '???').toUpperCase()}) ${c.card.collectorNumber || '0'} [${category}]`
       if (roleStr) line += ` ${roleStr}`
       lines.push(line)
     }
@@ -74,7 +74,7 @@ export const archidektFormat: DeckExportFormat = {
     // Commanders section
     if (deck.format.type === 'commander' && deck.commanders.length > 0) {
       deck.commanders.forEach(c => {
-        lines.push(`1x ${c.name} (${c.setCode.toUpperCase()}) ${c.collectorNumber} [Commander]`)
+        lines.push(`1x ${c.name} (${(c.setCode || '???').toUpperCase()}) ${c.collectorNumber || '0'} [Commander]`)
       })
     }
 

@@ -25,7 +25,6 @@ export function manageRole(storage: Storage, args: ManageRoleArgs) {
   switch (args.action) {
     case 'add_custom': {
       if (!args.deck_id) throw new Error('deck_id is required for add_custom')
-      if (!args.id) throw new Error('id is required for add_custom')
       if (!args.name) throw new Error('name is required for add_custom')
       const deck = getDeckOrThrow(storage, args.deck_id)
 
@@ -44,7 +43,6 @@ export function manageRole(storage: Storage, args: ManageRoleArgs) {
       return { success: true, role }
     }
     case 'add_global': {
-      if (!args.id) throw new Error('id is required for add_global')
       if (!args.name) throw new Error('name is required for add_global')
       const roles = storage.getGlobalRoles()
       if (roles.some((r) => r.id === args.id)) {
@@ -63,7 +61,7 @@ export function manageRole(storage: Storage, args: ManageRoleArgs) {
     }
     case 'update_global': {
       const roles = storage.getGlobalRoles()
-      const role = updateRoleInList(roles, args.id!, {
+      const role = updateRoleInList(roles, args.id, {
         name: args.name,
         description: args.description,
         color: args.color,
@@ -73,13 +71,12 @@ export function manageRole(storage: Storage, args: ManageRoleArgs) {
     }
     case 'delete_global': {
       const roles = storage.getGlobalRoles()
-      const deletedId = deleteRoleFromList(roles, args.id!)
+      const deletedId = deleteRoleFromList(roles, args.id)
       storage.saveGlobalRoles(roles)
       return { success: true, message: `Role ${deletedId} deleted` }
     }
     case 'update_custom': {
       if (!args.deck_id) throw new Error('deck_id is required for update_custom')
-      if (!args.id) throw new Error('id is required for update_custom')
       const deck = getDeckOrThrow(storage, args.deck_id)
       const role = updateRoleInList(deck.customRoles, args.id, {
         name: args.name,
@@ -91,7 +88,6 @@ export function manageRole(storage: Storage, args: ManageRoleArgs) {
     }
     case 'delete_custom': {
       if (!args.deck_id) throw new Error('deck_id is required for delete_custom')
-      if (!args.id) throw new Error('id is required for delete_custom')
       const deck = getDeckOrThrow(storage, args.deck_id)
       const deletedId = deleteRoleFromList(deck.customRoles, args.id)
       storage.saveDeck(deck)
