@@ -1,5 +1,5 @@
 import type { DeckCard, RoleDefinition, ScryfallCard } from '@mtg-deckbuilder/shared'
-import { getPrimaryType, getRoleById, isCardFullyPulled } from '@mtg-deckbuilder/shared'
+import { getPrimaryType, getRoleById, isCardFullyPulled, getOracleText } from '@mtg-deckbuilder/shared'
 
 export type DetailLevel = 'summary' | 'compact' | 'full'
 
@@ -60,9 +60,12 @@ export function formatCardLine(
 
   const header = headerParts.join(' ')
 
-  if ((level === 'compact' || level === 'full') && cached?.oracle_text) {
-    const indented = cached.oracle_text.split('\n').map(l => `  ${l}`).join('\n')
-    return `${header}\n${indented}`
+  if ((level === 'compact' || level === 'full') && cached) {
+    const oracleText = getOracleText(cached)
+    if (oracleText) {
+      const indented = oracleText.split('\n').map(l => `  ${l}`).join('\n')
+      return `${header}\n${indented}`
+    }
   }
 
   return header

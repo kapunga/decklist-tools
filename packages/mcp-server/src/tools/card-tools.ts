@@ -10,7 +10,7 @@ import {
   getCardBySetAndNumber,
   getCardById,
   searchCards,
-  isDoubleFacedCard,
+  getOracleText,
 } from '@mtg-deckbuilder/shared'
 import { getDeckOrThrow, fetchScryfallCard, createCardIdentifier, findCardInList, findCardIndexInList, parseCardString } from './helpers.js'
 import type { ManageCardArgs, SearchCardsArgs } from './types.js'
@@ -231,7 +231,7 @@ function formatCardResponse(scryfallCard: ScryfallCard) {
     manaCost: scryfallCard.mana_cost,
     cmc: scryfallCard.cmc,
     typeLine: scryfallCard.type_line,
-    oracleText: scryfallCard.oracle_text,
+    oracleText: getOracleText(scryfallCard),
     power: scryfallCard.power,
     toughness: scryfallCard.toughness,
     colors: scryfallCard.colors,
@@ -248,7 +248,7 @@ function formatCardCompact(card: ScryfallCard): string {
   const setInfo = `${card.set.toUpperCase()}#${card.collector_number}`
   const hasFaces = card.card_faces && card.card_faces.length >= 2
 
-  if (hasFaces && (isDoubleFacedCard(card) || card.layout === 'adventure')) {
+  if (hasFaces) {
     const front = card.card_faces![0]
     const back = card.card_faces![1]
     const lines: string[] = []
