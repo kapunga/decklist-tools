@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo } from 'react'
-import { ArrowLeft, Plus, Trash2, Plug, PlugZap, Loader2, Layers } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, Layers } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -30,6 +30,7 @@ import { RoleFormFields } from '@/components/RoleFormFields'
 import { SetCollectionQuickAdd } from '@/components/SetCollectionQuickAdd'
 import { CacheSettingsSection } from '@/components/CacheSettingsSection'
 import { DataManagementSection } from '@/components/DataManagementSection'
+import { McpIntegrationCard } from '@/components/McpIntegrationCard'
 import { getAllSets, type ScryfallSet } from '@/lib/scryfall'
 import type { RoleDefinition, SetCollectionEntry, CollectionLevel } from '@/types'
 
@@ -57,11 +58,6 @@ export function SettingsPage() {
   const [roleName, setRoleName] = useState('')
   const [roleDescription, setRoleDescription] = useState('')
   const [roleColor, setRoleColor] = useState<string>(ROLE_COLOR_PALETTE[0])
-
-  // Claude Desktop integration state
-  const [claudeConnected, setClaudeConnected] = useState(false)
-  const [claudeLoading, setClaudeLoading] = useState(true)
-  const [claudeError, setClaudeError] = useState<string | null>(null)
 
   // Scryfall sets for looking up release years
   const [allSets, setAllSets] = useState<ScryfallSet[]>([])
@@ -148,55 +144,6 @@ export function SettingsPage() {
 
     return result
   }, [setCollection?.sets, setInfo])
-
-  // Check Claude connection status on mount
-  useEffect(() => {
-    const checkStatus = async () => {
-      try {
-        const status = await window.electronAPI.getClaudeConnectionStatus()
-        setClaudeConnected(status.connected)
-      } catch (error) {
-        console.error('Failed to check Claude status:', error)
-      } finally {
-        setClaudeLoading(false)
-      }
-    }
-    checkStatus()
-  }, [])
-
-  const handleConnectClaude = useCallback(async () => {
-    setClaudeLoading(true)
-    setClaudeError(null)
-    try {
-      const result = await window.electronAPI.connectClaudeDesktop()
-      if (result.success) {
-        setClaudeConnected(true)
-      } else {
-        setClaudeError(result.error || 'Failed to connect')
-      }
-    } catch (error) {
-      setClaudeError(error instanceof Error ? error.message : 'Unknown error')
-    } finally {
-      setClaudeLoading(false)
-    }
-  }, [])
-
-  const handleDisconnectClaude = useCallback(async () => {
-    setClaudeLoading(true)
-    setClaudeError(null)
-    try {
-      const result = await window.electronAPI.disconnectClaudeDesktop()
-      if (result.success) {
-        setClaudeConnected(false)
-      } else {
-        setClaudeError(result.error || 'Failed to disconnect')
-      }
-    } catch (error) {
-      setClaudeError(error instanceof Error ? error.message : 'Unknown error')
-    } finally {
-      setClaudeLoading(false)
-    }
-  }, [])
 
   const resetForm = useCallback(() => {
     setRoleName('')
@@ -482,67 +429,31 @@ export function SettingsPage() {
 
         {/* Agent Integration Tab */}
         <TabsContent value="integration" className="flex-1 overflow-auto m-0 pb-6">
-          <div className="max-w-3xl">
-            <section>
-              <h2 className="text-lg font-semibold mb-4">Claude Desktop Integration</h2>
-              <div className="p-4 rounded-lg border bg-card">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    {claudeConnected ? (
-                      <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
-                        <PlugZap className="w-5 h-5 text-green-500" />
-                      </div>
-                    ) : (
-                      <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-                        <Plug className="w-5 h-5 text-muted-foreground" />
-                      </div>
-                    )}
-                    <div>
-                      <div className="font-medium">
-                        {claudeConnected ? 'Connected to Claude Desktop' : 'Not Connected'}
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        {claudeConnected
-                          ? 'Claude can help you manage your decks through conversation'
-                          : 'Connect to use AI-powered deck building features'}
-                      </p>
-                    </div>
-                  </div>
-                  <Button
-                    variant={claudeConnected ? 'outline' : 'default'}
-                    onClick={claudeConnected ? handleDisconnectClaude : handleConnectClaude}
-                    disabled={claudeLoading}
-                    className="gap-2"
-                  >
-                    {claudeLoading ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        {claudeConnected ? 'Disconnecting...' : 'Connecting...'}
-                      </>
-                    ) : claudeConnected ? (
-                      'Disconnect'
-                    ) : (
-                      'Connect to Claude'
-                    )}
-                  </Button>
-                </div>
-                {claudeError && (
-                  <div className="mt-3 p-3 rounded-md bg-destructive/10 text-destructive text-sm">
-                    {claudeError}
-                  </div>
-                )}
-                {claudeConnected && (
-                  <div className="mt-4 pt-4 border-t">
-                    <p className="text-sm text-muted-foreground mb-2">
-                      Open Claude Desktop to start managing your decks with AI assistance.
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Note: You may need to restart Claude Desktop for changes to take effect.
-                    </p>
-                  </div>
-                )}
-              </div>
-            </section>
+          <div className="max-w-3xl space-y-6">
+            <McpIntegrationCard
+              clientId="claude-desktop"
+              title="Claude Desktop"
+              connectedDescription="Claude can help you manage your decks through conversation"
+              disconnectedDescription="Connect to use AI-powered deck building features"
+              connectButtonLabel="Connect to Claude"
+              postConnectionNote="You may need to restart Claude Desktop for changes to take effect."
+            />
+            <McpIntegrationCard
+              clientId="claude-code"
+              title="Claude Code"
+              connectedDescription="Claude Code can access your deck data through MCP tools"
+              disconnectedDescription="Connect to enable deck management from Claude Code"
+              connectButtonLabel="Connect to Claude Code"
+              postConnectionNote="You may need to restart Claude Code or re-enter your project for changes to take effect."
+            />
+            <McpIntegrationCard
+              clientId="gemini-cli"
+              title="Gemini CLI"
+              connectedDescription="Gemini can help you manage your decks through the CLI"
+              disconnectedDescription="Connect to use Gemini CLI for deck building"
+              connectButtonLabel="Connect to Gemini CLI"
+              postConnectionNote="You may need to restart Gemini CLI for changes to take effect."
+            />
           </div>
         </TabsContent>
 
