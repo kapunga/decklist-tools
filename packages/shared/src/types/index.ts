@@ -142,8 +142,11 @@ export function isCardFullyPulled(card: DeckCard): boolean {
   return getTotalPulledQuantity(card) >= card.quantity
 }
 
-// Migrate a deck's cards from legacy ownership: 'pulled' to use pulledPrintings
-// Returns true if any migrations were performed
+/**
+ * Migrate a deck's cards from legacy ownership: 'pulled' to use pulledPrintings.
+ * Returns true if any migrations were performed.
+ * @mutates deck — modifies card ownership and pulledPrintings in place.
+ */
 export function migrateLegacyPulledCards(deck: Deck): boolean {
   let migrated = false
 
@@ -214,7 +217,10 @@ export function migrateDeckNote(note: Partial<DeckNote> & { id: string; title: s
   }
 }
 
-// Propagate a note's role to all referenced cards in the deck
+/**
+ * Propagate a note's role to all referenced cards in the deck.
+ * @mutates deck — adds roleId to matching cards' roles arrays in place.
+ */
 export function propagateNoteRole(deck: Deck, note: DeckNote): void {
   if (!note.roleId) return
   const refNames = new Set(note.cardRefs.map(r => r.cardName.toLowerCase()))

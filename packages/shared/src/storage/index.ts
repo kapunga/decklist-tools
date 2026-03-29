@@ -74,13 +74,13 @@ export class Storage {
   }
 
   private readJson<T>(filePath: string): T | null {
+    if (!fs.existsSync(filePath)) return null
     try {
-      if (!fs.existsSync(filePath)) return null
       const content = fs.readFileSync(filePath, 'utf-8')
       return JSON.parse(content) as T
     } catch (error) {
-      console.error(`Error reading ${filePath}:`, error)
-      return null
+      const message = error instanceof Error ? error.message : String(error)
+      throw new Error(`Failed to read ${path.basename(filePath)}: ${message}`)
     }
   }
 
@@ -98,9 +98,16 @@ export class Storage {
   listDecks(): Deck[] {
     try {
       const files = fs.readdirSync(this.decksDir).filter(f => f.endsWith('.json'))
-      const decks = files
-        .map(f => this.readJson<Deck>(path.join(this.decksDir, f)))
-        .filter((d): d is Deck => d !== null)
+      const decks: Deck[] = []
+
+      for (const f of files) {
+        try {
+          const deck = this.readJson<Deck>(path.join(this.decksDir, f))
+          if (deck) decks.push(deck)
+        } catch (error) {
+          console.error(`Skipping corrupt deck file ${f}:`, error)
+        }
+      }
 
       // Run migration for any decks with legacy ownership: 'pulled'
       for (const deck of decks) {

@@ -38,7 +38,7 @@ export function manageRole(storage: Storage, args: ManageRoleArgs) {
         description: args.description,
         color: args.color,
       }
-      deck.customRoles.push(role)
+      deck.customRoles = [...deck.customRoles, role]
       storage.saveDeck(deck)
       return { success: true, role }
     }
@@ -55,43 +55,43 @@ export function manageRole(storage: Storage, args: ManageRoleArgs) {
         description: args.description,
         color: args.color,
       }
-      roles.push(role)
-      storage.saveGlobalRoles(roles)
+      storage.saveGlobalRoles([...roles, role])
       return { success: true, role }
     }
     case 'update_global': {
       const roles = storage.getGlobalRoles()
-      const role = updateRoleInList(roles, args.id, {
+      const { updatedRoles, updatedRole } = updateRoleInList(roles, args.id, {
         name: args.name,
         description: args.description,
         color: args.color,
       })
-      storage.saveGlobalRoles(roles)
-      return { success: true, role }
+      storage.saveGlobalRoles(updatedRoles)
+      return { success: true, role: updatedRole }
     }
     case 'delete_global': {
       const roles = storage.getGlobalRoles()
-      const deletedId = deleteRoleFromList(roles, args.id)
-      storage.saveGlobalRoles(roles)
-      return { success: true, message: `Role ${deletedId} deleted` }
+      const updatedRoles = deleteRoleFromList(roles, args.id)
+      storage.saveGlobalRoles(updatedRoles)
+      return { success: true, message: `Role ${args.id} deleted` }
     }
     case 'update_custom': {
       if (!args.deck_id) throw new Error('deck_id is required for update_custom')
       const deck = getDeckOrThrow(storage, args.deck_id)
-      const role = updateRoleInList(deck.customRoles, args.id, {
+      const { updatedRoles, updatedRole } = updateRoleInList(deck.customRoles, args.id, {
         name: args.name,
         description: args.description,
         color: args.color,
       })
+      deck.customRoles = updatedRoles
       storage.saveDeck(deck)
-      return { success: true, role }
+      return { success: true, role: updatedRole }
     }
     case 'delete_custom': {
       if (!args.deck_id) throw new Error('deck_id is required for delete_custom')
       const deck = getDeckOrThrow(storage, args.deck_id)
-      const deletedId = deleteRoleFromList(deck.customRoles, args.id)
+      deck.customRoles = deleteRoleFromList(deck.customRoles, args.id)
       storage.saveDeck(deck)
-      return { success: true, message: `Role ${deletedId} deleted` }
+      return { success: true, message: `Role ${args.id} deleted` }
     }
     default:
       throw new Error(`Unknown action: ${args.action}`)

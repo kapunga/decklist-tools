@@ -232,7 +232,7 @@ export function ImportNewDeckDialog() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="auto">
-                  Auto-detect {detectedFormat ? `(${detectedFormat.name})` : ''}
+                  Auto-detect {detectedFormat ? `(${detectedFormat.format.name})` : ''}
                 </SelectItem>
                 {formats.map(f => (
                   <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>

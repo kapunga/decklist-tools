@@ -118,31 +118,35 @@ import type { RoleDefinition } from '@mtg-deckbuilder/shared'
 
 /**
  * Update a role's properties in a list of roles.
- * Returns the updated role or throws if not found.
+ * Returns { updatedRoles, updatedRole } with a new array. Does not mutate the input.
  */
 export function updateRoleInList(
   roles: RoleDefinition[],
   roleId: string,
   updates: { name?: string; description?: string; color?: string }
-): RoleDefinition {
+): { updatedRoles: RoleDefinition[]; updatedRole: RoleDefinition } {
   const roleIndex = roles.findIndex((r) => r.id === roleId)
   if (roleIndex === -1) throw new Error(`Role not found: ${roleId}`)
 
-  if (updates.name !== undefined) roles[roleIndex].name = updates.name
-  if (updates.description !== undefined) roles[roleIndex].description = updates.description
-  if (updates.color !== undefined) roles[roleIndex].color = updates.color
+  const updatedRole: RoleDefinition = {
+    ...roles[roleIndex],
+    ...(updates.name !== undefined && { name: updates.name }),
+    ...(updates.description !== undefined && { description: updates.description }),
+    ...(updates.color !== undefined && { color: updates.color }),
+  }
 
-  return roles[roleIndex]
+  const updatedRoles = [...roles]
+  updatedRoles[roleIndex] = updatedRole
+  return { updatedRoles, updatedRole }
 }
 
 /**
  * Delete a role from a list of roles.
- * Returns the deleted role's id or throws if not found.
+ * Returns the new array without the deleted role. Does not mutate the input.
  */
-export function deleteRoleFromList(roles: RoleDefinition[], roleId: string): string {
+export function deleteRoleFromList(roles: RoleDefinition[], roleId: string): RoleDefinition[] {
   const roleIndex = roles.findIndex((r) => r.id === roleId)
   if (roleIndex === -1) throw new Error(`Role not found: ${roleId}`)
 
-  roles.splice(roleIndex, 1)
-  return roleId
+  return roles.filter((_, i) => i !== roleIndex)
 }

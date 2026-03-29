@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react'
-import { formats, detectFormat, type ParsedCard } from '@/lib/formats'
+import { formats, detectFormat, type ParsedCard, type DetectedFormat } from '@/lib/formats'
 import { searchCardByName, getCardBySetAndNumber } from '@/lib/scryfall'
 import { SCRYFALL, IMPORT_PREVIEW } from '@/lib/constants'
 import type { DeckCard } from '@/types'
@@ -28,7 +28,7 @@ export interface UseImportCardsResult {
   mainDeckCount: number
   sideboardCount: number
   maybeboardCount: number
-  detectedFormat: ReturnType<typeof detectFormat> | null
+  detectedFormat: DetectedFormat | null
   totalCardCount: number
 
   // Actions
@@ -63,21 +63,21 @@ export function useImportCards(sideboardSize?: number): UseImportCardsResult {
       return
     }
 
-    const format = formatId === 'auto'
-      ? detectFormat(value)
-      : formats.find(f => f.id === formatId) || detectFormat(value)
+    const resolved = formatId === 'auto'
+      ? detectFormat(value).format
+      : formats.find(f => f.id === formatId) || detectFormat(value).format
 
-    const cards = format.parse(value)
+    const cards = resolved.parse(value)
     setParsedCards(cards)
   }, [formatId])
 
   const handleFormatChange = useCallback((value: string) => {
     setFormatId(value)
     if (text.trim()) {
-      const format = value === 'auto'
-        ? detectFormat(text)
-        : formats.find(f => f.id === value) || detectFormat(text)
-      setParsedCards(format.parse(text))
+      const resolved = value === 'auto'
+        ? detectFormat(text).format
+        : formats.find(f => f.id === value) || detectFormat(text).format
+      setParsedCards(resolved.parse(text))
     }
   }, [text])
 
