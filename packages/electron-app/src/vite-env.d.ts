@@ -67,9 +67,9 @@ export interface ElectronAPI {
   savePullListConfig: (config: unknown) => Promise<void>
   onStorageChanged: (callback: (data: { event: string; filename: string }) => void) => void
   removeStorageListener: () => void
-  getClaudeConnectionStatus: () => Promise<{ connected: boolean; configPath: string; mcpServerPath?: string }>
-  connectClaudeDesktop: () => Promise<{ success: boolean; error?: string }>
-  disconnectClaudeDesktop: () => Promise<{ success: boolean; error?: string }>
+  getMcpClientStatus: (clientId: string) => Promise<{ connected: boolean; configPath: string; mcpServerPath?: string }>
+  connectMcpClient: (clientId: string) => Promise<{ success: boolean; error?: string }>
+  disconnectMcpClient: (clientId: string) => Promise<{ success: boolean; error?: string }>
   getCacheStats: () => Promise<CacheStats>
   clearJsonCache: () => Promise<void>
   clearImageCache: () => Promise<void>

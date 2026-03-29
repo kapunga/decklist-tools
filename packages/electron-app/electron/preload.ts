@@ -41,10 +41,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.removeAllListeners('storage:changed')
   },
 
-  // Claude Desktop integration
-  getClaudeConnectionStatus: () => ipcRenderer.invoke('claude:status'),
-  connectClaudeDesktop: () => ipcRenderer.invoke('claude:connect'),
-  disconnectClaudeDesktop: () => ipcRenderer.invoke('claude:disconnect'),
+  // MCP client integrations
+  getMcpClientStatus: (clientId: string) => ipcRenderer.invoke(`mcp:${clientId}:status`),
+  connectMcpClient: (clientId: string) => ipcRenderer.invoke(`mcp:${clientId}:connect`),
+  disconnectMcpClient: (clientId: string) => ipcRenderer.invoke(`mcp:${clientId}:disconnect`),
 
   // Cache management
   getCacheStats: () => ipcRenderer.invoke('cache:stats'),
@@ -68,7 +68,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 })
 
 // Type definitions for the exposed API
-export interface ClaudeConnectionStatus {
+export interface McpConnectionStatus {
   connected: boolean
   configPath: string
   mcpServerPath?: string
@@ -141,9 +141,9 @@ export interface ElectronAPI {
   savePullListConfig: (config: unknown) => Promise<void>
   onStorageChanged: (callback: (data: { event: string; filename: string }) => void) => void
   removeStorageListener: () => void
-  getClaudeConnectionStatus: () => Promise<ClaudeConnectionStatus>
-  connectClaudeDesktop: () => Promise<{ success: boolean; error?: string }>
-  disconnectClaudeDesktop: () => Promise<{ success: boolean; error?: string }>
+  getMcpClientStatus: (clientId: string) => Promise<McpConnectionStatus>
+  connectMcpClient: (clientId: string) => Promise<{ success: boolean; error?: string }>
+  disconnectMcpClient: (clientId: string) => Promise<{ success: boolean; error?: string }>
   getCacheStats: () => Promise<CacheStats>
   clearJsonCache: () => Promise<void>
   clearImageCache: () => Promise<void>

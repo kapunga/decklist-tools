@@ -4,37 +4,35 @@ import fs from 'fs'
 import os from 'os'
 import { Storage } from './storage'
 
-// Claude Desktop config path
-const CLAUDE_CONFIG_PATH = path.join(
-  os.homedir(),
-  'Library',
-  'Application Support',
-  'Claude',
-  'claude_desktop_config.json'
-)
+// MCP client integration
+type McpClientId = 'claude-desktop' | 'claude-code' | 'gemini-cli'
 
 const MCP_SERVER_NAME = 'mtg-deckbuilder'
 
-interface ClaudeConfig {
-  mcpServers?: Record<string, { command: string; args?: string[] }>
+const MCP_CLIENT_CONFIGS: Record<McpClientId, string> = {
+  'claude-desktop': path.join(
+    os.homedir(), 'Library', 'Application Support', 'Claude', 'claude_desktop_config.json'
+  ),
+  'claude-code': path.join(os.homedir(), '.claude', 'settings.local.json'),
+  'gemini-cli': path.join(os.homedir(), '.gemini', 'settings.json'),
 }
 
-function getClaudeConfig(): ClaudeConfig | null {
+function readJsonConfig(configPath: string): Record<string, unknown> | null {
   try {
-    if (!fs.existsSync(CLAUDE_CONFIG_PATH)) return null
-    const content = fs.readFileSync(CLAUDE_CONFIG_PATH, 'utf-8')
-    return JSON.parse(content) as ClaudeConfig
+    if (!fs.existsSync(configPath)) return null
+    const content = fs.readFileSync(configPath, 'utf-8')
+    return JSON.parse(content) as Record<string, unknown>
   } catch {
     return null
   }
 }
 
-function saveClaudeConfig(config: ClaudeConfig): void {
-  const dir = path.dirname(CLAUDE_CONFIG_PATH)
+function writeJsonConfig(configPath: string, config: Record<string, unknown>): void {
+  const dir = path.dirname(configPath)
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true })
   }
-  fs.writeFileSync(CLAUDE_CONFIG_PATH, JSON.stringify(config, null, 2))
+  fs.writeFileSync(configPath, JSON.stringify(config, null, 2))
 }
 
 function getMcpServerPath(): string {
@@ -44,6 +42,58 @@ function getMcpServerPath(): string {
   }
   // In development, use the dist path
   return path.join(__dirname, '../../mcp-server/dist/main.js')
+}
+
+function registerMcpHandlers(clientId: string, configPath: string): void {
+  ipcMain.handle(`mcp:${clientId}:status`, async () => {
+    const config = readJsonConfig(configPath)
+    const servers = config?.mcpServers as Record<string, unknown> | undefined
+    return {
+      connected: servers?.[MCP_SERVER_NAME] !== undefined,
+      configPath,
+      mcpServerPath: getMcpServerPath(),
+    }
+  })
+
+  ipcMain.handle(`mcp:${clientId}:connect`, async () => {
+    try {
+      const config = readJsonConfig(configPath) ?? {}
+      const servers = (config.mcpServers as Record<string, unknown>) ?? {}
+      const mcpServerPath = getMcpServerPath()
+
+      servers[MCP_SERVER_NAME] = {
+        command: app.isPackaged ? mcpServerPath : 'node',
+        args: app.isPackaged ? [] : [mcpServerPath],
+      }
+      config.mcpServers = servers
+
+      writeJsonConfig(configPath, config)
+      return { success: true }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      }
+    }
+  })
+
+  ipcMain.handle(`mcp:${clientId}:disconnect`, async () => {
+    try {
+      const config = readJsonConfig(configPath)
+      if (!config?.mcpServers) return { success: true }
+
+      const servers = config.mcpServers as Record<string, unknown>
+      delete servers[MCP_SERVER_NAME]
+
+      writeJsonConfig(configPath, config)
+      return { success: true }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      }
+    }
+  })
 }
 
 let mainWindow: BrowserWindow | null = null
@@ -251,59 +301,10 @@ function setupIpcHandlers() {
     }
   })
 
-  // Claude Desktop integration
-  ipcMain.handle('claude:status', async () => {
-    const config = getClaudeConfig()
-    const connected = config?.mcpServers?.[MCP_SERVER_NAME] !== undefined
-    return {
-      connected,
-      configPath: CLAUDE_CONFIG_PATH,
-      mcpServerPath: getMcpServerPath()
-    }
-  })
-
-  ipcMain.handle('claude:connect', async () => {
-    try {
-      let config = getClaudeConfig() || {}
-      if (!config.mcpServers) {
-        config.mcpServers = {}
-      }
-
-      const mcpServerPath = getMcpServerPath()
-
-      // Add our MCP server
-      config.mcpServers[MCP_SERVER_NAME] = {
-        command: app.isPackaged ? mcpServerPath : 'node',
-        args: app.isPackaged ? [] : [mcpServerPath]
-      }
-
-      saveClaudeConfig(config)
-      return { success: true }
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      }
-    }
-  })
-
-  ipcMain.handle('claude:disconnect', async () => {
-    try {
-      const config = getClaudeConfig()
-      if (!config?.mcpServers) {
-        return { success: true }
-      }
-
-      delete config.mcpServers[MCP_SERVER_NAME]
-      saveClaudeConfig(config)
-      return { success: true }
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      }
-    }
-  })
+  // MCP client integrations
+  for (const [clientId, configPath] of Object.entries(MCP_CLIENT_CONFIGS)) {
+    registerMcpHandlers(clientId, configPath)
+  }
 
   // Cache management
   ipcMain.handle('cache:stats', async () => {
