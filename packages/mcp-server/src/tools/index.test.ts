@@ -1003,6 +1003,79 @@ describe('Search/Reports', () => {
 
 })
 
+// ─── Collection Filter ────────────────────────────────────────
+
+describe('Collection Filter', () => {
+  it('returns empty when no sets collected', async () => {
+    const result = await call('get_collection_filter') as any
+    expect(result.isEmpty).toBe(true)
+    expect(result.filterString).toBe('')
+    expect(result.totalSets).toBe(0)
+  })
+
+  it('generates filter for level 4 (complete) sets', async () => {
+    mock._setSetCollection({
+      version: 1, updatedAt: '', sets: [{
+        setCode: 'mkm', setName: 'Murders at Karlov Manor',
+        collectionLevel: 4, addedAt: '',
+      }]
+    })
+    const result = await call('get_collection_filter') as any
+    expect(result.isEmpty).toBe(false)
+    expect(result.filterString).toBe('(set:mkm)')
+    expect(result.totalSets).toBe(1)
+  })
+
+  it('generates rarity-filtered filter for lower levels', async () => {
+    mock._setSetCollection({
+      version: 1, updatedAt: '', sets: [{
+        setCode: 'one', setName: 'Phyrexia',
+        collectionLevel: 1, addedAt: '',
+      }]
+    })
+    const result = await call('get_collection_filter') as any
+    expect(result.filterString).toContain('r:common')
+    expect(result.filterString).toContain('r:uncommon')
+    expect(result.filterString).not.toContain('r:rare')
+  })
+
+  it('joins multiple sets with OR', async () => {
+    mock._setSetCollection({
+      version: 1, updatedAt: '', sets: [
+        { setCode: 'mkm', setName: 'MKM', collectionLevel: 4, addedAt: '' },
+        { setCode: 'one', setName: 'ONE', collectionLevel: 2, addedAt: '' },
+      ]
+    })
+    const result = await call('get_collection_filter') as any
+    expect(result.filterString).toContain('(set:mkm) OR (set:one')
+    expect(result.totalSets).toBe(2)
+  })
+})
+
+// ─── Input Validation ─────────────────────────────────────────
+
+describe('Input length validation', () => {
+  it('rejects overly long deck names', async () => {
+    await expect(call('manage_deck', {
+      action: 'create',
+      name: 'x'.repeat(201),
+      format: 'commander',
+    })).rejects.toThrow('exceeds maximum length')
+  })
+
+  it('rejects overly long note content', async () => {
+    const deck = makeDeck()
+    mock._decks.set(deck.id, deck)
+    await expect(call('manage_deck_note', {
+      action: 'add',
+      deck_id: deck.id,
+      title: 'Test',
+      content: 'x'.repeat(10001),
+      note_type: 'general',
+    })).rejects.toThrow('exceeds maximum length')
+  })
+})
+
 // ─── Unknown tool ──────────────────────────────────────────────
 
 describe('Unknown tool', () => {
