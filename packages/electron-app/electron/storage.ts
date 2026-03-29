@@ -2,7 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import { app } from 'electron'
 import type { Deck, DeckCard, PulledPrinting, CacheIndex, CacheEntryMeta, CacheStats, ScryfallCard, CardIdentifier } from '@mtg-deckbuilder/shared'
-import { isDoubleFacedCard } from '@mtg-deckbuilder/shared'
+import { isDoubleFacedCard, migrateColorIdentity } from '@mtg-deckbuilder/shared'
 
 export interface CacheLoadProgress {
   phase: 'calculating' | 'loading' | 'complete' | 'cancelled' | 'error'
@@ -174,12 +174,24 @@ export class Storage {
         .map(f => this.readJson<Deck>(path.join(this.decksDir, f)))
         .filter((d): d is Deck => d !== null)
 
-      // Run migration for any decks with legacy ownership: 'pulled'
+      // Run migrations
       for (const deck of decks) {
+        let needsSave = false
+
         if (this.migrateLegacyPulledCards(deck)) {
           console.log(`Migrated legacy pulled cards in deck: ${deck.name}`)
-          this.saveDeck(deck)
+          needsSave = true
         }
+
+        if (migrateColorIdentity(deck, (id) => {
+          const card = this.getCachedCard(id) as ScryfallCard | null
+          return card?.color_identity
+        })) {
+          console.log(`Migrated color identity in deck: ${deck.name}`)
+          needsSave = true
+        }
+
+        if (needsSave) this.saveDeck(deck)
       }
 
       return decks
@@ -191,9 +203,23 @@ export class Storage {
 
   getDeck(id: string): unknown | null {
     const deck = this.readJson<Deck>(path.join(this.decksDir, `${id}.json`))
-    if (deck && this.migrateLegacyPulledCards(deck)) {
-      console.log(`Migrated legacy pulled cards in deck: ${deck.name}`)
-      this.saveDeck(deck)
+    if (deck) {
+      let needsSave = false
+
+      if (this.migrateLegacyPulledCards(deck)) {
+        console.log(`Migrated legacy pulled cards in deck: ${deck.name}`)
+        needsSave = true
+      }
+
+      if (migrateColorIdentity(deck, (scryfallId) => {
+        const card = this.getCachedCard(scryfallId) as ScryfallCard | null
+        return card?.color_identity
+      })) {
+        console.log(`Migrated color identity in deck: ${deck.name}`)
+        needsSave = true
+      }
+
+      if (needsSave) this.saveDeck(deck)
     }
     return deck
   }

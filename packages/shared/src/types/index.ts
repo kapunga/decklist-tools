@@ -250,12 +250,12 @@ export function migrateColorIdentity(
     }
   }
 
-  populateCards(deck.cards)
-  populateCards(deck.alternates)
-  populateCards(deck.sideboard)
+  populateCards(deck.cards ?? [])
+  populateCards(deck.alternates ?? [])
+  populateCards(deck.sideboard ?? [])
 
   // Populate commanders
-  for (const cmd of deck.commanders) {
+  for (const cmd of deck.commanders ?? []) {
     if (cmd.colorIdentity !== undefined) continue
     if (!cmd.scryfallId) continue
 
@@ -267,7 +267,7 @@ export function migrateColorIdentity(
   }
 
   // Recompute deck-level colorIdentity from commanders
-  if (deck.commanders.length > 0) {
+  if ((deck.commanders ?? []).length > 0) {
     const colors = new Set<string>()
     for (const cmd of deck.commanders) {
       for (const c of cmd.colorIdentity ?? []) {
