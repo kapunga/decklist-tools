@@ -2,8 +2,8 @@ import { useState, useCallback, useRef } from 'react'
 import { formats, detectFormat, type ParsedCard, type DetectedFormat } from '@/lib/formats'
 import { searchCardByName, getCardBySetAndNumber } from '@/lib/scryfall'
 import { SCRYFALL, IMPORT_PREVIEW } from '@/lib/constants'
-import type { DeckCard } from '@/types'
-import { generateDeckCardId } from '@/types'
+import type { DeckCard, DeckListName } from '@/types'
+import { generateDeckCardId, INCLUSION_STATUS, OWNERSHIP_STATUS, ADDED_BY, DECK_LIST } from '@/types'
 
 export interface ImportProgress {
   current: number
@@ -12,7 +12,7 @@ export interface ImportProgress {
 
 export interface ResolvedCard {
   card: DeckCard
-  listType: 'cards' | 'alternates' | 'sideboard'
+  listType: DeckListName
 }
 
 export interface UseImportCardsResult {
@@ -138,20 +138,20 @@ export function useImportCards(sideboardSize?: number): UseImportCardsResult {
             collectorNumber: parsed.collectorNumber || scryfallCard.collector_number
           },
           quantity: parsed.quantity,
-          inclusion: parsed.isMaybeboard ? 'considering' : 'confirmed',
-          ownership: 'owned',
+          inclusion: parsed.isMaybeboard ? INCLUSION_STATUS.CONSIDERING : INCLUSION_STATUS.CONFIRMED,
+          ownership: OWNERSHIP_STATUS.OWNED,
           roles,
           typeLine: scryfallCard.type_line,  // Store type line for grouping
           isPinned: false,
           addedAt: new Date().toISOString(),
-          addedBy: 'import'
+          addedBy: ADDED_BY.IMPORT
         }
 
         const hasSideboard = sideboardSize !== undefined && sideboardSize > 0
         const listType = parsed.isSideboard
-          ? (hasSideboard ? 'sideboard' : 'alternates')
-          : parsed.isMaybeboard ? 'alternates'
-          : 'cards'
+          ? (hasSideboard ? DECK_LIST.SIDEBOARD : DECK_LIST.ALTERNATES)
+          : parsed.isMaybeboard ? DECK_LIST.ALTERNATES
+          : DECK_LIST.MAINBOARD
 
         resolvedCards.push({ card: deckCard, listType })
 

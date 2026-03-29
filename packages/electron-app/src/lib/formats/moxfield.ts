@@ -1,5 +1,6 @@
-import type { Deck } from '@/types'
+import { INCLUSION_STATUS, FORMAT_TYPE, type Deck } from '@/types'
 import type { DeckFormat, ParsedCard, RenderOptions } from './types'
+import { PARSER_SECTION } from './types'
 
 export const moxfieldFormat: DeckFormat = {
   id: 'moxfield',
@@ -29,9 +30,9 @@ export const moxfieldFormat: DeckFormat = {
       const parts = line.split(',').map(p => p.trim().replace(/^"|"$/g, ''))
       if (parts.length >= 4) {
         const category = categoryIndex >= 0 ? parts[categoryIndex]?.toLowerCase() : ''
-        const isCommander = category === 'commander'
-        const isSideboard = category === 'sideboard'
-        const isMaybeboard = category === 'maybeboard' || category === 'considering'
+        const isCommander = category === PARSER_SECTION.COMMANDER
+        const isSideboard = category === PARSER_SECTION.SIDEBOARD
+        const isMaybeboard = category === PARSER_SECTION.MAYBEBOARD || category === 'considering'
 
         cards.push({
           name: parts[1],
@@ -53,7 +54,7 @@ export const moxfieldFormat: DeckFormat = {
     const lines: string[] = ['Count,Name,Edition,Collector Number,Foil,Condition,Language,Category']
 
     // Commanders first for Commander format
-    if (deck.format.type === 'commander' && deck.commanders.length > 0) {
+    if (deck.format.type === FORMAT_TYPE.COMMANDER && deck.commanders.length > 0) {
       deck.commanders.forEach(c => {
         lines.push(
           `1,${c.name},${c.setCode},${c.collectorNumber},,,English,Commander`
@@ -62,7 +63,7 @@ export const moxfieldFormat: DeckFormat = {
     }
 
     // Main deck
-    deck.cards.filter(c => c.inclusion === 'confirmed').forEach(c => {
+    deck.cards.filter(c => c.inclusion === INCLUSION_STATUS.CONFIRMED).forEach(c => {
       lines.push(
         `${c.quantity},${c.card.name},${c.card.setCode},${c.card.collectorNumber},,,English,Mainboard`
       )
@@ -80,7 +81,7 @@ export const moxfieldFormat: DeckFormat = {
     // Maybeboard
     if (options.includeMaybeboard) {
       const maybe = [
-        ...deck.cards.filter(c => c.inclusion === 'considering'),
+        ...deck.cards.filter(c => c.inclusion === INCLUSION_STATUS.CONSIDERING),
         ...deck.alternates
       ]
       maybe.forEach(c => {

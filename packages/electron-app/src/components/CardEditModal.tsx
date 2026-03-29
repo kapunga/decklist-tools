@@ -19,21 +19,21 @@ import { RolePill } from '@/components/RolePill'
 import { RoleAutocomplete } from '@/components/RoleAutocomplete'
 import { useStore, useGlobalRoles, useDeckById } from '@/hooks/useStore'
 import { getCardPrintings } from '@/lib/scryfall'
-import type { DeckCard, ScryfallCard, OwnershipStatus } from '@/types'
-import { getCardLimit } from '@/types'
+import type { DeckCard, ScryfallCard, OwnershipStatus, DeckListName } from '@/types'
+import { getCardLimit, OWNERSHIP_STATUS } from '@/types'
 
 interface CardEditModalProps {
   isOpen: boolean
   onClose: () => void
   card: DeckCard
   deckId: string
-  listType: 'cards' | 'alternates' | 'sideboard'
+  listType: DeckListName
 }
 
 const ownershipOptions: { value: OwnershipStatus; label: string }[] = [
-  { value: 'unknown', label: 'Unknown' },
-  { value: 'owned', label: 'Owned' },
-  { value: 'need_to_buy', label: 'Need to Buy' },
+  { value: OWNERSHIP_STATUS.UNKNOWN, label: 'Unknown' },
+  { value: OWNERSHIP_STATUS.OWNED, label: 'Owned' },
+  { value: OWNERSHIP_STATUS.NEED_TO_BUY, label: 'Need to Buy' },
 ]
 
 export function CardEditModal({

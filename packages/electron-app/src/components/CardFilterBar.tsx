@@ -14,6 +14,7 @@ import type { CardFilter, FilterGroup, FilterMode, EnrichedDeckCard } from '@mtg
 import { FILTER_GROUP_TYPES } from '@mtg-deckbuilder/shared'
 import { getPrimaryType } from '@mtg-deckbuilder/shared'
 import type { Deck } from '@/types'
+import { OWNERSHIP_STATUS } from '@/types'
 import { getAllRoles } from '@/lib/constants'
 import { useGlobalRoles } from '@/hooks/useStore'
 
@@ -34,9 +35,9 @@ const FILTER_TYPE_LABELS: Record<CardFilter['type'], string> = {
 }
 
 const OWNERSHIP_STATUS_LABELS: Record<string, string> = {
-  unknown: 'Unknown',
-  owned: 'Owned',
-  need_to_buy: 'Buylist',
+  [OWNERSHIP_STATUS.UNKNOWN]: 'Unknown',
+  [OWNERSHIP_STATUS.OWNED]: 'Owned',
+  [OWNERSHIP_STATUS.NEED_TO_BUY]: 'Buylist',
 }
 
 const COLOR_ORDER = ['W', 'U', 'B', 'R', 'G', 'C']
@@ -86,7 +87,7 @@ function computeAvailableValues(cards: EnrichedDeckCard[]): AvailableValues {
   const typeOrder = ['Creature', 'Planeswalker', 'Battle', 'Instant', 'Sorcery', 'Artifact', 'Enchantment', 'Land', 'Other']
   const cardTypes = typeOrder.filter(t => typeSet.has(t))
   const roleIds = [...roleSet]
-  const ownershipOrder = ['unknown', 'owned', 'need_to_buy']
+  const ownershipOrder = [OWNERSHIP_STATUS.UNKNOWN, OWNERSHIP_STATUS.OWNED, OWNERSHIP_STATUS.NEED_TO_BUY]
   const ownershipStatuses = ownershipOrder.filter(s => ownershipSet.has(s))
 
   return { cmcBuckets, colors, cardTypes, roleIds, ownershipStatuses }

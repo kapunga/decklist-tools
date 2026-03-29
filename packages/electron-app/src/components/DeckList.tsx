@@ -21,6 +21,7 @@ import { useStore } from '@/hooks/useStore'
 import { ImportNewDeckDialog } from '@/components/ImportNewDeckDialog'
 import { DeckCardPreview } from '@/components/DeckCardPreview'
 import type { FormatType } from '@/types'
+import { FORMAT_TYPE } from '@/types'
 
 export function DeckList() {
   const decks = useStore(state => state.decks)
@@ -31,7 +32,7 @@ export function DeckList() {
   const [showNewDeckDialog, setShowNewDeckDialog] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState<string | null>(null)
   const [newDeckName, setNewDeckName] = useState('')
-  const [newDeckFormat, setNewDeckFormat] = useState<FormatType>('commander')
+  const [newDeckFormat, setNewDeckFormat] = useState<FormatType>(FORMAT_TYPE.COMMANDER)
   const [searchQuery, setSearchQuery] = useState('')
 
   const filteredDecks = decks.filter(d =>
@@ -128,10 +129,10 @@ export function DeckList() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="commander">Commander</SelectItem>
-                  <SelectItem value="standard">Standard</SelectItem>
-                  <SelectItem value="modern">Modern</SelectItem>
-                  <SelectItem value="kitchen_table">Kitchen Table</SelectItem>
+                  <SelectItem value={FORMAT_TYPE.COMMANDER}>Commander</SelectItem>
+                  <SelectItem value={FORMAT_TYPE.STANDARD}>Standard</SelectItem>
+                  <SelectItem value={FORMAT_TYPE.MODERN}>Modern</SelectItem>
+                  <SelectItem value={FORMAT_TYPE.KITCHEN_TABLE}>Kitchen Table</SelectItem>
                 </SelectContent>
               </Select>
             </div>

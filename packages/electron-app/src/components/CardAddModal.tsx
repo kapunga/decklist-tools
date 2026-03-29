@@ -13,13 +13,13 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { CardImage } from '@/components/CardImage'
-import type { ScryfallCard, DeckFormat, RoleDefinition } from '@/types'
-import { getCardLimit } from '@/types'
+import type { ScryfallCard, DeckFormat, RoleDefinition, DeckListName } from '@/types'
+import { getCardLimit, FORMAT_TYPE, DECK_LIST } from '@/types'
 import { getAllRoles } from '@/lib/constants'
 import { isLegalInFormat, matchesColorIdentity } from '@/lib/scryfall'
 import { useGlobalRoles } from '@/hooks/useStore'
 
-type CardDestination = 'cards' | 'alternates' | 'sideboard'
+type CardDestination = DeckListName
 
 interface CardAddModalProps {
   card: ScryfallCard | null
@@ -36,9 +36,9 @@ interface CardAddModalProps {
 }
 
 function getDefaultDestination(activeTab: string): CardDestination {
-  if (activeTab === 'alternates') return 'alternates'
-  if (activeTab === 'sideboard') return 'sideboard'
-  return 'cards'
+  if (activeTab === DECK_LIST.ALTERNATES) return DECK_LIST.ALTERNATES
+  if (activeTab === DECK_LIST.SIDEBOARD) return DECK_LIST.SIDEBOARD
+  return DECK_LIST.MAINBOARD
 }
 
 export function CardAddModal({
@@ -242,7 +242,7 @@ function getLegalityWarning(
   colorIdentity?: string[]
 ): string | null {
   // Skip legality checks for kitchen_table
-  if (format.type === 'kitchen_table') {
+  if (format.type === FORMAT_TYPE.KITCHEN_TABLE) {
     return null
   }
 
@@ -252,7 +252,7 @@ function getLegalityWarning(
   }
 
   // Check color identity for commander
-  if (format.type === 'commander' && colorIdentity !== undefined) {
+  if (format.type === FORMAT_TYPE.COMMANDER && colorIdentity !== undefined) {
     if (!matchesColorIdentity(card, colorIdentity)) {
       const cardColors = card.color_identity.length > 0
         ? card.color_identity.join('')

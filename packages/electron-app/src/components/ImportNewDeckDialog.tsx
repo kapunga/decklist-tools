@@ -23,12 +23,12 @@ import { useImportCards } from '@/hooks/useImportCards'
 import { formats } from '@/lib/formats'
 import { getCardById } from '@/lib/scryfall'
 import type { FormatType, Deck, DeckCard, CardIdentifier } from '@/types'
-import { formatDefaults } from '@/types'
+import { formatDefaults, FORMAT_TYPE } from '@/types'
 
 export function ImportNewDeckDialog() {
   const [open, setOpen] = useState(false)
   const [deckName, setDeckName] = useState('')
-  const [deckFormat, setDeckFormat] = useState<FormatType>('commander')
+  const [deckFormat, setDeckFormat] = useState<FormatType>(FORMAT_TYPE.COMMANDER)
   const [importPhase, setImportPhase] = useState<'lookup' | 'saving'>('lookup')
   const [saveError, setSaveError] = useState<string | null>(null)
 
@@ -97,7 +97,7 @@ export function ImportNewDeckDialog() {
       let colorIdentity: string[] | undefined
       let commanders: CardIdentifier[] = []
 
-      if (deckFormat === 'commander') {
+      if (deckFormat === FORMAT_TYPE.COMMANDER) {
         // Check if any parsed cards were marked as commanders
         const commanderIndices: number[] = []
         for (let i = 0; i < parsedCards.length; i++) {
@@ -158,7 +158,7 @@ export function ImportNewDeckDialog() {
 
   const resetForm = useCallback(() => {
     setDeckName('')
-    setDeckFormat('commander')
+    setDeckFormat(FORMAT_TYPE.COMMANDER)
     setSaveError(null)
     setImportPhase('lookup')
     baseReset()
@@ -214,10 +214,10 @@ export function ImportNewDeckDialog() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="commander">Commander</SelectItem>
-                  <SelectItem value="standard">Standard</SelectItem>
-                  <SelectItem value="modern">Modern</SelectItem>
-                  <SelectItem value="kitchen_table">Kitchen Table</SelectItem>
+                  <SelectItem value={FORMAT_TYPE.COMMANDER}>Commander</SelectItem>
+                  <SelectItem value={FORMAT_TYPE.STANDARD}>Standard</SelectItem>
+                  <SelectItem value={FORMAT_TYPE.MODERN}>Modern</SelectItem>
+                  <SelectItem value={FORMAT_TYPE.KITCHEN_TABLE}>Kitchen Table</SelectItem>
                 </SelectContent>
               </Select>
             </div>

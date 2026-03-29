@@ -22,14 +22,13 @@ import {
 import { useStore, useAllRoles, useGlobalRoles } from '@/hooks/useStore'
 import { getRoleColor } from '@/lib/constants'
 import { CardEditModal } from '@/components/CardEditModal'
-import type { DeckCard, OwnershipStatus, RoleDefinition } from '@/types'
-
-import { isCardFullyPulled } from '@/types'
+import type { DeckCard, OwnershipStatus, RoleDefinition, DeckListName } from '@/types'
+import { isCardFullyPulled, INCLUSION_STATUS, OWNERSHIP_STATUS, DECK_LIST } from '@/types'
 
 const ownershipLabels: Record<OwnershipStatus, string> = {
-  unknown: 'Unknown',
-  owned: 'Owned',
-  need_to_buy: 'Need to Buy'
+  [OWNERSHIP_STATUS.UNKNOWN]: 'Unknown',
+  [OWNERSHIP_STATUS.OWNED]: 'Owned',
+  [OWNERSHIP_STATUS.NEED_TO_BUY]: 'Need to Buy',
 }
 
 interface RolePillProps {
@@ -75,7 +74,7 @@ function RolePill({ roleId, roleDefinition, globalRoles, onRemove }: RolePillPro
 interface CardItemProps {
   card: DeckCard
   deckId: string
-  listType: 'cards' | 'alternates' | 'sideboard'
+  listType: DeckListName
 }
 
 export function CardItem({ card, deckId, listType }: CardItemProps) {
@@ -95,7 +94,7 @@ export function CardItem({ card, deckId, listType }: CardItemProps) {
     await updateCardInDeck(deckId, card.card.name, { ownership })
   }
 
-  const handleMove = async (to: 'cards' | 'alternates' | 'sideboard') => {
+  const handleMove = async (to: DeckListName) => {
     if (to !== listType) {
       await moveCard(deckId, card.card.name, listType, to)
     }
@@ -176,10 +175,10 @@ export function CardItem({ card, deckId, listType }: CardItemProps) {
           </button>
         )}
 
-        {card.inclusion === 'considering' && (
+        {card.inclusion === INCLUSION_STATUS.CONSIDERING && (
           <Badge variant="outline" className="text-xs flex-shrink-0">?</Badge>
         )}
-        {card.ownership === 'need_to_buy' && (
+        {card.ownership === OWNERSHIP_STATUS.NEED_TO_BUY && (
           <Badge variant="destructive" className="text-xs flex-shrink-0">Buy</Badge>
         )}
         {isCardFullyPulled(card) && (
@@ -218,7 +217,7 @@ export function CardItem({ card, deckId, listType }: CardItemProps) {
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>Ownership</DropdownMenuSubTrigger>
               <DropdownMenuSubContent>
-                {(['unknown', 'owned', 'need_to_buy'] as OwnershipStatus[]).map(status => (
+                {([OWNERSHIP_STATUS.UNKNOWN, OWNERSHIP_STATUS.OWNED, OWNERSHIP_STATUS.NEED_TO_BUY] as OwnershipStatus[]).map(status => (
                   <DropdownMenuItem
                     key={status}
                     onClick={() => handleOwnershipChange(status)}
@@ -238,18 +237,18 @@ export function CardItem({ card, deckId, listType }: CardItemProps) {
                 Move to
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent>
-                {listType !== 'cards' && (
-                  <DropdownMenuItem onClick={() => handleMove('cards')}>
+                {listType !== DECK_LIST.MAINBOARD && (
+                  <DropdownMenuItem onClick={() => handleMove(DECK_LIST.MAINBOARD)}>
                     Mainboard
                   </DropdownMenuItem>
                 )}
-                {listType !== 'alternates' && (
-                  <DropdownMenuItem onClick={() => handleMove('alternates')}>
+                {listType !== DECK_LIST.ALTERNATES && (
+                  <DropdownMenuItem onClick={() => handleMove(DECK_LIST.ALTERNATES)}>
                     Alternates
                   </DropdownMenuItem>
                 )}
-                {listType !== 'sideboard' && (
-                  <DropdownMenuItem onClick={() => handleMove('sideboard')}>
+                {listType !== DECK_LIST.SIDEBOARD && (
+                  <DropdownMenuItem onClick={() => handleMove(DECK_LIST.SIDEBOARD)}>
                     Sideboard
                   </DropdownMenuItem>
                 )}

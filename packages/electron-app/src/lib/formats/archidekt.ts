@@ -1,5 +1,6 @@
-import type { Deck, DeckCard } from '@/types'
+import { INCLUSION_STATUS, FORMAT_TYPE, type Deck, type DeckCard } from '@/types'
 import type { DeckFormat, ParsedCard, RenderOptions } from './types'
+import { PARSER_SECTION } from './types'
 
 export const archidektFormat: DeckFormat = {
   id: 'archidekt',
@@ -26,7 +27,7 @@ export const archidektFormat: DeckFormat = {
         }
 
         const category = match[5]?.toLowerCase()
-        const isCommander = category === 'commander'
+        const isCommander = category === PARSER_SECTION.COMMANDER
 
         // Add land role if in Lands category
         if ((category === 'lands' || category === 'land') && !roles.includes('land')) {
@@ -38,8 +39,8 @@ export const archidektFormat: DeckFormat = {
           setCode: match[3].toLowerCase(),
           collectorNumber: match[4],
           quantity: parseInt(match[1], 10),
-          isSideboard: category === 'sideboard',
-          isMaybeboard: category === 'maybeboard' || category === 'considering',
+          isSideboard: category === PARSER_SECTION.SIDEBOARD,
+          isMaybeboard: category === PARSER_SECTION.MAYBEBOARD || category === 'considering',
           isCommander,
           roles
         })
@@ -71,14 +72,14 @@ export const archidektFormat: DeckFormat = {
     }
 
     // Commanders section
-    if (deck.format.type === 'commander' && deck.commanders.length > 0) {
+    if (deck.format.type === FORMAT_TYPE.COMMANDER && deck.commanders.length > 0) {
       deck.commanders.forEach(c => {
         lines.push(`1x ${c.name} (${c.setCode.toUpperCase()}) ${c.collectorNumber} [Commander]`)
       })
     }
 
     deck.cards
-      .filter(c => c.inclusion === 'confirmed')
+      .filter(c => c.inclusion === INCLUSION_STATUS.CONFIRMED)
       .forEach(c => {
         // Use first role for category, fallback to 'Other'
         const primaryRole = c.roles[0]
@@ -92,7 +93,7 @@ export const archidektFormat: DeckFormat = {
 
     if (options.includeMaybeboard) {
       const maybe = [
-        ...deck.cards.filter(c => c.inclusion === 'considering'),
+        ...deck.cards.filter(c => c.inclusion === INCLUSION_STATUS.CONSIDERING),
         ...deck.alternates
       ]
       maybe.forEach(c => renderCard(c, 'Maybeboard'))

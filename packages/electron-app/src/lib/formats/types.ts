@@ -28,3 +28,11 @@ export interface DetectedFormat {
   format: DeckFormat
   confidence: 'high' | 'low'
 }
+
+export const PARSER_SECTION = {
+  DECK: 'deck',
+  SIDEBOARD: 'sideboard',
+  MAYBEBOARD: 'maybeboard',
+  COMMANDER: 'commander',
+} as const
+export type ParserSection = typeof PARSER_SECTION[keyof typeof PARSER_SECTION]

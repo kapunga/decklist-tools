@@ -1,5 +1,6 @@
-import type { Deck } from '@/types'
+import { INCLUSION_STATUS, FORMAT_TYPE, type Deck } from '@/types'
 import type { DeckFormat, ParsedCard, RenderOptions } from './types'
+import { PARSER_SECTION } from './types'
 
 export const simpleFormat: DeckFormat = {
   id: 'simple',
@@ -17,7 +18,7 @@ export const simpleFormat: DeckFormat = {
     for (const line of lines) {
       if (!line) continue
 
-      if (line.toLowerCase().startsWith('sideboard')) {
+      if (line.toLowerCase().startsWith(PARSER_SECTION.SIDEBOARD)) {
         inSideboard = true
         continue
       }
@@ -55,7 +56,7 @@ export const simpleFormat: DeckFormat = {
     const lines: string[] = []
 
     // Commander section for Commander format
-    if (deck.format.type === 'commander' && deck.commanders.length > 0) {
+    if (deck.format.type === FORMAT_TYPE.COMMANDER && deck.commanders.length > 0) {
       lines.push('Commander:')
       deck.commanders.forEach(c => {
         lines.push(`1 ${c.name}`)
@@ -64,7 +65,7 @@ export const simpleFormat: DeckFormat = {
     }
 
     deck.cards
-      .filter(c => c.inclusion === 'confirmed')
+      .filter(c => c.inclusion === INCLUSION_STATUS.CONFIRMED)
       .forEach(c => {
         lines.push(`${c.quantity} ${c.card.name}`)
       })

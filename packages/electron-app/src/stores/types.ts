@@ -1,4 +1,4 @@
-import type { Deck, Taxonomy, InterestList, Config, DeckCard, DeckNote, CardIdentifier, RoleDefinition, SetCollectionFile, SetCollectionEntry, CollectionLevel, PullListConfig } from '@/types'
+import type { Deck, Taxonomy, InterestList, Config, DeckCard, DeckNote, CardIdentifier, RoleDefinition, SetCollectionFile, SetCollectionEntry, CollectionLevel, PullListConfig, DeckListName } from '@/types'
 
 export type AppView = 'decks' | 'deck-detail' | 'interest-list' | 'buy-list' | 'settings'
 
@@ -44,10 +44,10 @@ export interface DeckSlice {
 }
 
 export interface CardSlice {
-  addCardToDeck: (deckId: string, card: DeckCard, target?: 'cards' | 'alternates' | 'sideboard') => Promise<void>
-  removeCardFromDeck: (deckId: string, cardName: string, target?: 'cards' | 'alternates' | 'sideboard') => Promise<void>
+  addCardToDeck: (deckId: string, card: DeckCard, target?: DeckListName) => Promise<void>
+  removeCardFromDeck: (deckId: string, cardName: string, target?: DeckListName) => Promise<void>
   updateCardInDeck: (deckId: string, cardName: string, updates: Partial<DeckCard>) => Promise<void>
-  moveCard: (deckId: string, cardName: string, from: 'cards' | 'alternates' | 'sideboard', to: 'cards' | 'alternates' | 'sideboard') => Promise<void>
+  moveCard: (deckId: string, cardName: string, from: DeckListName, to: DeckListName) => Promise<void>
 }
 
 export interface CommanderSlice {
@@ -108,8 +108,8 @@ export interface SelectionSlice {
   clearSelection: () => void
   setFocusedCard: (cardId: string | null) => void
   batchUpdateOwnership: (deckId: string, cardNames: string[], ownership: DeckCard['ownership']) => Promise<void>
-  batchRemoveCards: (deckId: string, cardNames: string[], listType: 'cards' | 'alternates' | 'sideboard') => Promise<void>
-  batchMoveCards: (deckId: string, cardNames: string[], from: 'cards' | 'alternates' | 'sideboard', to: 'cards' | 'alternates' | 'sideboard') => Promise<void>
+  batchRemoveCards: (deckId: string, cardNames: string[], listType: DeckListName) => Promise<void>
+  batchMoveCards: (deckId: string, cardNames: string[], from: DeckListName, to: DeckListName) => Promise<void>
   batchAddRoleToCards: (deckId: string, cardNames: string[], roleId: string) => Promise<void>
 }
 

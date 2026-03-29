@@ -13,15 +13,15 @@ import { CardFilterBar } from '@/components/CardFilterBar'
 import { useStore, useGlobalRoles } from '@/hooks/useStore'
 import { useScryfallCache } from '@/hooks/useScryfallCache'
 import { getCardById } from '@/lib/scryfall'
-import type { DeckCard, ScryfallCard, Deck } from '@/types'
-import { getCardLimit, isCardFullyPulled } from '@/types'
+import type { DeckCard, ScryfallCard, Deck, DeckListName } from '@/types'
+import { getCardLimit, isCardFullyPulled, INCLUSION_STATUS, OWNERSHIP_STATUS, ADDED_BY } from '@/types'
 import { getPrimaryType, CARD_TYPE_SORT_ORDER } from '@/lib/constants'
 import type { CardFilter } from '@mtg-deckbuilder/shared'
 import { enrichCards, applyFilters } from '@mtg-deckbuilder/shared'
 
 interface DeckListViewProps {
   deck: Deck
-  listType: 'cards' | 'alternates' | 'sideboard'
+  listType: DeckListName
 }
 
 export function DeckListView({ deck, listType }: DeckListViewProps) {
@@ -47,19 +47,19 @@ export function DeckListView({ deck, listType }: DeckListViewProps) {
       id: `commander-${commander.name}`,
       card: commander,
       quantity: 1,
-      inclusion: 'confirmed',
-      ownership: 'unknown',
+      inclusion: INCLUSION_STATUS.CONFIRMED,
+      ownership: OWNERSHIP_STATUS.UNKNOWN,
       roles: [],
       isPinned: true,
       addedAt: deck.createdAt,
-      addedBy: 'user'
+      addedBy: ADDED_BY.USER
     }))
   }, [deck.commanders, deck.createdAt])
 
   // Get cards for current list (memoized to prevent infinite re-renders)
   const cards = useMemo(() => {
     if (listType === 'cards') {
-      const mainCards = deck.cards.filter(c => c.inclusion !== 'cut')
+      const mainCards = deck.cards.filter(c => c.inclusion !== INCLUSION_STATUS.CUT)
       // Include commanders at the start of the main deck list
       return [...commanderCards, ...mainCards]
     }
@@ -331,7 +331,7 @@ interface CardRowProps {
   isSelected: boolean
   isFocused: boolean
   isCommander?: boolean
-  listType: 'cards' | 'alternates' | 'sideboard'
+  listType: DeckListName
   onToggleSelect: () => void
   onFocus: () => void
   onQuantityChange: (cardName: string, delta: number) => void
@@ -488,7 +488,7 @@ function CardRow({
 
       {/* Ownership indicator - fixed width to prevent layout shift */}
       <div className="w-16 flex-shrink-0 flex justify-end">
-        {card.ownership === 'need_to_buy' && (
+        {card.ownership === OWNERSHIP_STATUS.NEED_TO_BUY && (
           <Badge variant="outline" className="text-yellow-500 border-yellow-500 text-xs">
             Buy
           </Badge>

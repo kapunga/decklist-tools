@@ -22,23 +22,23 @@ import {
 import { Checkbox } from '@/components/ui/checkbox'
 import { CreateRoleDialog } from '@/components/CreateRoleDialog'
 import { useStore, useAllRoles } from '@/hooks/useStore'
-import { migrateDeckNote } from '@/types'
+import { migrateDeckNote, NOTE_TYPE } from '@/types'
 import type { Deck, DeckNote, NoteType, NoteCardRef, RoleDefinition } from '@/types'
 
 const NOTE_TYPE_COLORS: Record<NoteType, string> = {
-  combo: 'bg-red-500/20 text-red-400 border-red-500/30',
-  synergy: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-  theme: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
-  strategy: 'bg-green-500/20 text-green-400 border-green-500/30',
-  general: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
+  [NOTE_TYPE.COMBO]: 'bg-red-500/20 text-red-400 border-red-500/30',
+  [NOTE_TYPE.SYNERGY]: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+  [NOTE_TYPE.THEME]: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
+  [NOTE_TYPE.STRATEGY]: 'bg-green-500/20 text-green-400 border-green-500/30',
+  [NOTE_TYPE.GENERAL]: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
 }
 
 const NOTE_TYPE_LABELS: Record<NoteType, string> = {
-  combo: 'Combo',
-  synergy: 'Synergy',
-  theme: 'Theme',
-  strategy: 'Strategy',
-  general: 'General',
+  [NOTE_TYPE.COMBO]: 'Combo',
+  [NOTE_TYPE.SYNERGY]: 'Synergy',
+  [NOTE_TYPE.THEME]: 'Theme',
+  [NOTE_TYPE.STRATEGY]: 'Strategy',
+  [NOTE_TYPE.GENERAL]: 'General',
 }
 
 interface NotesViewProps {
@@ -60,7 +60,7 @@ export function NotesView({ deck }: NotesViewProps) {
   // Form state
   const [formTitle, setFormTitle] = useState('')
   const [formContent, setFormContent] = useState('')
-  const [formNoteType, setFormNoteType] = useState<NoteType>('general')
+  const [formNoteType, setFormNoteType] = useState<NoteType>(NOTE_TYPE.GENERAL)
   const [formRoleId, setFormRoleId] = useState<string>('')
   const [formCardRefs, setFormCardRefs] = useState<NoteCardRef[]>([])
 
@@ -76,7 +76,7 @@ export function NotesView({ deck }: NotesViewProps) {
   const openCreateDialog = useCallback(() => {
     setFormTitle('')
     setFormContent('')
-    setFormNoteType('general')
+    setFormNoteType(NOTE_TYPE.GENERAL)
     setFormRoleId('')
     setFormCardRefs([])
     setIsCreateMode(true)
