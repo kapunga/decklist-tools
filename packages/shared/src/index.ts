@@ -23,4 +23,4 @@ export * from './stats/index.js'
 export * from './domain/index.js'
 
 // Storage
-export { Storage, getStorageBasePath } from './storage/index.js'
+export { Storage, getStorageBasePath, ConcurrentModificationError } from './storage/index.js'

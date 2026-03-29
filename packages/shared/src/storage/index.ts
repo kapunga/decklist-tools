@@ -11,6 +11,21 @@ interface GlobalRolesFile {
   roles: RoleDefinition[]
 }
 
+export class ConcurrentModificationError extends Error {
+  constructor(
+    public readonly deckId: string,
+    public readonly expectedVersion: number,
+    public readonly actualVersion: number
+  ) {
+    super(
+      `Concurrent modification on deck ${deckId}: ` +
+      `expected version ${expectedVersion}, found ${actualVersion}. ` +
+      `Another process may have modified this deck.`
+    )
+    this.name = 'ConcurrentModificationError'
+  }
+}
+
 // UUID v4 format used by Scryfall and deck IDs
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -167,9 +182,20 @@ export class Storage {
   }
 
   saveDeck(deck: Deck): void {
+    // Optimistic locking: verify no concurrent modification since this deck was loaded
+    const filePath = path.join(this.decksDir, `${deck.id}.json`)
+    if (fs.existsSync(filePath)) {
+      const onDisk = this.readJson<{ version?: number }>(filePath)
+      const diskVersion = onDisk?.version ?? 0
+      const deckVersion = deck.version || 0
+      if (diskVersion !== deckVersion) {
+        throw new ConcurrentModificationError(deck.id, deckVersion, diskVersion)
+      }
+    }
+
     deck.version = (deck.version || 0) + 1
     deck.updatedAt = new Date().toISOString()
-    this.writeJson(path.join(this.decksDir, `${deck.id}.json`), deck)
+    this.writeJson(filePath, deck)
   }
 
   deleteDeck(id: string): boolean {
