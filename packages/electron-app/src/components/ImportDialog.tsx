@@ -23,9 +23,10 @@ import { formats } from '@/lib/formats'
 
 interface ImportDialogProps {
   deckId: string
+  sideboardSize: number
 }
 
-export function ImportDialog({ deckId }: ImportDialogProps) {
+export function ImportDialog({ deckId, sideboardSize }: ImportDialogProps) {
   const [open, setOpen] = useState(false)
   const addCardToDeck = useStore(state => state.addCardToDeck)
 
@@ -45,7 +46,7 @@ export function ImportDialog({ deckId }: ImportDialogProps) {
     handleFormatChange,
     lookupCards,
     reset
-  } = useImportCards()
+  } = useImportCards(sideboardSize)
 
   const handleImport = useCallback(async () => {
     const { resolvedCards, errors: importErrors } = await lookupCards()

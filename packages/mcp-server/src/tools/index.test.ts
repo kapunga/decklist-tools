@@ -196,12 +196,22 @@ describe('Card Management', () => {
 
     it('adds to sideboard', async () => {
       mockSearchCardByName.mockResolvedValue(bolCard)
-      const deck = makeDeck()
+      const deck = makeDeck({ format: { type: 'standard', deckSize: 60, sideboardSize: 15, cardLimit: 4, unlimitedCards: [] } })
       mock._decks.set(deck.id, deck)
 
       await call('manage_card', { action: 'add', deck_id: deck.id, name: 'Lightning Bolt', to_sideboard: true })
       expect(deck.sideboard).toHaveLength(1)
       expect(deck.cards).toHaveLength(0)
+    })
+
+    it('redirects to_sideboard to alternates when format has no sideboard', async () => {
+      mockSearchCardByName.mockResolvedValue(bolCard)
+      const deck = makeDeck() // Commander format, sideboardSize: 0
+      mock._decks.set(deck.id, deck)
+
+      await call('manage_card', { action: 'add', deck_id: deck.id, name: 'Lightning Bolt', to_sideboard: true })
+      expect(deck.sideboard).toHaveLength(0)
+      expect(deck.alternates).toHaveLength(1)
     })
 
     it('adds to alternates', async () => {
@@ -335,7 +345,7 @@ describe('Card Management', () => {
 
   describe('manage_card move', () => {
     it('moves card from mainboard to sideboard', async () => {
-      const deck = makeDeck()
+      const deck = makeDeck({ format: { type: 'standard', deckSize: 60, sideboardSize: 15, cardLimit: 4, unlimitedCards: [] } })
       deck.cards.push(makeDeckCard('Lightning Bolt'))
       mock._decks.set(deck.id, deck)
 
@@ -347,8 +357,18 @@ describe('Card Management', () => {
       expect(deck.sideboard).toHaveLength(1)
     })
 
+    it('throws when moving to sideboard in format with no sideboard', async () => {
+      const deck = makeDeck() // Commander format, sideboardSize: 0
+      deck.cards.push(makeDeckCard('Lightning Bolt'))
+      mock._decks.set(deck.id, deck)
+
+      await expect(call('manage_card', {
+        action: 'move', deck_id: deck.id, name: 'Lightning Bolt', from: 'mainboard', to: 'sideboard'
+      })).rejects.toThrow('Cannot move cards to sideboard')
+    })
+
     it('throws when card not in source list', async () => {
-      const deck = makeDeck()
+      const deck = makeDeck({ format: { type: 'standard', deckSize: 60, sideboardSize: 15, cardLimit: 4, unlimitedCards: [] } })
       mock._decks.set(deck.id, deck)
       await expect(call('manage_card', {
         action: 'move', deck_id: deck.id, name: 'Nope', from: 'mainboard', to: 'sideboard'

@@ -53,10 +53,11 @@ export async function manageCard(storage: Storage, args: ManageCardArgs) {
         const scryfallCard = await fetchScryfallCard(storage, cardStr, setCode, collectorNumber)
         const cardIdentifier = createCardIdentifier(scryfallCard)
 
-        // Determine target list
-        const targetList = args.to_sideboard
+        // Determine target list (redirect sideboard to alternates if format has no sideboard)
+        const useSideboard = args.to_sideboard && deck.format.sideboardSize > 0
+        const targetList = useSideboard
           ? deck.sideboard
-          : args.to_alternates
+          : args.to_alternates || (args.to_sideboard && deck.format.sideboardSize === 0)
             ? deck.alternates
             : deck.cards
 
@@ -174,6 +175,9 @@ export async function manageCard(storage: Storage, args: ManageCardArgs) {
     }
     case 'move': {
       if (!args.from || !args.to) throw new Error('from and to are required for move')
+      if (args.to === 'sideboard' && deck.format.sideboardSize === 0) {
+        throw new Error(`Cannot move cards to sideboard: ${deck.format.type} format has no sideboard`)
+      }
       const cardNames = resolveCards(args)
 
       const getList = (name: string): DeckCard[] => {
