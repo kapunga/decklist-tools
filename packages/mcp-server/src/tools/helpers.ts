@@ -6,6 +6,44 @@ import {
   CachedScryfallClient,
 } from '@mtg-deckbuilder/shared'
 
+// Input length limits for tool arguments
+const INPUT_LIMITS = {
+  name: 200,
+  description: 2000,
+  notes: 10000,
+  content: 10000,
+  title: 200,
+  query: 500,
+  source: 500,
+  card_name: 200,
+  commander_name: 200,
+  new_commander_name: 200,
+  archetype: 200,
+} as const
+
+/**
+ * Validate that string arguments don't exceed reasonable length limits.
+ * Throws on the first field that exceeds its limit.
+ */
+export function validateInputLengths(args: Record<string, unknown>): void {
+  for (const [key, maxLength] of Object.entries(INPUT_LIMITS)) {
+    const value = args[key]
+    if (typeof value === 'string' && value.length > maxLength) {
+      throw new Error(`'${key}' exceeds maximum length of ${maxLength} characters (got ${value.length})`)
+    }
+  }
+
+  // Validate card arrays — each entry should be short
+  const cards = args.cards
+  if (Array.isArray(cards)) {
+    for (const card of cards) {
+      if (typeof card === 'string' && card.length > 200) {
+        throw new Error(`Card string exceeds maximum length of 200 characters`)
+      }
+    }
+  }
+}
+
 export interface ParsedCardString {
   quantity: number
   setCode: string

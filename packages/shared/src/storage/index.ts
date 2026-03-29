@@ -11,6 +11,15 @@ interface GlobalRolesFile {
   roles: RoleDefinition[]
 }
 
+// UUID v4 format used by Scryfall and deck IDs
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+function validateUUID(id: string, label: string): void {
+  if (!UUID_REGEX.test(id)) {
+    throw new Error(`Invalid ${label} format: ${id}`)
+  }
+}
+
 // Get the base storage directory
 export function getStorageBasePath(): string {
   if (process.platform === 'darwin') {
@@ -109,6 +118,7 @@ export class Storage {
   }
 
   getDeck(id: string): Deck | null {
+    validateUUID(id, 'deck ID')
     const deck = this.readJson<Deck>(path.join(this.decksDir, `${id}.json`))
     if (deck && migrateLegacyPulledCards(deck)) {
       console.log(`Migrated legacy pulled cards in deck: ${deck.name}`)
@@ -130,6 +140,7 @@ export class Storage {
   }
 
   deleteDeck(id: string): boolean {
+    validateUUID(id, 'deck ID')
     const filePath = path.join(this.decksDir, `${id}.json`)
     if (fs.existsSync(filePath)) {
       fs.unlinkSync(filePath)
@@ -241,11 +252,13 @@ export class Storage {
 
   // Scryfall cache
   getCachedCard(scryfallId: string): unknown | null {
+    validateUUID(scryfallId, 'Scryfall ID')
     const cachePath = path.join(this.cacheDir, `${scryfallId}.json`)
     return this.readJson(cachePath)
   }
 
   cacheCard(scryfallId: string, data: unknown): void {
+    validateUUID(scryfallId, 'Scryfall ID')
     const cachePath = path.join(this.cacheDir, `${scryfallId}.json`)
     this.writeJson(cachePath, data)
   }
@@ -464,6 +477,7 @@ export class Storage {
   }
 
   getCachedImagePath(scryfallId: string, face?: 'front' | 'back'): string | null {
+    validateUUID(scryfallId, 'Scryfall ID')
     let filename: string
     if (face === 'back') {
       filename = `${scryfallId}_back.jpg`
@@ -490,6 +504,7 @@ export class Storage {
   }
 
   cacheImage(scryfallId: string, data: Buffer, face?: 'front' | 'back'): void {
+    validateUUID(scryfallId, 'Scryfall ID')
     let filename: string
     if (face === 'back') {
       filename = `${scryfallId}_back.jpg`
@@ -512,11 +527,13 @@ export class Storage {
   }
 
   hasImageCached(scryfallId: string): boolean {
+    validateUUID(scryfallId, 'Scryfall ID')
     return this.getCachedImagePath(scryfallId) !== null ||
            this.getCachedImagePath(scryfallId, 'front') !== null
   }
 
   private getImageSize(scryfallId: string): number | undefined {
+    validateUUID(scryfallId, 'Scryfall ID')
     let totalSize = 0
 
     // Check for single image

@@ -7,6 +7,7 @@ import { manageCommander } from './commander-tools.js'
 import { getInterestList, manageInterestList } from './interest-tools.js'
 import { listDeckNotes, manageDeckNote } from './note-tools.js'
 import { getCollectionFilter } from './collection-tools.js'
+import { validateInputLengths } from './helpers.js'
 import type {
   ManageDeckArgs,
   ManageCardArgs,
@@ -25,6 +26,8 @@ export async function handleToolCall(
   args: Record<string, unknown>,
   storage: Storage
 ): Promise<unknown> {
+  validateInputLengths(args)
+
   switch (name) {
     case 'list_decks':
       return listDecks(storage)

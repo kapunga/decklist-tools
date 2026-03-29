@@ -274,6 +274,17 @@ export function matchesColorIdentity(card: ScryfallCard, allowedColors: string[]
   return card.color_identity.every(color => allowedColors.includes(color))
 }
 
+// Valid Scryfall format names for the f: filter
+const VALID_SCRYFALL_FORMATS = new Set([
+  'standard', 'modern', 'legacy', 'vintage', 'commander', 'pauper',
+  'pioneer', 'historic', 'alchemy', 'brawl', 'explorer', 'penny',
+  'oathbreaker', 'standardbrawl', 'paupercommander', 'duel', 'predh',
+  'oldschool', 'premodern', 'timeless',
+])
+
+// Valid WUBRG color characters
+const VALID_COLORS = new Set(['W', 'U', 'B', 'R', 'G'])
+
 // Search cards with format legality and color identity filters
 export async function searchCardsWithFilters(
   query: string,
@@ -286,11 +297,18 @@ export async function searchCardsWithFilters(
   // Add format legality filter (skip for kitchen_table)
   if (format && format !== 'kitchen_table') {
     const scryfallFormat = format.replace('_', '')
+    if (!VALID_SCRYFALL_FORMATS.has(scryfallFormat)) {
+      throw new Error(`Unknown format: ${format}`)
+    }
     fullQuery += ` f:${scryfallFormat}`
   }
 
   // Add color identity filter
   if (colorIdentity && colorIdentity.length > 0) {
+    const invalidColors = colorIdentity.filter(c => !VALID_COLORS.has(c))
+    if (invalidColors.length > 0) {
+      throw new Error(`Invalid color identity values: ${invalidColors.join(', ')}`)
+    }
     const colorString = colorIdentity.join('')
     fullQuery += ` id<=${colorString}`
   } else if (colorIdentity && colorIdentity.length === 0) {

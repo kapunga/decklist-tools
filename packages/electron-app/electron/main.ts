@@ -96,6 +96,15 @@ function registerMcpHandlers(clientId: string, configPath: string): void {
   })
 }
 
+// Global error handlers — prevent silent crashes
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught exception:', error)
+})
+
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled rejection:', reason)
+})
+
 let mainWindow: BrowserWindow | null = null
 let storage: Storage | null = null
 
