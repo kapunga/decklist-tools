@@ -24,6 +24,9 @@ export function findCardIndexByName<T extends { card: { name: string } }>(
  * Consolidate duplicate card entries in a list.
  * When duplicates are found: sums quantities, unions roles, keeps earliest addedAt,
  * preserves isPinned if any entry is pinned, and merges notes.
+ *
+ * TODO: Consider replacing with domain/cards.ts mergeCardIntoList for batch operations,
+ * or removing if no longer needed after import flow is migrated to the domain layer.
  */
 export function consolidateDuplicateCards(cards: DeckCard[]): DeckCard[] {
   const cardMap = new Map<string, DeckCard>()

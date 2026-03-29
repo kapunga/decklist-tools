@@ -128,6 +128,8 @@ export async function manageCard(storage: Storage, args: ManageCardArgs) {
       storage.saveDeck(deck)
       return { success: true, message: `Removed ${removed.join(', ')} from deck` }
     }
+    // TODO: Extract a domain function for card field updates (updateCardInDeck).
+    // Currently mutates the card found by findCardAcrossLists inline.
     case 'update': {
       if (args.to_alternates || args.to_sideboard) {
         throw new Error('to_alternates/to_sideboard are not supported on update. Use action: "move" with from/to parameters to move cards between lists.')

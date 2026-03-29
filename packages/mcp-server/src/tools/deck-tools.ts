@@ -43,6 +43,8 @@ export function getDeck(storage: Storage, identifier: string) {
   }
 }
 
+// TODO: Migrate to use domain/validators.ts (validateDeckStructure) and adapt the
+// summary format. This private function predates the domain layer.
 function validateDeck(deck: Deck) {
   const issues: string[] = []
   const format = deck.format
