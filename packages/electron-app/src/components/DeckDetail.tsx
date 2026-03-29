@@ -187,7 +187,7 @@ export function DeckDetail() {
               <Settings className="w-4 h-4 mr-1" />
               Roles
             </Button>
-            <ImportDialog deckId={deck.id} />
+            <ImportDialog deckId={deck.id} sideboardSize={deck.format.sideboardSize} />
           </div>
         </div>
 

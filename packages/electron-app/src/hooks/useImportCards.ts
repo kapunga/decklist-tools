@@ -44,7 +44,7 @@ export interface UseImportCardsResult {
  * Hook to encapsulate shared import logic between ImportDialog and ImportNewDeckDialog.
  * Handles format detection, text parsing, Scryfall lookups, and DeckCard construction.
  */
-export function useImportCards(): UseImportCardsResult {
+export function useImportCards(sideboardSize?: number): UseImportCardsResult {
   const [text, setText] = useState('')
   const [formatId, setFormatId] = useState('auto')
   const [parsedCards, setParsedCards] = useState<ParsedCard[]>([])
@@ -147,7 +147,9 @@ export function useImportCards(): UseImportCardsResult {
           addedBy: 'import'
         }
 
-        const listType = parsed.isSideboard ? 'sideboard'
+        const hasSideboard = sideboardSize !== undefined && sideboardSize > 0
+        const listType = parsed.isSideboard
+          ? (hasSideboard ? 'sideboard' : 'alternates')
           : parsed.isMaybeboard ? 'alternates'
           : 'cards'
 

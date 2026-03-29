@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+@.claude/CLAUDE.local.md
+
 ## Project Overview
 
 MTG Deckbuilder Tools is a monorepo with three integrated packages for Magic: The Gathering deck management:

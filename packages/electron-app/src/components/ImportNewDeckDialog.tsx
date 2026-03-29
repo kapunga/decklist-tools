@@ -23,6 +23,7 @@ import { useImportCards } from '@/hooks/useImportCards'
 import { formats } from '@/lib/formats'
 import { getCardById } from '@/lib/scryfall'
 import type { FormatType, Deck, DeckCard, CardIdentifier } from '@/types'
+import { formatDefaults } from '@/types'
 
 export function ImportNewDeckDialog() {
   const [open, setOpen] = useState(false)
@@ -51,7 +52,7 @@ export function ImportNewDeckDialog() {
     handleFormatChange,
     lookupCards,
     reset: baseReset
-  } = useImportCards()
+  } = useImportCards(formatDefaults[deckFormat].sideboardSize)
 
   // Auto-generate deck name from first card
   const handleTextChange = useCallback((value: string) => {
