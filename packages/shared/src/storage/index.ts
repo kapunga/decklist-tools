@@ -3,7 +3,7 @@ import path from 'path'
 import os from 'os'
 import type { Deck, Taxonomy, InterestList, Config, RoleDefinition, SetCollectionFile, PullListConfig, CacheIndex, CacheEntryMeta, CacheStats, ScryfallCard } from '../types/index.js'
 import { DEFAULT_GLOBAL_ROLES } from '../constants/index.js'
-import { DEFAULT_PULL_LIST_CONFIG, isDoubleFacedCard, migrateLegacyPulledCards, migrateColorIdentity } from '../types/index.js'
+import { DEFAULT_PULL_LIST_CONFIG, isDoubleFacedCard } from '../types/index.js'
 
 // Global roles file schema
 interface GlobalRolesFile {
@@ -124,26 +124,6 @@ export class Storage {
         }
       }
 
-      // Run migrations
-      for (const deck of decks) {
-        let needsSave = false
-
-        if (migrateLegacyPulledCards(deck)) {
-          console.log(`Migrated legacy pulled cards in deck: ${deck.name}`)
-          needsSave = true
-        }
-
-        if (migrateColorIdentity(deck, (id) => {
-          const card = this.getCachedCard(id) as ScryfallCard | null
-          return card?.color_identity
-        })) {
-          console.log(`Migrated color identity in deck: ${deck.name}`)
-          needsSave = true
-        }
-
-        if (needsSave) this.saveDeck(deck)
-      }
-
       return decks
     } catch (error) {
       console.error('Error listing decks:', error)
@@ -153,26 +133,7 @@ export class Storage {
 
   getDeck(id: string): Deck | null {
     validateUUID(id, 'deck ID')
-    const deck = this.readJson<Deck>(path.join(this.decksDir, `${id}.json`))
-    if (deck) {
-      let needsSave = false
-
-      if (migrateLegacyPulledCards(deck)) {
-        console.log(`Migrated legacy pulled cards in deck: ${deck.name}`)
-        needsSave = true
-      }
-
-      if (migrateColorIdentity(deck, (scryfallId) => {
-        const card = this.getCachedCard(scryfallId) as ScryfallCard | null
-        return card?.color_identity
-      })) {
-        console.log(`Migrated color identity in deck: ${deck.name}`)
-        needsSave = true
-      }
-
-      if (needsSave) this.saveDeck(deck)
-    }
-    return deck
+    return this.readJson<Deck>(path.join(this.decksDir, `${id}.json`))
   }
 
   getDeckByName(name: string): Deck | null {
