@@ -19,6 +19,7 @@ import {
   addCardToDeck,
   removeCardFromDeck,
   moveCard,
+  updateCardInDeck,
   findCardAcrossLists,
 } from '@mtg-deckbuilder/shared'
 import { getDeckOrThrow, fetchScryfallCard, createCardIdentifier, parseCardString } from './helpers.js'
@@ -128,8 +129,6 @@ export async function manageCard(storage: Storage, args: ManageCardArgs) {
       storage.saveDeck(deck)
       return { success: true, message: `Removed ${removed.join(', ')} from deck` }
     }
-    // TODO: Extract a domain function for card field updates (updateCardInDeck).
-    // Currently mutates the card found by findCardAcrossLists inline.
     case 'update': {
       if (args.to_alternates || args.to_sideboard) {
         throw new Error('to_alternates/to_sideboard are not supported on update. Use action: "move" with from/to parameters to move cards between lists.')
@@ -145,23 +144,18 @@ export async function manageCard(storage: Storage, args: ManageCardArgs) {
       const updated: Array<{ name: string; roles: string[] }> = []
 
       for (const cardName of cardNames) {
+        const result = updateCardInDeck(deck, cardName, {
+          roles: args.roles,
+          addRoles: args.add_roles,
+          removeRoles: args.remove_roles,
+          inclusion: args.status as InclusionStatus | undefined,
+          ownership: args.ownership as OwnershipStatus | undefined,
+          isPinned: args.pinned,
+          notes: args.notes,
+        })
+        deck = result.deck
         const found = findCardAcrossLists(deck, cardName)
-        if (!found) throw new Error(`Card not found in deck: ${cardName}`)
-        const card = found.card
-
-        if (args.roles !== undefined) card.roles = args.roles
-        if (args.add_roles) {
-          card.roles = [...new Set([...card.roles, ...args.add_roles])]
-        }
-        if (args.remove_roles) {
-          card.roles = card.roles.filter((r) => !args.remove_roles!.includes(r))
-        }
-        if (args.status !== undefined) card.inclusion = args.status as InclusionStatus
-        if (args.ownership !== undefined) card.ownership = args.ownership as OwnershipStatus
-        if (args.pinned !== undefined) card.isPinned = args.pinned
-        if (args.notes !== undefined) card.notes = args.notes
-
-        updated.push({ name: card.card.name, roles: card.roles })
+        updated.push({ name: cardName, roles: found?.card.roles ?? [] })
       }
 
       storage.saveDeck(deck)

@@ -11,6 +11,8 @@ export type AddCardMeta = { merged: boolean }
 export type RemoveCardMeta = { removed: boolean; remainingQty: number }
 export type MoveCardMeta = { moved: string[]; merged: string[] }
 
+export type UpdateCardMeta = { updatedFields: string[] }
+
 // --- Commander Operation Metadata ---
 
 export type CommanderMeta = { commanders: string[]; colorIdentity: string[] }

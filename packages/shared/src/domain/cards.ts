@@ -1,7 +1,8 @@
 import type { Deck, DeckCard, DeckListName } from '../types/index.js'
 import { DECK_LIST } from '../types/index.js'
 import { findCardByName, findCardIndexByName } from '../utils/card-utils.js'
-import type { OpResult, AddCardMeta, RemoveCardMeta, MoveCardMeta } from './types.js'
+import type { InclusionStatus, OwnershipStatus } from '../types/index.js'
+import type { OpResult, AddCardMeta, RemoveCardMeta, MoveCardMeta, UpdateCardMeta } from './types.js'
 
 // --- Helpers ---
 
@@ -134,6 +135,84 @@ export function moveCard(
       moved: merged ? [] : [cardName],
       merged: merged ? [cardName] : [],
     },
+  }
+}
+
+/** Partial card field updates. */
+export interface CardFieldUpdates {
+  roles?: string[]
+  addRoles?: string[]
+  removeRoles?: string[]
+  inclusion?: InclusionStatus
+  ownership?: OwnershipStatus
+  isPinned?: boolean
+  notes?: string
+}
+
+/**
+ * Update card fields across all lists. Finds the card by name and applies
+ * the specified updates immutably. Returns the new deck.
+ */
+export function updateCardInDeck(
+  deck: Deck,
+  cardName: string,
+  updates: CardFieldUpdates
+): OpResult<UpdateCardMeta> {
+  const updatedFields: string[] = []
+
+  const applyUpdates = (card: DeckCard): DeckCard => {
+    let updated = { ...card }
+
+    if (updates.roles !== undefined) {
+      updated.roles = updates.roles
+      updatedFields.push('roles')
+    }
+    if (updates.addRoles) {
+      updated.roles = [...new Set([...updated.roles, ...updates.addRoles])]
+      updatedFields.push('roles')
+    }
+    if (updates.removeRoles) {
+      updated.roles = updated.roles.filter(r => !updates.removeRoles!.includes(r))
+      updatedFields.push('roles')
+    }
+    if (updates.inclusion !== undefined) {
+      updated.inclusion = updates.inclusion
+      updatedFields.push('inclusion')
+    }
+    if (updates.ownership !== undefined) {
+      updated.ownership = updates.ownership
+      updatedFields.push('ownership')
+    }
+    if (updates.isPinned !== undefined) {
+      updated.isPinned = updates.isPinned
+      updatedFields.push('isPinned')
+    }
+    if (updates.notes !== undefined) {
+      updated.notes = updates.notes
+      updatedFields.push('notes')
+    }
+
+    return updated
+  }
+
+  const updateList = (list: DeckCard[]): DeckCard[] => {
+    const index = findCardIndexByName(list, cardName)
+    if (index === -1) return list
+    return list.map((c, i) => i === index ? applyUpdates(c) : c)
+  }
+
+  // Check card exists somewhere
+  const found = findCardByName([...deck.cards, ...deck.alternates, ...deck.sideboard], cardName)
+  if (!found) throw new Error(`Card not found in deck: ${cardName}`)
+
+  return {
+    deck: {
+      ...deck,
+      cards: updateList(deck.cards),
+      alternates: updateList(deck.alternates),
+      sideboard: updateList(deck.sideboard),
+    },
+    meta: { updatedFields: [...new Set(updatedFields)] },
   }
 }
 

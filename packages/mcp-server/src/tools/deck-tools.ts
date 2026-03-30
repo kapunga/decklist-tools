@@ -4,10 +4,9 @@ import {
   type FormatType,
   createEmptyDeck,
   formatDefaults,
-  getCardLimit,
   getCardCount,
   type ScryfallCard,
-  FORMAT_TYPE,
+  validateDeckStructure,
 } from '@mtg-deckbuilder/shared'
 import { renderDeckView } from '../views/index.js'
 import type { ManageDeckArgs, ViewDeckArgs } from './types.js'
@@ -43,49 +42,19 @@ export function getDeck(storage: Storage, identifier: string) {
   }
 }
 
-// TODO: Migrate to use domain/validators.ts (validateDeckStructure) and adapt the
-// summary format. This private function predates the domain layer.
 function validateDeck(deck: Deck) {
-  const issues: string[] = []
-  const format = deck.format
-
+  const validationIssues = validateDeckStructure(deck)
   const cardCount = getCardCount(deck)
-  if (cardCount < format.deckSize) {
-    issues.push(`Deck has ${cardCount} cards, needs ${format.deckSize}`)
-  } else if (cardCount > format.deckSize && format.type === FORMAT_TYPE.COMMANDER) {
-    issues.push(`Commander deck has ${cardCount} cards, should be exactly ${format.deckSize}`)
-  }
-
   const sideboardCount = deck.sideboard.reduce((sum, c) => sum + c.quantity, 0)
-  if (sideboardCount > format.sideboardSize) {
-    issues.push(`Sideboard has ${sideboardCount} cards, max is ${format.sideboardSize}`)
-  }
-
-  const cardCounts = new Map<string, number>()
-  for (const card of deck.cards) {
-    const current = cardCounts.get(card.card.name) || 0
-    cardCounts.set(card.card.name, current + card.quantity)
-  }
-
-  for (const [name, count] of cardCounts) {
-    const limit = getCardLimit(name, format)
-    if (count > limit && limit !== Infinity) {
-      issues.push(`${name}: ${count} copies (limit: ${limit})`)
-    }
-  }
-
-  if (format.type === FORMAT_TYPE.COMMANDER && deck.commanders.length === 0) {
-    issues.push('No commander set for Commander format deck')
-  }
 
   return {
-    valid: issues.length === 0,
-    issues,
+    valid: validationIssues.length === 0,
+    issues: validationIssues.map(i => i.message),
     summary: {
       cardCount,
-      deckSize: format.deckSize,
+      deckSize: deck.format.deckSize,
       sideboardCount,
-      sideboardSize: format.sideboardSize,
+      sideboardSize: deck.format.sideboardSize,
       commanders: deck.commanders.map((c) => c.name),
     },
   }
