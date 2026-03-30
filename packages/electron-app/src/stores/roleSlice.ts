@@ -1,4 +1,9 @@
 import type { DeckCard } from '@/types'
+import {
+  addRoleToList,
+  updateRoleInList,
+  deleteRoleFromList,
+} from '@mtg-deckbuilder/shared'
 import type { RoleSlice, SliceCreator } from './types'
 
 function updateCardInAllLists(
@@ -46,43 +51,44 @@ export const createRoleSlice: SliceCreator<RoleSlice> = (set, get) => ({
   addCustomRole: async (deckId, role) => {
     const deck = get().decks.find(d => d.id === deckId)
     if (!deck) return
-    await get().updateDeck({ ...deck, customRoles: [...deck.customRoles, role] })
+    try {
+      await get().updateDeck({ ...deck, customRoles: addRoleToList(deck.customRoles, role) })
+    } catch {
+      // Duplicate role — silently fail in UI
+    }
   },
 
   updateCustomRole: async (deckId, roleId, updates) => {
     const deck = get().decks.find(d => d.id === deckId)
     if (!deck) return
-    await get().updateDeck({
-      ...deck,
-      customRoles: deck.customRoles.map(r => r.id === roleId ? { ...r, ...updates } : r)
-    })
+    const { updatedRoles } = updateRoleInList(deck.customRoles, roleId, updates)
+    await get().updateDeck({ ...deck, customRoles: updatedRoles })
   },
 
   removeCustomRole: async (deckId, roleId) => {
     const deck = get().decks.find(d => d.id === deckId)
     if (!deck) return
-    await get().updateDeck({
-      ...deck,
-      customRoles: deck.customRoles.filter(r => r.id !== roleId)
-    })
+    await get().updateDeck({ ...deck, customRoles: deleteRoleFromList(deck.customRoles, roleId) })
   },
 
   addGlobalRole: async (role) => {
-    const updatedRoles = [...get().globalRoles, role]
-    await window.electronAPI.saveGlobalRoles(updatedRoles)
-    set({ globalRoles: updatedRoles })
+    try {
+      const updatedRoles = addRoleToList(get().globalRoles, role)
+      await window.electronAPI.saveGlobalRoles(updatedRoles)
+      set({ globalRoles: updatedRoles })
+    } catch {
+      // Duplicate role — silently fail in UI
+    }
   },
 
   updateGlobalRole: async (roleId, updates) => {
-    const updatedRoles = get().globalRoles.map(r =>
-      r.id === roleId ? { ...r, ...updates } : r
-    )
+    const { updatedRoles } = updateRoleInList(get().globalRoles, roleId, updates)
     await window.electronAPI.saveGlobalRoles(updatedRoles)
     set({ globalRoles: updatedRoles })
   },
 
   deleteGlobalRole: async (roleId) => {
-    const updatedRoles = get().globalRoles.filter(r => r.id !== roleId)
+    const updatedRoles = deleteRoleFromList(get().globalRoles, roleId)
     await window.electronAPI.saveGlobalRoles(updatedRoles)
     set({ globalRoles: updatedRoles })
   },

@@ -3,12 +3,27 @@ import path from 'path'
 import os from 'os'
 import type { Deck, Taxonomy, InterestList, Config, RoleDefinition, SetCollectionFile, PullListConfig, CacheIndex, CacheEntryMeta, CacheStats, ScryfallCard } from '../types/index.js'
 import { DEFAULT_GLOBAL_ROLES } from '../constants/index.js'
-import { DEFAULT_PULL_LIST_CONFIG, isDoubleFacedCard, migrateLegacyPulledCards } from '../types/index.js'
+import { DEFAULT_PULL_LIST_CONFIG, isDoubleFacedCard, migrateLegacyPulledCards, migrateColorIdentity } from '../types/index.js'
 
 // Global roles file schema
 interface GlobalRolesFile {
   version: number
   roles: RoleDefinition[]
+}
+
+export class ConcurrentModificationError extends Error {
+  constructor(
+    public readonly deckId: string,
+    public readonly expectedVersion: number,
+    public readonly actualVersion: number
+  ) {
+    super(
+      `Concurrent modification on deck ${deckId}: ` +
+      `expected version ${expectedVersion}, found ${actualVersion}. ` +
+      `Another process may have modified this deck.`
+    )
+    this.name = 'ConcurrentModificationError'
+  }
 }
 
 // UUID v4 format used by Scryfall and deck IDs
@@ -109,12 +124,24 @@ export class Storage {
         }
       }
 
-      // Run migration for any decks with legacy ownership: 'pulled'
+      // Run migrations
       for (const deck of decks) {
+        let needsSave = false
+
         if (migrateLegacyPulledCards(deck)) {
           console.log(`Migrated legacy pulled cards in deck: ${deck.name}`)
-          this.saveDeck(deck)
+          needsSave = true
         }
+
+        if (migrateColorIdentity(deck, (id) => {
+          const card = this.getCachedCard(id) as ScryfallCard | null
+          return card?.color_identity
+        })) {
+          console.log(`Migrated color identity in deck: ${deck.name}`)
+          needsSave = true
+        }
+
+        if (needsSave) this.saveDeck(deck)
       }
 
       return decks
@@ -127,9 +154,23 @@ export class Storage {
   getDeck(id: string): Deck | null {
     validateUUID(id, 'deck ID')
     const deck = this.readJson<Deck>(path.join(this.decksDir, `${id}.json`))
-    if (deck && migrateLegacyPulledCards(deck)) {
-      console.log(`Migrated legacy pulled cards in deck: ${deck.name}`)
-      this.saveDeck(deck)
+    if (deck) {
+      let needsSave = false
+
+      if (migrateLegacyPulledCards(deck)) {
+        console.log(`Migrated legacy pulled cards in deck: ${deck.name}`)
+        needsSave = true
+      }
+
+      if (migrateColorIdentity(deck, (scryfallId) => {
+        const card = this.getCachedCard(scryfallId) as ScryfallCard | null
+        return card?.color_identity
+      })) {
+        console.log(`Migrated color identity in deck: ${deck.name}`)
+        needsSave = true
+      }
+
+      if (needsSave) this.saveDeck(deck)
     }
     return deck
   }
@@ -141,9 +182,20 @@ export class Storage {
   }
 
   saveDeck(deck: Deck): void {
+    // Optimistic locking: verify no concurrent modification since this deck was loaded
+    const filePath = path.join(this.decksDir, `${deck.id}.json`)
+    if (fs.existsSync(filePath)) {
+      const onDisk = this.readJson<{ version?: number }>(filePath)
+      const diskVersion = onDisk?.version ?? 0
+      const deckVersion = deck.version || 0
+      if (diskVersion !== deckVersion) {
+        throw new ConcurrentModificationError(deck.id, deckVersion, diskVersion)
+      }
+    }
+
     deck.version = (deck.version || 0) + 1
     deck.updatedAt = new Date().toISOString()
-    this.writeJson(path.join(this.decksDir, `${deck.id}.json`), deck)
+    this.writeJson(filePath, deck)
   }
 
   deleteDeck(id: string): boolean {

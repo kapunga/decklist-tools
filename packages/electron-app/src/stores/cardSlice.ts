@@ -1,40 +1,33 @@
 import type { DeckCard } from '@/types'
-import { findCardByName, findCardIndexByName } from '@mtg-deckbuilder/shared'
+import { DECK_LIST } from '@/types'
+import {
+  addCardToDeck,
+  removeCardFromDeck,
+  moveCard as domainMoveCard,
+  findCardAcrossLists,
+} from '@mtg-deckbuilder/shared'
+import { findCardIndexByName } from '@mtg-deckbuilder/shared'
 import type { CardSlice, SliceCreator } from './types'
 
 export const createCardSlice: SliceCreator<CardSlice> = (_set, get) => ({
-  addCardToDeck: async (deckId, card, target = 'cards') => {
+  addCardToDeck: async (deckId, card, target = DECK_LIST.MAINBOARD) => {
     const deck = get().decks.find(d => d.id === deckId)
     if (!deck) return
 
-    const targetList = deck[target]
-    const existingIndex = findCardIndexByName(targetList, card.card.name)
-
-    let updatedList: DeckCard[]
-    if (existingIndex >= 0) {
-      updatedList = targetList.map((c, i) =>
-        i === existingIndex
-          ? { ...c, quantity: c.quantity + card.quantity }
-          : c
-      )
-    } else {
-      updatedList = [...targetList, card]
-    }
-
-    await get().updateDeck({ ...deck, [target]: updatedList })
+    const result = addCardToDeck(deck, card, target)
+    await get().updateDeck(result.deck)
   },
 
-  removeCardFromDeck: async (deckId, cardName, target = 'cards') => {
+  removeCardFromDeck: async (deckId, cardName, target = DECK_LIST.MAINBOARD) => {
     const deck = get().decks.find(d => d.id === deckId)
     if (!deck) return
 
-    const index = findCardIndexByName(deck[target], cardName)
-    if (index === -1) return
+    // Silently return if card not found (UI behavior — don't throw)
+    const found = findCardAcrossLists(deck, cardName)
+    if (!found) return
 
-    await get().updateDeck({
-      ...deck,
-      [target]: deck[target].filter((_, i) => i !== index)
-    })
+    const result = removeCardFromDeck(deck, cardName, target)
+    await get().updateDeck(result.deck)
   },
 
   updateCardInDeck: async (deckId, cardName, updates) => {
@@ -59,33 +52,11 @@ export const createCardSlice: SliceCreator<CardSlice> = (_set, get) => ({
     const deck = get().decks.find(d => d.id === deckId)
     if (!deck) return
 
-    const card = findCardByName(deck[from], cardName)
-    if (!card) return
-
-    // Check if card already exists in target list
-    const existingIndex = findCardIndexByName(deck[to], cardName)
-
-    let updatedToList
-    if (existingIndex >= 0) {
-      // Merge with existing card
-      updatedToList = deck[to].map((c, i) =>
-        i === existingIndex
-          ? {
-              ...c,
-              quantity: c.quantity + card.quantity,
-              roles: [...new Set([...c.roles, ...card.roles])]
-            }
-          : c
-      )
-    } else {
-      updatedToList = [...deck[to], card]
+    try {
+      const result = domainMoveCard(deck, cardName, from, to)
+      await get().updateDeck(result.deck)
+    } catch {
+      // Silently fail in UI (card not found, etc.)
     }
-
-    const fromIndex = findCardIndexByName(deck[from], cardName)
-    await get().updateDeck({
-      ...deck,
-      [from]: deck[from].filter((_, i) => i !== fromIndex),
-      [to]: updatedToList
-    })
   },
 })

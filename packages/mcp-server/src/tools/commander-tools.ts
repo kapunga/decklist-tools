@@ -1,67 +1,38 @@
-import { FORMAT_TYPE, type Storage } from '@mtg-deckbuilder/shared'
+import {
+  type Storage,
+  addCommander,
+  removeCommander,
+  swapCommander,
+} from '@mtg-deckbuilder/shared'
 import { getDeckOrThrow, fetchScryfallCard, createCardIdentifier } from './helpers.js'
 import type { ManageCommanderArgs } from './types.js'
 
-async function recomputeColorIdentity(
-  storage: Storage,
-  commanders: { name: string; setCode: string; collectorNumber: string }[]
-): Promise<string[]> {
-  const colors = new Set<string>()
-  for (const cmd of commanders) {
-    const card = await fetchScryfallCard(storage, cmd.name, cmd.setCode, cmd.collectorNumber)
-    for (const c of card.color_identity) {
-      colors.add(c)
-    }
-  }
-  return Array.from(colors)
-}
-
 export async function manageCommander(storage: Storage, args: ManageCommanderArgs) {
   const deck = getDeckOrThrow(storage, args.deck_id)
-
-  if (deck.format.type !== FORMAT_TYPE.COMMANDER) {
-    throw new Error('Commanders can only be managed for Commander format decks')
-  }
 
   switch (args.action) {
     case 'add': {
       const scryfallCard = await fetchScryfallCard(storage, args.commander_name, args.set_code, args.collector_number)
       const commander = createCardIdentifier(scryfallCard)
 
-      const existingIndex = deck.commanders.findIndex(
-        (c) => c.name.toLowerCase() === commander.name.toLowerCase()
-      )
-      if (existingIndex >= 0) throw new Error(`${commander.name} is already a commander`)
-
-      deck.commanders.push(commander)
-      deck.colorIdentity = await recomputeColorIdentity(storage, deck.commanders)
-
-      storage.saveDeck(deck)
+      const result = addCommander(deck, commander)
+      storage.saveDeck(result.deck)
 
       return {
         success: true,
-        commanders: deck.commanders.map((c) => c.name),
-        colorIdentity: deck.colorIdentity,
+        commanders: result.meta.commanders,
+        colorIdentity: result.meta.colorIdentity,
       }
     }
 
     case 'remove': {
-      const removeIndex = deck.commanders.findIndex(
-        (c) => c.name.toLowerCase() === args.commander_name.toLowerCase()
-      )
-      if (removeIndex < 0) throw new Error(`${args.commander_name} is not a commander in this deck`)
-
-      deck.commanders.splice(removeIndex, 1)
-      deck.colorIdentity = deck.commanders.length > 0
-        ? await recomputeColorIdentity(storage, deck.commanders)
-        : []
-
-      storage.saveDeck(deck)
+      const result = removeCommander(deck, args.commander_name)
+      storage.saveDeck(result.deck)
 
       return {
         success: true,
-        commanders: deck.commanders.map((c) => c.name),
-        colorIdentity: deck.colorIdentity,
+        commanders: result.meta.commanders,
+        colorIdentity: result.meta.colorIdentity,
       }
     }
 
@@ -70,31 +41,18 @@ export async function manageCommander(storage: Storage, args: ManageCommanderArg
         throw new Error('new_commander_name is required for swap action')
       }
 
-      const swapIndex = deck.commanders.findIndex(
-        (c) => c.name.toLowerCase() === args.commander_name.toLowerCase()
-      )
-      if (swapIndex < 0) throw new Error(`${args.commander_name} is not a commander in this deck`)
-
       const newScryfallCard = await fetchScryfallCard(
         storage, args.new_commander_name, args.new_set_code, args.new_collector_number
       )
       const newCommander = createCardIdentifier(newScryfallCard)
 
-      // Check the new commander isn't already there
-      const duplicateIndex = deck.commanders.findIndex(
-        (c) => c.name.toLowerCase() === newCommander.name.toLowerCase()
-      )
-      if (duplicateIndex >= 0) throw new Error(`${newCommander.name} is already a commander`)
-
-      deck.commanders[swapIndex] = newCommander
-      deck.colorIdentity = await recomputeColorIdentity(storage, deck.commanders)
-
-      storage.saveDeck(deck)
+      const result = swapCommander(deck, args.commander_name, newCommander)
+      storage.saveDeck(result.deck)
 
       return {
         success: true,
-        commanders: deck.commanders.map((c) => c.name),
-        colorIdentity: deck.colorIdentity,
+        commanders: result.meta.commanders,
+        colorIdentity: result.meta.colorIdentity,
       }
     }
 

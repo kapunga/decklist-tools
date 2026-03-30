@@ -108,42 +108,7 @@ export function createCardIdentifier(scryfallCard: ScryfallCard): CardIdentifier
     name: scryfallCard.name,
     setCode: scryfallCard.set,
     collectorNumber: scryfallCard.collector_number,
+    colorIdentity: scryfallCard.color_identity,
   }
 }
 
-import type { RoleDefinition } from '@mtg-deckbuilder/shared'
-
-/**
- * Update a role's properties in a list of roles.
- * Returns { updatedRoles, updatedRole } with a new array. Does not mutate the input.
- */
-export function updateRoleInList(
-  roles: RoleDefinition[],
-  roleId: string,
-  updates: { name?: string; description?: string; color?: string }
-): { updatedRoles: RoleDefinition[]; updatedRole: RoleDefinition } {
-  const roleIndex = roles.findIndex((r) => r.id === roleId)
-  if (roleIndex === -1) throw new Error(`Role not found: ${roleId}`)
-
-  const updatedRole: RoleDefinition = {
-    ...roles[roleIndex],
-    ...(updates.name !== undefined && { name: updates.name }),
-    ...(updates.description !== undefined && { description: updates.description }),
-    ...(updates.color !== undefined && { color: updates.color }),
-  }
-
-  const updatedRoles = [...roles]
-  updatedRoles[roleIndex] = updatedRole
-  return { updatedRoles, updatedRole }
-}
-
-/**
- * Delete a role from a list of roles.
- * Returns the new array without the deleted role. Does not mutate the input.
- */
-export function deleteRoleFromList(roles: RoleDefinition[], roleId: string): RoleDefinition[] {
-  const roleIndex = roles.findIndex((r) => r.id === roleId)
-  if (roleIndex === -1) throw new Error(`Role not found: ${roleId}`)
-
-  return roles.filter((_, i) => i !== roleIndex)
-}

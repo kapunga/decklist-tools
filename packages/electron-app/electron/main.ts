@@ -2,7 +2,16 @@ import { app, BrowserWindow, dialog, ipcMain, protocol, session } from 'electron
 import path from 'path'
 import fs from 'fs'
 import os from 'os'
-import { Storage } from './storage'
+import { Storage } from '@mtg-deckbuilder/shared'
+import type { Deck, Taxonomy, InterestList, Config, RoleDefinition, SetCollectionFile, PullListConfig } from '@mtg-deckbuilder/shared'
+import {
+  watchForChanges,
+  exportCollection,
+  importCollection,
+  preCacheDeck,
+  loadAllCardsToCache,
+  cancelCacheLoad,
+} from './storage-extensions'
 
 // MCP client integration
 type McpClientId = 'claude-desktop' | 'claude-code' | 'gemini-cli'
@@ -147,7 +156,7 @@ const createWindow = () => {
 }
 
 app.whenReady().then(() => {
-  storage = new Storage()
+  storage = new Storage(path.join(app.getPath('appData'), 'mtg-deckbuilder'))
 
   // Set Content Security Policy (production only - Vite dev server needs more permissive settings)
   if (app.isPackaged) {
@@ -242,7 +251,7 @@ function setupIpcHandlers() {
   })
 
   ipcMain.handle('decks:save', async (_, deck: unknown) => {
-    return storage!.saveDeck(deck)
+    return storage!.saveDeck(deck as Deck)
   })
 
   ipcMain.handle('decks:delete', async (_, id: string) => {
@@ -255,7 +264,7 @@ function setupIpcHandlers() {
   })
 
   ipcMain.handle('taxonomy:save', async (_, taxonomy: unknown) => {
-    return storage!.saveTaxonomy(taxonomy)
+    return storage!.saveTaxonomy(taxonomy as Taxonomy)
   })
 
   // Interest List
@@ -264,7 +273,7 @@ function setupIpcHandlers() {
   })
 
   ipcMain.handle('interest:save', async (_, list: unknown) => {
-    return storage!.saveInterestList(list)
+    return storage!.saveInterestList(list as InterestList)
   })
 
   // Config
@@ -273,7 +282,7 @@ function setupIpcHandlers() {
   })
 
   ipcMain.handle('config:save', async (_, config: unknown) => {
-    return storage!.saveConfig(config)
+    return storage!.saveConfig(config as Config)
   })
 
   // Global Roles
@@ -282,7 +291,7 @@ function setupIpcHandlers() {
   })
 
   ipcMain.handle('global-roles:save', async (_, roles: unknown[]) => {
-    return storage!.saveGlobalRoles(roles)
+    return storage!.saveGlobalRoles(roles as RoleDefinition[])
   })
 
   // Set Collection
@@ -291,7 +300,7 @@ function setupIpcHandlers() {
   })
 
   ipcMain.handle('set-collection:save', async (_, collection: unknown) => {
-    return storage!.saveSetCollection(collection)
+    return storage!.saveSetCollection(collection as SetCollectionFile)
   })
 
   // Pull List Config
@@ -300,11 +309,11 @@ function setupIpcHandlers() {
   })
 
   ipcMain.handle('pull-list-config:save', async (_, config: unknown) => {
-    return storage!.savePullListConfig(config)
+    return storage!.savePullListConfig(config as PullListConfig)
   })
 
   // Watch for file changes
-  storage.watchForChanges((event, filename) => {
+  watchForChanges(storage, (event, filename) => {
     if (mainWindow) {
       mainWindow.webContents.send('storage:changed', { event, filename })
     }
@@ -337,7 +346,7 @@ function setupIpcHandlers() {
   })
 
   ipcMain.handle('cache:pre-cache-deck', async (_, deckId: string, includeImages: boolean) => {
-    return storage!.preCacheDeck(deckId, includeImages)
+    return preCacheDeck(storage!, deckId, includeImages)
   })
 
   ipcMain.handle('cache:get-image-path', async (_, scryfallId: string, face?: string) => {
@@ -346,13 +355,13 @@ function setupIpcHandlers() {
 
   ipcMain.handle('cache:load-all', async (_, includeImages: boolean) => {
     if (!mainWindow) return
-    await storage!.loadAllCardsToCache(includeImages, (progress) => {
+    await loadAllCardsToCache(storage!, includeImages, (progress) => {
       mainWindow?.webContents.send('cache:load-progress', progress)
     })
   })
 
   ipcMain.handle('cache:load-cancel', async () => {
-    storage!.cancelCacheLoad()
+    cancelCacheLoad()
   })
 
   // Collection export/import
@@ -373,7 +382,7 @@ function setupIpcHandlers() {
         return { success: false, cancelled: true }
       }
 
-      const data = storage!.exportCollection()
+      const data = exportCollection(storage!)
       fs.writeFileSync(result.filePath, JSON.stringify(data, null, 2), 'utf-8')
       return { success: true, filePath: result.filePath }
     } catch (error) {
@@ -407,7 +416,7 @@ function setupIpcHandlers() {
         return { success: false, error: 'Invalid backup file: missing formatVersion' }
       }
 
-      const importResult = storage!.importCollection(data)
+      const importResult = importCollection(storage!, data)
       return {
         success: true,
         deckCount: importResult.deckCount,

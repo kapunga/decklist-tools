@@ -8,7 +8,6 @@ import {
   getCardCount,
   type ScryfallCard,
   FORMAT_TYPE,
-  DECK_LIST,
 } from '@mtg-deckbuilder/shared'
 import { renderDeckView } from '../views/index.js'
 import type { ManageDeckArgs, ViewDeckArgs } from './types.js'
@@ -44,6 +43,8 @@ export function getDeck(storage: Storage, identifier: string) {
   }
 }
 
+// TODO: Migrate to use domain/validators.ts (validateDeckStructure) and adapt the
+// summary format. This private function predates the domain layer.
 function validateDeck(deck: Deck) {
   const issues: string[] = []
   const format = deck.format
@@ -153,9 +154,9 @@ export function searchDecksForCard(storage: Storage, cardName: string) {
 
   for (const deck of decks) {
     const lists: [string, { card: { name: string }; quantity: number }[]][] = [
-      [DECK_LIST.MAINBOARD, deck.cards],
-      [DECK_LIST.ALTERNATES, deck.alternates],
-      [DECK_LIST.SIDEBOARD, deck.sideboard],
+      ['mainboard', deck.cards],
+      ['alternates', deck.alternates],
+      ['sideboard', deck.sideboard],
     ]
 
     for (const [location, list] of lists) {
