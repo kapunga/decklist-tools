@@ -1,5 +1,66 @@
 # @mtg-deckbuilder/mcp-server
 
+## 0.7.0
+
+### Minor Changes
+
+- e1e2a00: Add Claude Code and Gemini CLI integration buttons to Settings, refactoring the existing Claude Desktop integration into a generic MCP client system
+- 65499f7: Code quality: Scryfall fetch dedup, parser framework, performance improvements, typed discriminator constants
+
+  - Extract generic `fetchFromScryfall<T>()` helper, reducing 7 duplicate try/catch/404 patterns to one-liners
+  - Add `parseLinesWithSections()` framework for line-based format parsers (Arena, MTGO, Simple)
+  - Remove legacy `findCardInList`/`findCardIndexInList` re-export aliases
+  - Add `buildRoleLookup()` for O(1) role lookups in view rendering loops
+  - Derive `getCacheStats()` from CacheIndex instead of per-file statSync calls
+  - Replace ~200 bare discriminator strings with typed `as const` objects across all packages
+  - Add `DeckListName`, `INCLUSION_STATUS`, `OWNERSHIP_STATUS`, `FORMAT_TYPE`, `NOTE_TYPE`, `ADDED_BY`, `DECK_LIST`, `PARSER_SECTION` constants
+
+- bbf49a3: Shared domain layer: unified business logic, composable validators, optimistic locking
+
+  - Add `domain/` module with pure functions for card operations (add, remove, move, merge), commander management, and role CRUD
+  - All operations are immutable — return new Deck via `OpResult<M>` with operation metadata
+  - Add composable validators: deck size, sideboard size, card limits, commander presence, format legality, color identity
+  - Validation is informational (two categories: structure, legality) — never blocks operations
+  - Add `colorIdentity` field to `CardIdentifier` — every card carries its color identity from Scryfall
+  - One-time migration populates `colorIdentity` on existing cards from Scryfall cache
+  - Add optimistic locking to `saveDeck` with `ConcurrentModificationError`
+  - Migrate MCP tools and Electron stores to use domain functions
+  - Eliminate duplicated business logic between MCP server and Electron app
+
+### Patch Changes
+
+- 04ef890: Eliminate duplicate types, resolve remaining TODOs
+
+  - Replace electron-app's ~450-line `src/types/index.ts` with a 2-line re-export from shared
+  - Migrate `validateDeck` in MCP deck-tools to use domain `validateDeckStructure`
+  - Extract `updateCardInDeck` domain function for immutable card field updates
+  - Remove unused `consolidateDuplicateCards` (replaced by domain `mergeCardIntoList`)
+
+- 2e3b8fd: Consolidate Storage: Electron app now uses shared Storage class
+
+  - Delete duplicated `electron/storage.ts` (~1100 lines)
+  - Electron app imports `Storage` from `@mtg-deckbuilder/shared` directly
+  - Extract Electron-specific functions (file watching, export/import, pre-caching) to `electron/storage-extensions.ts`
+  - Electron app gains: optimistic locking, UUID validation, getCacheStats optimization, proper types, unified migration path
+  - Fix `migrateColorIdentity` null guards for decks with missing fields
+
+- 0139ec5: Add versioned schema migration system for deck data
+
+  - Add `schemaVersion` field to Deck type for tracking migration state
+  - Add `migrations/` module with ordered migration registry and `runMigrations()`
+  - Migrations run automatically on deck load (both MCP and Electron) and persist
+  - Migration 001: populate default fields on deck notes (replaces render-time migrateDeckNote)
+  - Remove ad-hoc migration functions (migrateLegacyPulledCards, migrateColorIdentity)
+  - New migrations are added by creating a file and registering it — no Storage changes needed
+
+- Updated dependencies [e1e2a00]
+- Updated dependencies [04ef890]
+- Updated dependencies [65499f7]
+- Updated dependencies [2e3b8fd]
+- Updated dependencies [bbf49a3]
+- Updated dependencies [0139ec5]
+  - @mtg-deckbuilder/shared@0.7.0
+
 ## 0.6.1
 
 ### Patch Changes
