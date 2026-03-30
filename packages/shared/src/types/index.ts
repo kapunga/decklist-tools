@@ -183,107 +183,6 @@ export function isCardFullyPulled(card: DeckCard): boolean {
   return getTotalPulledQuantity(card) >= card.quantity
 }
 
-/**
- * Migrate a deck's cards from legacy ownership: 'pulled' to use pulledPrintings.
- * Returns true if any migrations were performed.
- * @mutates deck — modifies card ownership and pulledPrintings in place.
- */
-export function migrateLegacyPulledCards(deck: Deck): boolean {
-  let migrated = false
-
-  const migrateCards = (cards: DeckCard[]) => {
-    for (const card of cards) {
-      // Check for legacy 'pulled' value (cast to handle old data)
-      if ((card.ownership as string) === 'pulled') {
-        // Convert to 'owned' and add pulledPrintings entry
-        card.ownership = OWNERSHIP_STATUS.OWNED
-        card.pulledPrintings = card.pulledPrintings ?? []
-
-        // Add entry for the card's current printing if not already tracked
-        const existingEntry = card.pulledPrintings.find(
-          p => p.setCode.toLowerCase() === card.card.setCode.toLowerCase() &&
-               p.collectorNumber === card.card.collectorNumber
-        )
-
-        if (!existingEntry) {
-          card.pulledPrintings.push({
-            setCode: card.card.setCode,
-            collectorNumber: card.card.collectorNumber,
-            quantity: card.quantity
-          })
-        }
-
-        migrated = true
-      }
-    }
-  }
-
-  migrateCards(deck.cards)
-  migrateCards(deck.alternates)
-  migrateCards(deck.sideboard)
-
-  return migrated
-}
-
-/**
- * Populate colorIdentity on all CardIdentifiers in a deck using cached Scryfall data.
- * Also recomputes deck.colorIdentity from commanders.
- * Returns true if any changes were made.
- * @mutates deck — writes colorIdentity onto CardIdentifiers and the deck.
- */
-export function migrateColorIdentity(
-  deck: Deck,
-  lookupColorIdentity: (scryfallId: string) => string[] | undefined
-): boolean {
-  let migrated = false
-
-  const populateCards = (cards: DeckCard[]) => {
-    for (const card of cards) {
-      if (card.card.colorIdentity !== undefined) continue
-      if (!card.card.scryfallId) continue
-
-      const ci = lookupColorIdentity(card.card.scryfallId)
-      if (ci) {
-        card.card.colorIdentity = ci
-        migrated = true
-      }
-    }
-  }
-
-  populateCards(deck.cards ?? [])
-  populateCards(deck.alternates ?? [])
-  populateCards(deck.sideboard ?? [])
-
-  // Populate commanders
-  for (const cmd of deck.commanders ?? []) {
-    if (cmd.colorIdentity !== undefined) continue
-    if (!cmd.scryfallId) continue
-
-    const ci = lookupColorIdentity(cmd.scryfallId)
-    if (ci) {
-      cmd.colorIdentity = ci
-      migrated = true
-    }
-  }
-
-  // Recompute deck-level colorIdentity from commanders
-  if ((deck.commanders ?? []).length > 0) {
-    const colors = new Set<string>()
-    for (const cmd of deck.commanders) {
-      for (const c of cmd.colorIdentity ?? []) {
-        colors.add(c)
-      }
-    }
-    const newCI = Array.from(colors)
-    const oldCI = deck.colorIdentity ?? []
-    if (newCI.length !== oldCI.length || newCI.some(c => !oldCI.includes(c))) {
-      deck.colorIdentity = newCI
-      migrated = true
-    }
-  }
-
-  return migrated
-}
 
 // Generate a unique ID for deck cards
 export function generateDeckCardId(): string {
@@ -356,6 +255,7 @@ export interface Deck {
   notes: DeckNote[]
   artCardScryfallId?: string      // Scryfall ID for background art
   colorIdentity?: string[]        // Color identity (for commander, derived from commander card)
+  schemaVersion?: number          // Schema migration version (0 = pre-migration, undefined treated as 0)
 }
 
 // Taxonomy - global role definitions shared across all decks

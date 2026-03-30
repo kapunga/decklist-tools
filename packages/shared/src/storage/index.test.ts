@@ -64,7 +64,7 @@ describe('Storage', () => {
       const loaded = storage.getDeck(deck.id)
       expect(loaded).not.toBeNull()
       expect(loaded!.name).toBe('Test Deck')
-      expect(loaded!.version).toBe(2) // saveDeck increments version
+      expect(loaded!.version).toBe(3) // saveDeck increments version; getDeck runs schema migration (another save)
     })
 
     it('listDecks returns saved decks', () => {

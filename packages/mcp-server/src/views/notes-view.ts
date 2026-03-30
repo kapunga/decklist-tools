@@ -1,12 +1,12 @@
 import type { Deck, RoleDefinition } from '@mtg-deckbuilder/shared'
-import { getRoleById, migrateDeckNote } from '@mtg-deckbuilder/shared'
+import { getRoleById } from '@mtg-deckbuilder/shared'
 
 export function renderNotesView(deck: Deck, globalRoles: RoleDefinition[]): string {
   const lines: string[] = []
   lines.push(`# ${deck.name} (Notes)`)
   lines.push('')
 
-  const notes = deck.notes.map(n => migrateDeckNote(n))
+  const notes = deck.notes
 
   if (notes.length === 0) {
     lines.push('*No notes yet*')
