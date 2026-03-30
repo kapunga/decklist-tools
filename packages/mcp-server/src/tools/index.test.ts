@@ -295,7 +295,7 @@ describe('Card Management', () => {
       mock._decks.set(deck.id, deck)
 
       await call('manage_card', { action: 'update', deck_id: deck.id, name: 'Sol Ring', roles: ['mana-fixer'] })
-      expect(deck.cards[0].roles).toEqual(['mana-fixer'])
+      expect(mock._decks.get(deck.id)!.cards[0].roles).toEqual(['mana-fixer'])
     })
 
     it('adds roles', async () => {
@@ -304,7 +304,7 @@ describe('Card Management', () => {
       mock._decks.set(deck.id, deck)
 
       await call('manage_card', { action: 'update', deck_id: deck.id, name: 'Sol Ring', add_roles: ['engine'] })
-      expect(deck.cards[0].roles).toEqual(['ramp', 'engine'])
+      expect(mock._decks.get(deck.id)!.cards[0].roles).toEqual(['ramp', 'engine'])
     })
 
     it('removes roles', async () => {
@@ -313,7 +313,7 @@ describe('Card Management', () => {
       mock._decks.set(deck.id, deck)
 
       await call('manage_card', { action: 'update', deck_id: deck.id, name: 'Sol Ring', remove_roles: ['ramp'] })
-      expect(deck.cards[0].roles).toEqual(['engine'])
+      expect(mock._decks.get(deck.id)!.cards[0].roles).toEqual(['engine'])
     })
 
     it('updates status and ownership', async () => {
@@ -324,8 +324,9 @@ describe('Card Management', () => {
       await call('manage_card', {
         action: 'update', deck_id: deck.id, name: 'Sol Ring', status: 'considering', ownership: 'need_to_buy'
       })
-      expect(deck.cards[0].inclusion).toBe('considering')
-      expect(deck.cards[0].ownership).toBe('need_to_buy')
+      const saved = mock._decks.get(deck.id)!
+      expect(saved.cards[0].inclusion).toBe('considering')
+      expect(saved.cards[0].ownership).toBe('need_to_buy')
     })
 
     it('finds card in alternates', async () => {
@@ -335,7 +336,7 @@ describe('Card Management', () => {
 
       const result = await call('manage_card', { action: 'update', deck_id: deck.id, name: 'Sol Ring', pinned: true }) as any
       expect(result.success).toBe(true)
-      expect(deck.alternates[0].isPinned).toBe(true)
+      expect(mock._decks.get(deck.id)!.alternates[0].isPinned).toBe(true)
     })
 
     it('throws when card not found', async () => {
