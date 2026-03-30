@@ -255,6 +255,7 @@ export interface Deck {
   notes: DeckNote[]
   artCardScryfallId?: string      // Scryfall ID for background art
   colorIdentity?: string[]        // Color identity (for commander, derived from commander card)
+  schemaVersion?: number          // Schema migration version (0 = pre-migration, undefined treated as 0)
 }
 
 // Taxonomy - global role definitions shared across all decks
