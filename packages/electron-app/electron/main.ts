@@ -155,6 +155,9 @@ const createWindow = () => {
   })
 }
 
+// Ensure the app menu shows the correct name (Electron uses package.json "name" by default)
+app.setName('MTG Deckbuilder')
+
 app.whenReady().then(() => {
   storage = new Storage(path.join(app.getPath('appData'), 'mtg-deckbuilder'))
 
