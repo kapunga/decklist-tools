@@ -19,6 +19,7 @@ import { NotesView } from '@/components/NotesView'
 import { RoleEditModal } from '@/components/RoleEditModal'
 import { ColorPips } from '@/components/ColorPips'
 import { PullListView } from '@/components/PullListView'
+import { getDeckColorIdentity, showColorlessPip } from '@mtg-deckbuilder/shared'
 import { getCardCount, FORMAT_TYPE, DECK_LIST } from '@/types'
 import type { RoleDefinition, DeckListName } from '@/types'
 
@@ -144,9 +145,11 @@ export function DeckDetail() {
             {deck.format.type.replace('_', ' ')}
           </Badge>
 
-          {deck.colorIdentity && deck.colorIdentity.length > 0 && (
-            <ColorPips colors={deck.colorIdentity} size="sm" showColorless={false} />
-          )}
+          <ColorPips
+            colors={getDeckColorIdentity(deck)}
+            size="sm"
+            showColorless={showColorlessPip(deck)}
+          />
 
           {/* Commander display for Commander format */}
           {deck.format.type === FORMAT_TYPE.COMMANDER && deck.commanders.length > 0 && (

@@ -1,11 +1,11 @@
 import type { Deck, CardIdentifier } from '../types/index.js'
-import { FORMAT_TYPE } from '../types/index.js'
+import { FORMAT_TYPE, INCLUSION_STATUS } from '../types/index.js'
 import type { OpResult, CommanderMeta } from './types.js'
 
 // --- Helpers ---
 
-/** Derive the deck's color identity from all commanders' stored colorIdentity fields. */
-function deriveColorIdentity(commanders: CardIdentifier[]): string[] {
+/** Derive color identity as the union of all CardIdentifiers' colorIdentity fields. */
+export function deriveColorIdentity(commanders: CardIdentifier[]): string[] {
   const colors = new Set<string>()
   for (const cmd of commanders) {
     for (const c of cmd.colorIdentity ?? []) {
@@ -109,4 +109,26 @@ export function swapCommander(
     deck: { ...deck, commanders: newCommanders, colorIdentity },
     meta: buildMeta(newCommanders),
   }
+}
+
+// --- Queries ---
+
+/**
+ * Get the effective color identity for a deck.
+ * Commander format: uses the stored colorIdentity (derived from commanders).
+ * Other formats: computes the union of all non-cut cards' color identities.
+ */
+export function getDeckColorIdentity(deck: Deck): string[] {
+  if (deck.format.type === FORMAT_TYPE.COMMANDER) {
+    return deck.colorIdentity ?? []
+  }
+  const allCards = [...deck.cards, ...deck.sideboard]
+    .filter(dc => dc.inclusion !== INCLUSION_STATUS.CUT)
+    .map(dc => dc.card)
+  return deriveColorIdentity(allCards)
+}
+
+/** Colorless is only a meaningful identity for commander format. */
+export function showColorlessPip(deck: Deck): boolean {
+  return deck.format.type === FORMAT_TYPE.COMMANDER
 }

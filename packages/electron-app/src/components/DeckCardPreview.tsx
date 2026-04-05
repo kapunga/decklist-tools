@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { ColorPips } from '@/components/ColorPips'
 import type { Deck, FormatType } from '@/types'
 import { getCardCount } from '@/types'
+import { getDeckColorIdentity, showColorlessPip } from '@mtg-deckbuilder/shared'
 import { getCardById, getCardArtCropUrl } from '@/lib/scryfall'
 
 const formatColors: Record<FormatType, string> = {
@@ -68,10 +69,11 @@ export function DeckCardPreview({ deck, onClick, onDelete }: DeckCardPreviewProp
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-2 min-w-0">
             <CardTitle className="text-lg truncate">{deck.name}</CardTitle>
-            {/* Color pips for commander decks or decks with color identity */}
-            {deck.colorIdentity && deck.colorIdentity.length > 0 && (
-              <ColorPips colors={deck.colorIdentity} size="sm" showColorless={false} />
-            )}
+            <ColorPips
+              colors={getDeckColorIdentity(deck)}
+              size="sm"
+              showColorless={showColorlessPip(deck)}
+            />
           </div>
           <Button
             variant="ghost"
