@@ -23,7 +23,7 @@ import { useStore, useAllRoles, useGlobalRoles } from '@/hooks/useStore'
 import { getRoleColor } from '@/lib/constants'
 import { CardEditModal } from '@/components/CardEditModal'
 import type { DeckCard, OwnershipStatus, RoleDefinition, DeckListName } from '@/types'
-import { isCardFullyPulled, getCardDisplayName, INCLUSION_STATUS, OWNERSHIP_STATUS, DECK_LIST } from '@/types'
+import { isCardFullyPulled, getCardDisplayName, getCanonicalSuffix, INCLUSION_STATUS, OWNERSHIP_STATUS, DECK_LIST } from '@/types'
 
 const ownershipLabels: Record<OwnershipStatus, string> = {
   [OWNERSHIP_STATUS.UNKNOWN]: 'Unknown',
@@ -133,7 +133,7 @@ export function CardItem({ card, deckId, listType }: CardItemProps) {
         </span>
         <span className="truncate">
           {getCardDisplayName(card.card)}
-          {card.card.flavorName && (
+          {getCanonicalSuffix(card.card) && (
             <span className="text-xs text-muted-foreground ml-1">({card.card.name})</span>
           )}
         </span>

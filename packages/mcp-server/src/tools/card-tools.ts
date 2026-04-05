@@ -213,7 +213,7 @@ function formatCardResponse(scryfallCard: ScryfallCard) {
 
 function formatCardCompact(card: ScryfallCard): string {
   const setInfo = `${card.set.toUpperCase()}#${card.collector_number}`
-  const flavorSuffix = card.flavor_name ? ` (${card.name})` : ''
+  const canonicalSuffix = card.flavor_name ? ` (${card.name})` : ''
   const displayName = card.flavor_name ?? card.name
   const hasFaces = card.card_faces && card.card_faces.length >= 2
 
@@ -222,7 +222,7 @@ function formatCardCompact(card: ScryfallCard): string {
     const back = card.card_faces![1]
     const lines: string[] = []
 
-    lines.push(`${front.name} // ${back.name}${flavorSuffix} • ${setInfo} • ${card.rarity} • ${card.layout}`)
+    lines.push(`${front.name} // ${back.name}${canonicalSuffix} • ${setInfo} • ${card.rarity} • ${card.layout}`)
 
     const frontPt = front.power && front.toughness ? ` ${front.power}/${front.toughness}` : ''
     const frontMana = front.mana_cost ? `${front.mana_cost} ` : ''
@@ -242,7 +242,7 @@ function formatCardCompact(card: ScryfallCard): string {
   const lines: string[] = []
   const pt = card.power && card.toughness ? ` ${card.power}/${card.toughness}` : ''
   const mana = card.mana_cost ? `${card.mana_cost} ` : ''
-  lines.push(`${displayName}${flavorSuffix} • ${setInfo} • ${card.rarity} • ${mana}${card.type_line}${pt}`)
+  lines.push(`${displayName}${canonicalSuffix} • ${setInfo} • ${card.rarity} • ${mana}${card.type_line}${pt}`)
   if (card.oracle_text) lines.push(card.oracle_text)
 
   return lines.join('\n')

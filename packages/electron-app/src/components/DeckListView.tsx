@@ -14,7 +14,7 @@ import { useStore, useGlobalRoles } from '@/hooks/useStore'
 import { useScryfallCache } from '@/hooks/useScryfallCache'
 import { getCardById } from '@/lib/scryfall'
 import type { DeckCard, ScryfallCard, Deck, DeckListName } from '@/types'
-import { getCardLimit, isCardFullyPulled, getCardDisplayName, INCLUSION_STATUS, OWNERSHIP_STATUS, ADDED_BY } from '@/types'
+import { getCardLimit, isCardFullyPulled, getCardDisplayName, getCanonicalSuffix, INCLUSION_STATUS, OWNERSHIP_STATUS, ADDED_BY } from '@/types'
 import { getPrimaryType, CARD_TYPE_SORT_ORDER } from '@/lib/constants'
 import type { CardFilter } from '@mtg-deckbuilder/shared'
 import { enrichCards, applyFilters } from '@mtg-deckbuilder/shared'
@@ -430,7 +430,7 @@ function CardRow({
       {/* Card name - fixed width with truncation */}
       <span className="w-48 truncate font-medium flex-shrink-0">
         {getCardDisplayName(card.card)}
-        {card.card.flavorName && (
+        {getCanonicalSuffix(card.card) && (
           <span className="text-xs text-muted-foreground ml-1">({card.card.name})</span>
         )}
       </span>

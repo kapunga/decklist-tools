@@ -46,6 +46,11 @@ export function getCardDisplayName(card: CardIdentifier): string {
   return card.flavorName ?? card.name
 }
 
+/** Returns ' (canonical name)' when the card has a flavor name, empty string otherwise. */
+export function getCanonicalSuffix(card: CardIdentifier): string {
+  return card.flavorName ? ` (${card.name})` : ''
+}
+
 // Discriminator constants — single source of truth; types derived via typeof
 
 export const INCLUSION_STATUS = {

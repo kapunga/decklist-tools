@@ -1,5 +1,5 @@
 import type { DeckCard, RoleDefinition, ScryfallCard } from '@mtg-deckbuilder/shared'
-import { getPrimaryType, getRoleById, isCardFullyPulled, getOracleText, getCardDisplayName, OWNERSHIP_STATUS } from '@mtg-deckbuilder/shared'
+import { getPrimaryType, getRoleById, isCardFullyPulled, getOracleText, getCardDisplayName, getCanonicalSuffix, OWNERSHIP_STATUS } from '@mtg-deckbuilder/shared'
 
 export type DetailLevel = 'summary' | 'compact' | 'full'
 
@@ -17,7 +17,7 @@ export function formatCardLine(
     : undefined
 
   const displayName = getCardDisplayName(card.card)
-  const canonicalSuffix = card.card.flavorName ? ` (${card.card.name})` : ''
+  const canonicalSuffix = getCanonicalSuffix(card.card)
   const headerParts: string[] = []
 
   if (level === 'full' && cached) {

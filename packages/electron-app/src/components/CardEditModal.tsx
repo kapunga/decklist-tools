@@ -20,7 +20,7 @@ import { RoleAutocomplete } from '@/components/RoleAutocomplete'
 import { useStore, useGlobalRoles, useDeckById } from '@/hooks/useStore'
 import { getCardPrintings } from '@/lib/scryfall'
 import type { DeckCard, ScryfallCard, OwnershipStatus, DeckListName } from '@/types'
-import { getCardLimit, OWNERSHIP_STATUS } from '@/types'
+import { getCardLimit, getCardDisplayName, OWNERSHIP_STATUS } from '@/types'
 
 interface CardEditModalProps {
   isOpen: boolean
@@ -156,7 +156,7 @@ export function CardEditModal({
       <DialogContent className="max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            Edit Card: {card.card.name}
+            Edit Card: {getCardDisplayName(card.card)}
             <span className="text-sm font-normal text-muted-foreground">
               ({card.card.setCode.toUpperCase()} #{card.card.collectorNumber})
             </span>

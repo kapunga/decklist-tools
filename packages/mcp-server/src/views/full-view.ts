@@ -1,5 +1,5 @@
 import type { Deck, DeckCard, RoleDefinition, ScryfallCard } from '@mtg-deckbuilder/shared'
-import { getPrimaryType, getCardCount, getCardDisplayName, buildRoleLookup, CARD_TYPE_ORDER, isCardFullyPulled, INCLUSION_STATUS } from '@mtg-deckbuilder/shared'
+import { getPrimaryType, getCardCount, getCardDisplayName, getCanonicalSuffix, buildRoleLookup, CARD_TYPE_ORDER, isCardFullyPulled, INCLUSION_STATUS } from '@mtg-deckbuilder/shared'
 import { formatCardLine, type DetailLevel } from './formatters.js'
 
 export function renderFullView(
@@ -25,8 +25,7 @@ export function renderFullView(
   if (deck.commanders.length > 0) {
     lines.push('## Commander(s)')
     for (const c of deck.commanders) {
-      const canonicalSuffix = c.flavorName ? ` (${c.name})` : ''
-      lines.push(`- ${getCardDisplayName(c)}${canonicalSuffix} (${c.setCode.toUpperCase()} ${c.collectorNumber})`)
+      lines.push(`- ${getCardDisplayName(c)}${getCanonicalSuffix(c)} (${c.setCode.toUpperCase()} ${c.collectorNumber})`)
     }
     lines.push('')
   }
@@ -119,7 +118,7 @@ function renderByRole(
       lines.push(`*${role.description}*`)
     }
     for (const c of roleCards) {
-      lines.push(`- ${c.quantity}x ${c.card.name}`)
+      lines.push(`- ${c.quantity}x ${getCardDisplayName(c.card)}${getCanonicalSuffix(c.card)}`)
     }
     lines.push('')
   }
@@ -128,7 +127,7 @@ function renderByRole(
     const count = noRole.reduce((sum, c) => sum + c.quantity, 0)
     lines.push(`## Unassigned (${count})`)
     for (const c of noRole) {
-      lines.push(`- ${c.quantity}x ${c.card.name}`)
+      lines.push(`- ${c.quantity}x ${getCardDisplayName(c.card)}${getCanonicalSuffix(c.card)}`)
     }
   }
 }
@@ -155,7 +154,7 @@ function renderByType(lines: string[], cards: DeckCard[]): void {
     lines.push(`## ${type} (${count})`)
     const sortedCards = [...typeCards].sort((a, b) => a.card.name.localeCompare(b.card.name))
     for (const c of sortedCards) {
-      lines.push(`- ${c.quantity}x ${c.card.name}`)
+      lines.push(`- ${c.quantity}x ${getCardDisplayName(c.card)}${getCanonicalSuffix(c.card)}`)
     }
     lines.push('')
   }
@@ -176,6 +175,6 @@ function renderChecklist(lines: string[], cards: DeckCard[]): void {
       lines.push(`## ${currentSet.toUpperCase()}`)
     }
     const checkbox = isCardFullyPulled(card) ? '[x]' : '[ ]'
-    lines.push(`${checkbox} ${card.quantity}x ${card.card.name} #${card.card.collectorNumber}`)
+    lines.push(`${checkbox} ${card.quantity}x ${getCardDisplayName(card.card)}${getCanonicalSuffix(card.card)} #${card.card.collectorNumber}`)
   }
 }
