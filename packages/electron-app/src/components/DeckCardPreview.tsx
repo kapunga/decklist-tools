@@ -5,8 +5,8 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ColorPips } from '@/components/ColorPips'
 import type { Deck, FormatType } from '@/types'
-import { getCardCount, FORMAT_TYPE } from '@/types'
-import { getDeckColorIdentity } from '@mtg-deckbuilder/shared'
+import { getCardCount } from '@/types'
+import { getDeckColorIdentity, showColorlessPip } from '@mtg-deckbuilder/shared'
 import { getCardById, getCardArtCropUrl } from '@/lib/scryfall'
 
 const formatColors: Record<FormatType, string> = {
@@ -72,7 +72,7 @@ export function DeckCardPreview({ deck, onClick, onDelete }: DeckCardPreviewProp
             <ColorPips
               colors={getDeckColorIdentity(deck)}
               size="sm"
-              showColorless={deck.format.type === FORMAT_TYPE.COMMANDER}
+              showColorless={showColorlessPip(deck)}
             />
           </div>
           <Button

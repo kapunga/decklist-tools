@@ -127,3 +127,8 @@ export function getDeckColorIdentity(deck: Deck): string[] {
     .map(dc => dc.card)
   return deriveColorIdentity(allCards)
 }
+
+/** Colorless is only a meaningful identity for commander format. */
+export function showColorlessPip(deck: Deck): boolean {
+  return deck.format.type === FORMAT_TYPE.COMMANDER
+}
