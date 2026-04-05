@@ -1,57 +1,9 @@
 import type { DeckCard, ScryfallCard } from '../types/index.js'
 import { getPrimaryType } from '../constants/index.js'
+import type { EnrichedDeckCard, CardFilter, ManaPipCounts } from './types.js'
 
-// Enriched card pairs a DeckCard with optional Scryfall data
-export interface EnrichedDeckCard {
-  deckCard: DeckCard
-  scryfallCard?: ScryfallCard
-}
-
-// Filter mode
-export type FilterMode = 'include' | 'exclude'
-
-// Filter types
-export interface CmcFilter {
-  type: 'cmc'
-  mode: FilterMode
-  values: number[] // 0-7, where 7 means 7+
-}
-
-export interface ColorFilter {
-  type: 'color'
-  mode: FilterMode
-  values: string[] // W, U, B, R, G, C
-}
-
-export interface CardTypeFilter {
-  type: 'card-type'
-  mode: FilterMode
-  values: string[] // Creature, Instant, etc.
-}
-
-export interface RoleFilter {
-  type: 'role'
-  mode: FilterMode
-  values: string[] // role IDs
-}
-
-export interface OwnershipFilter {
-  type: 'ownership'
-  mode: FilterMode
-  values: string[] // unknown, owned, pulled, need_to_buy
-}
-
-export type CardFilter = CmcFilter | ColorFilter | CardTypeFilter | RoleFilter | OwnershipFilter
-
-// Filter groups determine which filter types are available
-export type FilterGroup = 'mana' | 'type' | 'role' | 'status'
-
-export const FILTER_GROUP_TYPES: Record<FilterGroup, CardFilter['type'][]> = {
-  mana: ['cmc', 'color'],
-  type: ['card-type'],
-  role: ['role'],
-  status: ['ownership'],
-}
+export type { EnrichedDeckCard, FilterMode, CmcFilter, ColorFilter, CardTypeFilter, RoleFilter, OwnershipFilter, CardFilter, FilterGroup, ManaPipCounts } from './types.js'
+export { FILTER_GROUP_TYPES } from './types.js'
 
 // Get CMC for a card, using Scryfall data if available
 function getCardCmc(enriched: EnrichedDeckCard): number {
@@ -115,16 +67,6 @@ function matchesFilter(card: EnrichedDeckCard, filter: CardFilter): boolean {
 export function applyFilters(cards: EnrichedDeckCard[], filters: CardFilter[]): EnrichedDeckCard[] {
   if (filters.length === 0) return cards
   return cards.filter(card => filters.every(f => matchesFilter(card, f)))
-}
-
-// Mana pip counts for pie chart
-export interface ManaPipCounts {
-  W: number
-  U: number
-  B: number
-  R: number
-  G: number
-  C: number
 }
 
 // Count mana pips from mana costs of non-land cards

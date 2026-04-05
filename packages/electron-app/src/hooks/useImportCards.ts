@@ -1,44 +1,12 @@
 import { useState, useCallback, useRef } from 'react'
-import { formats, detectFormat, type ParsedCard, type DetectedFormat } from '@/lib/formats'
+import { formats, detectFormat, type ParsedCard } from '@/lib/formats'
 import { searchCardByName, getCardBySetAndNumber } from '@/lib/scryfall'
 import { SCRYFALL, IMPORT_PREVIEW } from '@/lib/constants'
-import type { DeckCard, DeckListName } from '@/types'
+import type { DeckCard } from '@/types'
 import { generateDeckCardId, INCLUSION_STATUS, OWNERSHIP_STATUS, ADDED_BY, DECK_LIST } from '@/types'
+import type { ImportProgress, ResolvedCard, UseImportCardsResult } from './types'
 
-export interface ImportProgress {
-  current: number
-  total: number
-}
-
-export interface ResolvedCard {
-  card: DeckCard
-  listType: DeckListName
-}
-
-export interface UseImportCardsResult {
-  // State
-  text: string
-  formatId: string
-  parsedCards: ParsedCard[]
-  isImporting: boolean
-  importProgress: ImportProgress
-  errors: string[]
-
-  // Derived values
-  mainDeckCount: number
-  sideboardCount: number
-  maybeboardCount: number
-  detectedFormat: DetectedFormat | null
-  totalCardCount: number
-
-  // Actions
-  setText: (value: string) => void
-  setFormatId: (value: string) => void
-  handleTextChange: (value: string) => void
-  handleFormatChange: (value: string) => void
-  lookupCards: () => Promise<{ resolvedCards: ResolvedCard[]; errors: string[] }>
-  reset: () => void
-}
+export type { ImportProgress, ResolvedCard, UseImportCardsResult } from './types'
 
 /**
  * Hook to encapsulate shared import logic between ImportDialog and ImportNewDeckDialog.

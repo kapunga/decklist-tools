@@ -6,27 +6,10 @@ import { DEFAULT_GLOBAL_ROLES } from '../constants/index.js'
 import { DEFAULT_PULL_LIST_CONFIG, isDoubleFacedCard } from '../types/index.js'
 import { runMigrations } from '../migrations/index.js'
 import type { MigrationContext } from '../migrations/index.js'
+import type { GlobalRolesFile } from './types.js'
+import { ConcurrentModificationError } from './types.js'
 
-// Global roles file schema
-interface GlobalRolesFile {
-  version: number
-  roles: RoleDefinition[]
-}
-
-export class ConcurrentModificationError extends Error {
-  constructor(
-    public readonly deckId: string,
-    public readonly expectedVersion: number,
-    public readonly actualVersion: number
-  ) {
-    super(
-      `Concurrent modification on deck ${deckId}: ` +
-      `expected version ${expectedVersion}, found ${actualVersion}. ` +
-      `Another process may have modified this deck.`
-    )
-    this.name = 'ConcurrentModificationError'
-  }
-}
+export { ConcurrentModificationError } from './types.js'
 
 // UUID v4 format used by Scryfall and deck IDs
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
