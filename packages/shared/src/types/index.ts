@@ -35,9 +35,15 @@ export const COLLECTION_LEVEL_RARITIES: Record<CollectionLevel, string[]> = {
 export interface CardIdentifier {
   scryfallId?: string
   name: string
+  flavorName?: string
   setCode: string
   collectorNumber: string
   colorIdentity?: string[]
+}
+
+/** Returns the flavor name if present, otherwise the canonical name. */
+export function getCardDisplayName(card: CardIdentifier): string {
+  return card.flavorName ?? card.name
 }
 
 // Discriminator constants — single source of truth; types derived via typeof
@@ -294,6 +300,7 @@ export interface Config {
 export interface ScryfallCard {
   id: string
   name: string
+  flavor_name?: string
   mana_cost?: string
   cmc: number
   type_line: string

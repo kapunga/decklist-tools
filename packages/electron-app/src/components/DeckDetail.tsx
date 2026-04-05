@@ -20,7 +20,7 @@ import { RoleEditModal } from '@/components/RoleEditModal'
 import { ColorPips } from '@/components/ColorPips'
 import { PullListView } from '@/components/PullListView'
 import { getDeckColorIdentity, showColorlessPip } from '@mtg-deckbuilder/shared'
-import { getCardCount, FORMAT_TYPE, DECK_LIST } from '@/types'
+import { getCardCount, getCardDisplayName, FORMAT_TYPE, DECK_LIST } from '@/types'
 import type { RoleDefinition, DeckListName } from '@/types'
 
 export function DeckDetail() {
@@ -156,7 +156,7 @@ export function DeckDetail() {
             <div className="flex items-center gap-1">
               <Crown className="w-4 h-4 text-yellow-500" />
               <span className="text-sm">
-                {deck.commanders.map(c => c.name).join(' & ')}
+                {deck.commanders.map(c => getCardDisplayName(c)).join(' & ')}
               </span>
             </div>
           )}

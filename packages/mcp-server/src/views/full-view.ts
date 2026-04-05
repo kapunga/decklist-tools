@@ -1,5 +1,5 @@
 import type { Deck, DeckCard, RoleDefinition, ScryfallCard } from '@mtg-deckbuilder/shared'
-import { getPrimaryType, getCardCount, buildRoleLookup, CARD_TYPE_ORDER, isCardFullyPulled, INCLUSION_STATUS } from '@mtg-deckbuilder/shared'
+import { getPrimaryType, getCardCount, getCardDisplayName, buildRoleLookup, CARD_TYPE_ORDER, isCardFullyPulled, INCLUSION_STATUS } from '@mtg-deckbuilder/shared'
 import { formatCardLine, type DetailLevel } from './formatters.js'
 
 export function renderFullView(
@@ -25,7 +25,8 @@ export function renderFullView(
   if (deck.commanders.length > 0) {
     lines.push('## Commander(s)')
     for (const c of deck.commanders) {
-      lines.push(`- ${c.name} (${c.setCode.toUpperCase()} ${c.collectorNumber})`)
+      const canonicalSuffix = c.flavorName ? ` (${c.name})` : ''
+      lines.push(`- ${getCardDisplayName(c)}${canonicalSuffix} (${c.setCode.toUpperCase()} ${c.collectorNumber})`)
     }
     lines.push('')
   }

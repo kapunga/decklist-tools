@@ -1,5 +1,5 @@
 import type { Deck, DeckCard, SetCollectionFile, ScryfallCard, CollectionLevel } from '@mtg-deckbuilder/shared'
-import { getTotalPulledQuantity, COLLECTION_LEVEL_RARITIES, isBasicLand, INCLUSION_STATUS, OWNERSHIP_STATUS, ADDED_BY } from '@mtg-deckbuilder/shared'
+import { getTotalPulledQuantity, getCardDisplayName, COLLECTION_LEVEL_RARITIES, isBasicLand, INCLUSION_STATUS, OWNERSHIP_STATUS, ADDED_BY } from '@mtg-deckbuilder/shared'
 
 interface PullListItem {
   cardName: string
@@ -112,7 +112,7 @@ export function renderPullListView(
   const pulledItems: PullListItem[] = []
 
   for (const deckCard of confirmedCards) {
-    const cardName = deckCard.card.name
+    const cardName = getCardDisplayName(deckCard.card)
     const totalPulled = getTotalPulledQuantity(deckCard)
     const remainingNeeded = deckCard.quantity - totalPulled
 
