@@ -18,10 +18,19 @@ type McpClientId = 'claude-desktop' | 'claude-code' | 'gemini-cli'
 
 const MCP_SERVER_NAME = 'mtg-deckbuilder'
 
+function getClaudeDesktopConfigPath(): string {
+  switch (process.platform) {
+    case 'win32':
+      return path.join(os.homedir(), 'AppData', 'Roaming', 'Claude', 'claude_desktop_config.json')
+    case 'darwin':
+      return path.join(os.homedir(), 'Library', 'Application Support', 'Claude', 'claude_desktop_config.json')
+    default:
+      return path.join(os.homedir(), '.config', 'Claude', 'claude_desktop_config.json')
+  }
+}
+
 const MCP_CLIENT_CONFIGS: Record<McpClientId, string> = {
-  'claude-desktop': path.join(
-    os.homedir(), 'Library', 'Application Support', 'Claude', 'claude_desktop_config.json'
-  ),
+  'claude-desktop': getClaudeDesktopConfigPath(),
   'claude-code': path.join(os.homedir(), '.claude', 'settings.local.json'),
   'gemini-cli': path.join(os.homedir(), '.gemini', 'settings.json'),
 }
@@ -71,8 +80,8 @@ function registerMcpHandlers(clientId: string, configPath: string): void {
       const mcpServerPath = getMcpServerPath()
 
       servers[MCP_SERVER_NAME] = {
-        command: app.isPackaged ? mcpServerPath : 'node',
-        args: app.isPackaged ? [] : [mcpServerPath],
+        command: 'node',
+        args: [mcpServerPath],
       }
       config.mcpServers = servers
 
@@ -130,7 +139,7 @@ protocol.registerSchemesAsPrivileged([
 ])
 
 const createWindow = () => {
-  mainWindow = new BrowserWindow({
+  const windowOptions: Electron.BrowserWindowConstructorOptions = {
     width: 1400,
     height: 900,
     webPreferences: {
@@ -139,9 +148,14 @@ const createWindow = () => {
       nodeIntegration: false,
       sandbox: true
     },
-    titleBarStyle: 'hiddenInset',
-    trafficLightPosition: { x: 15, y: 15 }
-  })
+  }
+
+  if (process.platform === 'darwin') {
+    windowOptions.titleBarStyle = 'hiddenInset'
+    windowOptions.trafficLightPosition = { x: 15, y: 15 }
+  }
+
+  mainWindow = new BrowserWindow(windowOptions)
 
   if (process.env.VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL)

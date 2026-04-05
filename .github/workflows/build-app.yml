@@ -6,7 +6,17 @@ on:
 
 jobs:
   build:
-    runs-on: macos-latest
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            platform: mac
+          - os: windows-latest
+            platform: win
+          - os: ubuntu-latest
+            platform: linux
+
+    runs-on: ${{ matrix.os }}
 
     permissions:
       contents: write
@@ -27,13 +37,33 @@ jobs:
 
       - run: pnpm build:mcp
 
-      - name: Build Electron app
+      - name: Compile Electron app
         working-directory: packages/electron-app
-        run: pnpm build
+        run: pnpm compile
+
+      - name: Package (macOS)
+        if: matrix.platform == 'mac'
+        working-directory: packages/electron-app
+        run: npx electron-builder --mac --x64 --arm64
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
 
-      - name: Upload DMG to GitHub Release
+      - name: Package (Windows)
+        if: matrix.platform == 'win'
+        working-directory: packages/electron-app
+        run: npx electron-builder --win --x64
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      - name: Package (Linux)
+        if: matrix.platform == 'linux'
+        working-directory: packages/electron-app
+        run: npx electron-builder --linux --x64 --arm64
+
+      - name: Upload artifacts to GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          files: packages/electron-app/release/*.dmg
+          files: |
+            packages/electron-app/release/*.dmg
+            packages/electron-app/release/*.exe
+            packages/electron-app/release/*.AppImage
