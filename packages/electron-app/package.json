@@ -5,6 +5,7 @@
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "vite",
+    "compile": "tsc && vite build",
     "build": "tsc && vite build && electron-builder",
     "preview": "vite preview",
     "electron:dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
@@ -78,8 +79,9 @@
     ],
     "mac": {
       "category": "public.app-category.games",
+      "icon": "build/icon.icns",
       "target": [
-        "dmg"
+        { "target": "dmg", "arch": ["x64", "arm64"] }
       ]
     },
     "dmg": {
@@ -94,6 +96,25 @@
           "type": "link",
           "path": "/Applications"
         }
+      ]
+    },
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        { "target": "nsis", "arch": ["x64"] }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "deleteAppDataOnUninstall": false,
+      "createDesktopShortcut": true
+    },
+    "linux": {
+      "icon": "build/icon.png",
+      "category": "Game",
+      "target": [
+        { "target": "AppImage", "arch": ["x64", "arm64"] }
       ]
     }
   }
