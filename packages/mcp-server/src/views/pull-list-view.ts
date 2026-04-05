@@ -1,6 +1,5 @@
-import type { Deck, DeckCard, SetCollectionFile, ScryfallCard, CollectionLevel } from '@mtg-deckbuilder/shared'
+import type { Deck, DeckCard, SetCollectionFile, ScryfallCard, CollectionLevel, PullListItem, PullListGroup } from '@mtg-deckbuilder/shared'
 import { getTotalPulledQuantity, getCardDisplayName, COLLECTION_LEVEL_RARITIES, isBasicLand, INCLUSION_STATUS, OWNERSHIP_STATUS, ADDED_BY } from '@mtg-deckbuilder/shared'
-import type { PullListItem, PullListGroup } from './types.js'
 
 // Rarity order for sorting
 const RARITY_ORDER: Record<string, number> = {

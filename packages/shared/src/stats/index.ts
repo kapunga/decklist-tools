@@ -50,8 +50,8 @@ export function hypergeometricCdf(D: number, N: number, n: number, k: number): n
   return Math.max(0, Math.min(1, 1 - cumulative))
 }
 
-export type { ConsistencyMode, ConsistencyMatrixData } from './types.js'
 import type { ConsistencyMode, ConsistencyMatrixData } from './types.js'
+export type { ConsistencyMode, ConsistencyMatrixData } from './types.js'
 
 /**
  * Build a full consistency matrix for a given role count.

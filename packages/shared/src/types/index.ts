@@ -431,6 +431,28 @@ export function isBasicLand(name: string): boolean {
   return basicLands.includes(name)
 }
 
+// Pull List Types
+export interface PullListItem {
+  cardName: string
+  setCode: string
+  setName: string
+  collectorNumber: string
+  rarity: string
+  typeLine: string
+  manaCost: string
+  cmc: number
+  quantityNeeded: number
+  quantityPulledThisPrint: number
+  quantityPulledTotal: number
+  remainingNeeded: number
+}
+
+export interface PullListGroup {
+  setCode: string
+  setName: string
+  items: PullListItem[]
+}
+
 // Pull List Configuration
 export type PullListSortKey = 'collectorNumber' | 'rarity' | 'type' | 'manaCost' | 'name'
 export type PullListSource = 'mainDeck' | 'maybeboard'

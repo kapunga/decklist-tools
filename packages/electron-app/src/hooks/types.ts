@@ -1,7 +1,5 @@
 import type { ParsedCard, DetectedFormat } from '@/lib/formats'
-import type { DeckCard, DeckListName } from '@/types'
-
-// Import hook types
+import type { DeckCard, DeckListName, PullListItem as BasePullListItem, PullListGroup as BasePullListGroup } from '@/types'
 
 export interface ImportProgress {
   current: number
@@ -38,27 +36,13 @@ export interface UseImportCardsResult {
   reset: () => void
 }
 
-// Pull list hook types
+// Pull list hook types — extends shared base with UI-specific identity fields
 
-export interface PullListItem {
+export interface PullListItem extends BasePullListItem {
   deckCardId: string
-  cardName: string
-  setCode: string
-  setName: string
-  collectorNumber: string
-  rarity: string
-  typeLine: string
-  manaCost: string
-  cmc: number
-  quantityNeeded: number
-  quantityPulledThisPrint: number
-  quantityPulledTotal: number
-  remainingNeeded: number
   scryfallId: string
 }
 
-export interface PullListGroup {
-  setCode: string
-  setName: string
+export interface PullListGroup extends Omit<BasePullListGroup, 'items'> {
   items: PullListItem[]
 }
