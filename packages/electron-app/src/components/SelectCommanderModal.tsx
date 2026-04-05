@@ -13,6 +13,7 @@ import {
 import { CardImage } from '@/components/CardImage'
 import { ColorPips } from '@/components/ColorPips'
 import type { ScryfallCard, DeckCard } from '@/types'
+import { getCardDisplayName } from '@/types'
 import { searchCardByName, searchCards } from '@/lib/scryfall'
 import { AUTOCOMPLETE } from '@/lib/constants'
 
@@ -193,7 +194,7 @@ export function SelectCommanderModal({
                     className="text-left p-2 rounded-md border hover:bg-accent text-sm"
                     onClick={() => handleSelectExisting(deckCard)}
                   >
-                    {deckCard.card.name}
+                    {getCardDisplayName(deckCard.card)}
                   </button>
                 ))}
               </div>
