@@ -1,26 +1,6 @@
 import type { Deck, DeckCard, SetCollectionFile, ScryfallCard, CollectionLevel } from '@mtg-deckbuilder/shared'
 import { getTotalPulledQuantity, getCardDisplayName, COLLECTION_LEVEL_RARITIES, isBasicLand, INCLUSION_STATUS, OWNERSHIP_STATUS, ADDED_BY } from '@mtg-deckbuilder/shared'
-
-interface PullListItem {
-  cardName: string
-  setCode: string
-  setName: string
-  collectorNumber: string
-  rarity: string
-  typeLine: string
-  manaCost: string
-  cmc: number
-  quantityNeeded: number
-  quantityPulledThisPrint: number
-  quantityPulledTotal: number
-  remainingNeeded: number
-}
-
-interface PullListGroup {
-  setCode: string
-  setName: string
-  items: PullListItem[]
-}
+import type { PullListItem, PullListGroup } from './types.js'
 
 // Rarity order for sorting
 const RARITY_ORDER: Record<string, number> = {

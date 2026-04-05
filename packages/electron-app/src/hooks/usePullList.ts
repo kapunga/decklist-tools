@@ -4,29 +4,9 @@ import { useStore } from '@/hooks/useStore'
 import { getCardPrintings } from '@/lib/scryfall'
 import type { Deck, DeckCard, ScryfallCard, PullListSortKey, PullListSource, CollectionLevel } from '@/types'
 import { getTotalPulledQuantity, COLLECTION_LEVEL_RARITIES, isBasicLand, INCLUSION_STATUS, OWNERSHIP_STATUS, ADDED_BY } from '@/types'
+import type { PullListItem, PullListGroup } from './types'
 
-export interface PullListItem {
-  deckCardId: string
-  cardName: string
-  setCode: string
-  setName: string
-  collectorNumber: string
-  rarity: string
-  typeLine: string
-  manaCost: string
-  cmc: number
-  quantityNeeded: number
-  quantityPulledThisPrint: number
-  quantityPulledTotal: number
-  remainingNeeded: number
-  scryfallId: string
-}
-
-export interface PullListGroup {
-  setCode: string
-  setName: string
-  items: PullListItem[]
-}
+export type { PullListItem, PullListGroup } from './types'
 
 // Rarity order for sorting (mythic first, common last)
 const RARITY_ORDER: Record<string, number> = {
