@@ -173,6 +173,9 @@ describe('Storage', () => {
             card: { name: 'Sol Ring', setCode: 'c21', collectorNumber: '263' },
             addedAt: '2024-01-01T00:00:00.000Z',
             source: 'user',
+            quantity: 1,
+            ownership: 'unknown',
+            roles: [],
           }],
         }],
       })

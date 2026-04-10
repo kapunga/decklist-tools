@@ -38,6 +38,9 @@ export const createInterestListSlice: SliceCreator<InterestListSlice> = (set, ge
       notes,
       source: source ?? CARD_SOURCE.USER,
       addedAt: new Date().toISOString(),
+      quantity: 1,
+      ownership: 'unknown',
+      roles: [],
     }
 
     const updated = withMainEntries(existing, [...getMainEntries(existing), entry])

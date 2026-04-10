@@ -241,6 +241,9 @@ export class Storage {
         addedAt: item.addedAt,
         // Legacy source field was free-form; map to CardSource union where possible.
         source: (item.source === 'import' || item.source === 'claude') ? item.source : 'user',
+        quantity: 1,
+        ownership: 'unknown',
+        roles: [],
       }))
 
       const cardList: CardList = {

@@ -14,6 +14,10 @@ function makeEntry(name: string, overrides: Partial<CardEntry> = {}): CardEntry 
   return {
     id: `test-${name}`,
     card: { name, setCode: 'test', collectorNumber: '1' },
+    quantity: 1,
+    ownership: 'unknown',
+    roles: [],
+    source: 'user',
     addedAt: '2024-01-01T00:00:00.000Z',
     ...overrides,
   }

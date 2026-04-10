@@ -186,11 +186,10 @@ export interface CardEntry {
   typeLine?: string
   notes?: string
   addedAt: string
-  source?: CardSource
-  // Deck-context fields
-  quantity?: number
-  ownership?: OwnershipStatus
-  roles?: string[]
+  source: CardSource
+  quantity: number
+  ownership: OwnershipStatus
+  roles: string[]
   pulledPrintings?: PulledPrinting[]
   // List-context fields
   potentialDecks?: string[]

@@ -814,6 +814,10 @@ describe('Interest List', () => {
             id: '1',
             card: { name: 'Rhystic Study', setCode: 'pcy', collectorNumber: '45' },
             addedAt: '',
+            source: 'user',
+            quantity: 1,
+            ownership: 'unknown',
+            roles: [],
           }],
         }],
       })

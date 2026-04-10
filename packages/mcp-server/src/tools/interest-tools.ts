@@ -53,6 +53,9 @@ export async function manageInterestList(storage: Storage, args: ManageInterestL
         potentialDecks: args.potential_decks,
         addedAt: new Date().toISOString(),
         source,
+        quantity: 1,
+        ownership: 'unknown',
+        roles: [],
       }
 
       const updated = setMainEntries(list, [...getMainEntries(list), entry])
