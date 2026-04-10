@@ -1,5 +1,6 @@
 import type { Deck, ScryfallCard } from '../types/index.js'
 import { migrateNotes } from './001-migrate-notes.js'
+import { migrateCardSets } from './002-card-sets.js'
 
 // --- Migration Types ---
 
@@ -18,6 +19,7 @@ export interface Migration {
 
 const migrations: Migration[] = [
   migrateNotes,
+  migrateCardSets,
 ]
 
 /**
