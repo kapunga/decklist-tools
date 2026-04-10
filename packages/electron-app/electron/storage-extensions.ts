@@ -1,7 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import type { Deck, CardIdentifier, ScryfallCard } from '@mtg-deckbuilder/shared'
-import { Storage, isDoubleFacedCard } from '@mtg-deckbuilder/shared'
+import { Storage, isDoubleFacedCard, getAllDeckEntries } from '@mtg-deckbuilder/shared'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -178,11 +178,7 @@ export async function preCacheDeck(
   }
 
   // Collect all cards from the deck
-  const allCards = [
-    ...deck.cards,
-    ...deck.alternates,
-    ...deck.sideboard
-  ]
+  const allCards = getAllDeckEntries(deck)
 
   // Also include commanders
   const commanderIdentifiers = deck.commanders || []
@@ -280,7 +276,7 @@ export async function loadAllCardsToCache(
     }
 
     // Add all deck cards
-    const allCards = [...deck.cards, ...deck.alternates, ...deck.sideboard]
+    const allCards = getAllDeckEntries(deck)
     for (const deckCard of allCards) {
       const card = deckCard.card
       const key = card.scryfallId || `${card.setCode}|${card.collectorNumber}` || card.name.toLowerCase()

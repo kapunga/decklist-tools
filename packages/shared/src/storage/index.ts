@@ -256,7 +256,23 @@ export class Storage {
       }
 
       this.writeJson(newPath, cardList)
-      fs.renameSync(legacyPath, `${legacyPath}.bak`)
+
+      // The migration is now functionally complete — newPath has the data.
+      // Renaming the legacy file to .bak is a courtesy backup. If the rename
+      // fails (e.g. the legacy file disappeared between the existsSync check
+      // and now, or a prior session already created the .bak), just log and
+      // continue. The next Storage construction will see newPath exists and
+      // skip this whole block.
+      if (fs.existsSync(legacyPath)) {
+        try {
+          fs.renameSync(legacyPath, `${legacyPath}.bak`)
+        } catch (renameError) {
+          console.warn(
+            `Migrated interest-list.json to ${newPath} but failed to rename the legacy file:`,
+            renameError
+          )
+        }
+      }
     } catch (error) {
       console.error('Failed to migrate interest-list.json:', error)
     }

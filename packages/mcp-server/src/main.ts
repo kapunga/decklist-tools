@@ -9,8 +9,13 @@ import {
 import { Storage } from '@mtg-deckbuilder/shared'
 import { handleToolCall, getToolDefinitions } from './tools/index.js'
 
+function parseStorageDir(argv: string[]): string | undefined {
+  const i = argv.indexOf('--storage-dir')
+  return i >= 0 && i + 1 < argv.length ? argv[i + 1] : undefined
+}
+
 async function main() {
-  const storage = new Storage()
+  const storage = new Storage(parseStorageDir(process.argv))
 
   const server = new Server(
     {
