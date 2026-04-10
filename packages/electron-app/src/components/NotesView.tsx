@@ -24,6 +24,7 @@ import { CreateRoleDialog } from '@/components/CreateRoleDialog'
 import { useStore, useAllRoles } from '@/hooks/useStore'
 import { migrateDeckNote, NOTE_TYPE } from '@/types'
 import type { Deck, DeckNote, NoteType, NoteCardRef, RoleDefinition } from '@/types'
+import { getAllDeckEntries } from '@mtg-deckbuilder/shared'
 
 const NOTE_TYPE_COLORS: Record<NoteType, string> = {
   [NOTE_TYPE.COMBO]: 'bg-red-500/20 text-red-400 border-red-500/30',
@@ -67,11 +68,10 @@ export function NotesView({ deck }: NotesViewProps) {
   const notes = deck.notes.map(n => migrateDeckNote(n))
 
   // All card names in deck for the picker
-  const allCardNames = [
-    ...deck.cards.map(c => c.card.name),
-    ...deck.alternates.map(c => c.card.name),
-    ...deck.sideboard.map(c => c.card.name),
-  ].filter((name, i, arr) => arr.indexOf(name) === i).sort()
+  const allCardNames = getAllDeckEntries(deck)
+    .map(c => c.card.name)
+    .filter((name, i, arr) => arr.indexOf(name) === i)
+    .sort()
 
   const openCreateDialog = useCallback(() => {
     setFormTitle('')

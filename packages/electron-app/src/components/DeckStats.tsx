@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import type { Deck } from '@/types'
 import { getCardDisplayName } from '@/types'
+import { getMainboard, getAllDeckEntries } from '@mtg-deckbuilder/shared'
 import { getAllRoles } from '@/lib/constants'
 import { useGlobalRoles } from '@/hooks/useStore'
 import { useScryfallCache } from '@/hooks/useScryfallCache'
@@ -17,31 +18,29 @@ export function DeckStats({ deck }: DeckStatsProps) {
   const globalRoles = useGlobalRoles()
   const [matrixRoles, setMatrixRoles] = useState<string[]>([])
   const confirmedCards = useMemo(
-    () => deck.cards.filter(c => c.inclusion === 'confirmed'),
-    [deck.cards]
+    () => getMainboard(deck).filter(c => c.inclusion === 'confirmed'),
+    [deck.cardSets]
   )
   const { cache: scryfallCache, isLoading: scryfallLoading } = useScryfallCache(confirmedCards)
 
   // Group by role - cards with multiple roles appear in multiple groups
-  const byRole = confirmedCards.reduce((acc, card) => {
-    if (card.roles.length === 0) {
-      acc['Unassigned'] = (acc['Unassigned'] || 0) + card.quantity
+  const byRole = confirmedCards.reduce<Record<string, number>>((acc, card) => {
+    const roles = card.roles ?? []
+    const qty = card.quantity ?? 0
+    if (roles.length === 0) {
+      acc['Unassigned'] = (acc['Unassigned'] || 0) + qty
     } else {
-      card.roles.forEach(role => {
-        acc[role] = (acc[role] || 0) + card.quantity
+      roles.forEach(role => {
+        acc[role] = (acc[role] || 0) + qty
       })
     }
     return acc
-  }, {} as Record<string, number>)
+  }, {})
 
   // Count cards needing purchase
-  const needToBuy = [
-    ...deck.cards,
-    ...deck.alternates,
-    ...deck.sideboard
-  ].filter(c => c.ownership === 'need_to_buy')
+  const needToBuy = getAllDeckEntries(deck).filter(c => c.ownership === 'need_to_buy')
 
-  const totalNeedToBuy = needToBuy.reduce((sum, c) => sum + c.quantity, 0)
+  const totalNeedToBuy = needToBuy.reduce((sum, c) => sum + (c.quantity ?? 0), 0)
 
   // Get all role definitions for display names
   const allRoles = getAllRoles(globalRoles, deck.customRoles)

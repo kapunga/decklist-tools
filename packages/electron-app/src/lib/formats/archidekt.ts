@@ -1,4 +1,5 @@
-import { INCLUSION_STATUS, FORMAT_TYPE, type Deck, type DeckCard } from '@/types'
+import { INCLUSION_STATUS, FORMAT_TYPE, type Deck, type CardEntry } from '@/types'
+import { getMainboard, getSideboard, getAlternates } from '@mtg-deckbuilder/shared'
 import type { DeckFormat, ParsedCard, RenderOptions } from './types'
 import { PARSER_SECTION } from './types'
 
@@ -53,8 +54,8 @@ export const archidektFormat: DeckFormat = {
   render(deck: Deck, options: RenderOptions): string {
     const lines: string[] = []
 
-    const renderCard = (c: DeckCard, category: string) => {
-      const roleStr = c.roles.map(r => `^${r}^`).join(' ')
+    const renderCard = (c: CardEntry, category: string) => {
+      const roleStr = (c.roles ?? []).map(r => `^${r}^`).join(' ')
       let line = `${c.quantity}x ${c.card.name} (${c.card.setCode.toUpperCase()}) ${c.card.collectorNumber} [${category}]`
       if (roleStr) line += ` ${roleStr}`
       lines.push(line)
@@ -78,23 +79,25 @@ export const archidektFormat: DeckFormat = {
       })
     }
 
-    deck.cards
+    const mainboard = getMainboard(deck)
+    mainboard
       .filter(c => c.inclusion === INCLUSION_STATUS.CONFIRMED)
       .forEach(c => {
         // Use first role for category, fallback to 'Other'
-        const primaryRole = c.roles[0]
+        const primaryRole = (c.roles ?? [])[0]
         const category = primaryRole ? (roleToCategoryMap[primaryRole] || 'Other') : 'Other'
         renderCard(c, category)
       })
 
-    if (options.includeSideboard && deck.sideboard.length > 0) {
-      deck.sideboard.forEach(c => renderCard(c, 'Sideboard'))
+    const sideboard = getSideboard(deck)
+    if (options.includeSideboard && sideboard.length > 0) {
+      sideboard.forEach(c => renderCard(c, 'Sideboard'))
     }
 
     if (options.includeMaybeboard) {
       const maybe = [
-        ...deck.cards.filter(c => c.inclusion === INCLUSION_STATUS.CONSIDERING),
-        ...deck.alternates
+        ...mainboard.filter(c => c.inclusion === INCLUSION_STATUS.CONSIDERING),
+        ...getAlternates(deck)
       ]
       maybe.forEach(c => renderCard(c, 'Maybeboard'))
     }

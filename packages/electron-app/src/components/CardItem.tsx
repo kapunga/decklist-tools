@@ -22,8 +22,8 @@ import {
 import { useStore, useAllRoles, useGlobalRoles } from '@/hooks/useStore'
 import { getRoleColor } from '@/lib/constants'
 import { CardEditModal } from '@/components/CardEditModal'
-import type { DeckCard, OwnershipStatus, RoleDefinition, DeckListName } from '@/types'
-import { isCardFullyPulled, getCardDisplayName, getCanonicalSuffix, INCLUSION_STATUS, OWNERSHIP_STATUS, DECK_LIST } from '@/types'
+import type { DeckCard, OwnershipStatus, RoleDefinition, CardSetName } from '@/types'
+import { isCardFullyPulled, getCardDisplayName, getCanonicalSuffix, INCLUSION_STATUS, OWNERSHIP_STATUS, CARD_SET } from '@/types'
 
 const ownershipLabels: Record<OwnershipStatus, string> = {
   [OWNERSHIP_STATUS.UNKNOWN]: 'Unknown',
@@ -74,7 +74,7 @@ function RolePill({ roleId, roleDefinition, globalRoles, onRemove }: RolePillPro
 interface CardItemProps {
   card: DeckCard
   deckId: string
-  listType: DeckListName
+  listType: CardSetName
 }
 
 export function CardItem({ card, deckId, listType }: CardItemProps) {
@@ -94,7 +94,7 @@ export function CardItem({ card, deckId, listType }: CardItemProps) {
     await updateCardInDeck(deckId, card.card.name, { ownership })
   }
 
-  const handleMove = async (to: DeckListName) => {
+  const handleMove = async (to: CardSetName) => {
     if (to !== listType) {
       await moveCard(deckId, card.card.name, listType, to)
     }
@@ -123,7 +123,8 @@ export function CardItem({ card, deckId, listType }: CardItemProps) {
   }
 
   // Get available roles that aren't already assigned
-  const availableRoles = allRoles.filter(r => !card.roles.includes(r.id))
+  const cardRoles = card.roles ?? []
+  const availableRoles = allRoles.filter(r => !cardRoles.includes(r.id))
 
   return (
     <div className="flex items-center justify-between p-2 bg-secondary/50 rounded hover:bg-secondary transition-colors group">
@@ -140,7 +141,7 @@ export function CardItem({ card, deckId, listType }: CardItemProps) {
 
         {/* Role pills */}
         <div className="flex items-center gap-1 flex-wrap">
-          {card.roles.map(roleId => {
+          {cardRoles.map(roleId => {
             const roleDef = allRoles.find(r => r.id === roleId)
             return (
               <RolePill
@@ -242,18 +243,18 @@ export function CardItem({ card, deckId, listType }: CardItemProps) {
                 Move to
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent>
-                {listType !== DECK_LIST.MAINBOARD && (
-                  <DropdownMenuItem onClick={() => handleMove(DECK_LIST.MAINBOARD)}>
+                {listType !== CARD_SET.MAINBOARD && (
+                  <DropdownMenuItem onClick={() => handleMove(CARD_SET.MAINBOARD)}>
                     Mainboard
                   </DropdownMenuItem>
                 )}
-                {listType !== DECK_LIST.ALTERNATES && (
-                  <DropdownMenuItem onClick={() => handleMove(DECK_LIST.ALTERNATES)}>
+                {listType !== CARD_SET.ALTERNATES && (
+                  <DropdownMenuItem onClick={() => handleMove(CARD_SET.ALTERNATES)}>
                     Alternates
                   </DropdownMenuItem>
                 )}
-                {listType !== DECK_LIST.SIDEBOARD && (
-                  <DropdownMenuItem onClick={() => handleMove(DECK_LIST.SIDEBOARD)}>
+                {listType !== CARD_SET.SIDEBOARD && (
+                  <DropdownMenuItem onClick={() => handleMove(CARD_SET.SIDEBOARD)}>
                     Sideboard
                   </DropdownMenuItem>
                 )}

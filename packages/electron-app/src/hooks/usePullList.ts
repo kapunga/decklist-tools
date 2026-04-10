@@ -2,8 +2,9 @@ import { useMemo } from 'react'
 import { useQueries } from '@tanstack/react-query'
 import { useStore } from '@/hooks/useStore'
 import { getCardPrintings } from '@/lib/scryfall'
-import type { Deck, DeckCard, ScryfallCard, PullListSortKey, PullListSource } from '@/types'
-import { getTotalPulledQuantity, isBasicLand, INCLUSION_STATUS, OWNERSHIP_STATUS, ADDED_BY } from '@/types'
+import type { Deck, CardEntry, ScryfallCard, PullListSortKey, PullListSource } from '@/types'
+import { getTotalPulledQuantity, isBasicLand, INCLUSION_STATUS, OWNERSHIP_STATUS, CARD_SOURCE } from '@/types'
+import { getMainboard, getSideboard, getAlternates } from '@mtg-deckbuilder/shared'
 import type { PullListItem, PullListGroup } from './types'
 
 export type { PullListItem, PullListGroup } from './types'
@@ -130,7 +131,7 @@ export function usePullList(deck: Deck | null) {
 
     if (source === 'maybeboard') {
       // Maybeboard: only alternates (not cut), no commanders
-      let cards = deck.alternates.filter(c => c.inclusion !== INCLUSION_STATUS.CUT)
+      let cards = getAlternates(deck).filter(c => c.inclusion !== INCLUSION_STATUS.CUT)
 
       // Filter out basic lands if option is enabled
       if (hideBasicLands) {
@@ -141,8 +142,8 @@ export function usePullList(deck: Deck | null) {
     }
 
     // Main Deck: main + sideboard + commanders
-    let mainCards = deck.cards.filter(c => c.inclusion !== INCLUSION_STATUS.CUT)
-    let sideboardCards = deck.sideboard.filter(c => c.inclusion !== INCLUSION_STATUS.CUT)
+    let mainCards = getMainboard(deck).filter(c => c.inclusion !== INCLUSION_STATUS.CUT)
+    let sideboardCards = getSideboard(deck).filter(c => c.inclusion !== INCLUSION_STATUS.CUT)
 
     // Filter out basic lands if option is enabled
     if (hideBasicLands) {
@@ -152,7 +153,7 @@ export function usePullList(deck: Deck | null) {
 
     // Add commanders as pseudo-cards for pulling
     // Include commandersPulled data so pull status is tracked correctly
-    const commanderCards: DeckCard[] = deck.commanders.map(cmd => {
+    const commanderCards: CardEntry[] = deck.commanders.map(cmd => {
       // Assign all commandersPulled entries to this commander.
       // For partner commanders (2 commanders), a cardName discriminator
       // should be added to commandersPulled entries in the future.
@@ -168,7 +169,7 @@ export function usePullList(deck: Deck | null) {
         typeLine: '',
         isPinned: true,
         addedAt: deck.createdAt,
-        addedBy: ADDED_BY.USER,
+        source: CARD_SOURCE.USER,
         pulledPrintings: pulledPrintings.length > 0 ? pulledPrintings : undefined
       }
     })
@@ -222,7 +223,8 @@ export function usePullList(deck: Deck | null) {
       const cardName = deckCard.card.name
       const printings = printingsMap.get(cardName.toLowerCase()) || []
       const totalPulled = getTotalPulledQuantity(deckCard)
-      const remainingNeeded = deckCard.quantity - totalPulled
+      const deckCardQty = deckCard.quantity ?? 0
+      const remainingNeeded = deckCardQty - totalPulled
 
       // Get printings from owned sets
       const ownedPrintings = printings.filter(p =>
@@ -243,7 +245,7 @@ export function usePullList(deck: Deck | null) {
             typeLine: originalPrinting.type_line || '',
             manaCost: getManaCost(originalPrinting),
             cmc: originalPrinting.cmc,
-            quantityNeeded: deckCard.quantity,
+            quantityNeeded: deckCardQty,
             quantityPulledThisPrint: 0,
             quantityPulledTotal: totalPulled,
             remainingNeeded,
@@ -274,7 +276,7 @@ export function usePullList(deck: Deck | null) {
           typeLine: printing.type_line || '',
           manaCost: getManaCost(printing),
           cmc: printing.cmc,
-          quantityNeeded: deckCard.quantity,
+          quantityNeeded: deckCardQty,
           quantityPulledThisPrint: pulledFromThisPrint,
           quantityPulledTotal: totalPulled,
           remainingNeeded,

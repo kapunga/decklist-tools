@@ -10,14 +10,14 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useStore, useGlobalRoles } from '@/hooks/useStore'
 import { getAllRoles, getRoleColor } from '@/lib/constants'
-import type { OwnershipStatus, DeckListName } from '@/types'
-import { OWNERSHIP_STATUS, DECK_LIST } from '@/types'
+import type { OwnershipStatus, CardSetName } from '@/types'
+import { OWNERSHIP_STATUS, CARD_SET } from '@/types'
 
 interface BatchOperationsToolbarProps {
   deckId: string
   selectedCount: number
   selectedCardNames: string[]
-  currentListType: DeckListName
+  currentListType: CardSetName
   hasSideboard: boolean
 }
 
@@ -49,7 +49,7 @@ export function BatchOperationsToolbar({
     await batchRemoveCards(deckId, selectedCardNames, currentListType)
   }
 
-  const handleMove = async (to: DeckListName) => {
+  const handleMove = async (to: CardSetName) => {
     await batchMoveCards(deckId, selectedCardNames, currentListType, to)
   }
 
@@ -58,10 +58,10 @@ export function BatchOperationsToolbar({
   }
 
   // Determine available move targets (can't move to current list)
-  const moveTargets: { value: DeckListName; label: string }[] = []
-  if (currentListType !== DECK_LIST.MAINBOARD) moveTargets.push({ value: DECK_LIST.MAINBOARD, label: 'Main Deck' })
-  if (currentListType !== DECK_LIST.ALTERNATES) moveTargets.push({ value: DECK_LIST.ALTERNATES, label: 'Alternates' })
-  if (currentListType !== DECK_LIST.SIDEBOARD && hasSideboard) moveTargets.push({ value: DECK_LIST.SIDEBOARD, label: 'Sideboard' })
+  const moveTargets: { value: CardSetName; label: string }[] = []
+  if (currentListType !== CARD_SET.MAINBOARD) moveTargets.push({ value: CARD_SET.MAINBOARD, label: 'Main Deck' })
+  if (currentListType !== CARD_SET.ALTERNATES) moveTargets.push({ value: CARD_SET.ALTERNATES, label: 'Alternates' })
+  if (currentListType !== CARD_SET.SIDEBOARD && hasSideboard) moveTargets.push({ value: CARD_SET.SIDEBOARD, label: 'Sideboard' })
 
   return (
     <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50">

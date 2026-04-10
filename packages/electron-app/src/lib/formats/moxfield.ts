@@ -1,4 +1,5 @@
 import { INCLUSION_STATUS, FORMAT_TYPE, type Deck } from '@/types'
+import { getMainboard, getSideboard, getAlternates } from '@mtg-deckbuilder/shared'
 import type { DeckFormat, ParsedCard, RenderOptions } from './types'
 import { PARSER_SECTION } from './types'
 
@@ -63,15 +64,17 @@ export const moxfieldFormat: DeckFormat = {
     }
 
     // Main deck
-    deck.cards.filter(c => c.inclusion === INCLUSION_STATUS.CONFIRMED).forEach(c => {
+    const mainboard = getMainboard(deck)
+    mainboard.filter(c => c.inclusion === INCLUSION_STATUS.CONFIRMED).forEach(c => {
       lines.push(
         `${c.quantity},${c.card.name},${c.card.setCode},${c.card.collectorNumber},,,English,Mainboard`
       )
     })
 
     // Sideboard
-    if (options.includeSideboard && deck.sideboard.length > 0) {
-      deck.sideboard.forEach(c => {
+    const sideboard = getSideboard(deck)
+    if (options.includeSideboard && sideboard.length > 0) {
+      sideboard.forEach(c => {
         lines.push(
           `${c.quantity},${c.card.name},${c.card.setCode},${c.card.collectorNumber},,,English,Sideboard`
         )
@@ -81,8 +84,8 @@ export const moxfieldFormat: DeckFormat = {
     // Maybeboard
     if (options.includeMaybeboard) {
       const maybe = [
-        ...deck.cards.filter(c => c.inclusion === INCLUSION_STATUS.CONSIDERING),
-        ...deck.alternates
+        ...mainboard.filter(c => c.inclusion === INCLUSION_STATUS.CONSIDERING),
+        ...getAlternates(deck)
       ]
       maybe.forEach(c => {
         lines.push(

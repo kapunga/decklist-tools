@@ -13,13 +13,13 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { CardImage } from '@/components/CardImage'
-import type { ScryfallCard, DeckFormat, RoleDefinition, DeckListName } from '@/types'
-import { getCardLimit, FORMAT_TYPE, DECK_LIST } from '@/types'
+import type { ScryfallCard, DeckFormat, RoleDefinition, CardSetName } from '@/types'
+import { getCardLimit, FORMAT_TYPE, CARD_SET } from '@/types'
 import { getAllRoles } from '@/lib/constants'
 import { isLegalInFormat, matchesColorIdentity } from '@/lib/scryfall'
 import { useGlobalRoles } from '@/hooks/useStore'
 
-type CardDestination = DeckListName
+type CardDestination = CardSetName
 
 interface CardAddModalProps {
   card: ScryfallCard | null
@@ -36,9 +36,9 @@ interface CardAddModalProps {
 }
 
 function getDefaultDestination(activeTab: string): CardDestination {
-  if (activeTab === DECK_LIST.ALTERNATES) return DECK_LIST.ALTERNATES
-  if (activeTab === DECK_LIST.SIDEBOARD) return DECK_LIST.SIDEBOARD
-  return DECK_LIST.MAINBOARD
+  if (activeTab === CARD_SET.ALTERNATES) return CARD_SET.ALTERNATES
+  if (activeTab === CARD_SET.SIDEBOARD) return CARD_SET.SIDEBOARD
+  return CARD_SET.MAINBOARD
 }
 
 export function CardAddModal({

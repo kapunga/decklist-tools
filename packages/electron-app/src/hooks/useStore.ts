@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { Deck, Taxonomy, InterestList, Config, RoleDefinition, SetCollectionFile, PullListConfig } from '@/types'
+import { getMainboard } from '@mtg-deckbuilder/shared'
 import type { AppState } from '@/stores/types'
 import { createDeckSlice } from '@/stores/deckSlice'
 import { createCardSlice } from '@/stores/cardSlice'
@@ -120,26 +121,27 @@ export const useBuyList = (): BuyListItem[] => {
   const buyMap = new Map<string, BuyListItem>()
 
   for (const deck of decks) {
-    for (const card of deck.cards) {
+    for (const card of getMainboard(deck)) {
       if (card.ownership === 'need_to_buy') {
         const key = card.card.name.toLowerCase()
         const existing = buyMap.get(key)
+        const qty = card.quantity ?? 0
 
         if (existing) {
-          existing.totalQuantity += card.quantity
+          existing.totalQuantity += qty
           existing.decks.push({
             deckId: deck.id,
             deckName: deck.name,
-            quantity: card.quantity
+            quantity: qty
           })
         } else {
           buyMap.set(key, {
             cardName: card.card.name,
-            totalQuantity: card.quantity,
+            totalQuantity: qty,
             decks: [{
               deckId: deck.id,
               deckName: deck.name,
-              quantity: card.quantity
+              quantity: qty
             }],
             scryfallId: card.card.scryfallId,
             setCode: card.card.setCode,

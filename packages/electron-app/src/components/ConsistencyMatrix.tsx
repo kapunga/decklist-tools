@@ -24,7 +24,7 @@ function countLands(cards: DeckCard[]): number {
   return cards.reduce((sum, c) => {
     const typeLine = c.typeLine || ''
     if (typeLine.toLowerCase().includes('land')) {
-      return sum + c.quantity
+      return sum + (c.quantity ?? 0)
     }
     return sum
   }, 0)

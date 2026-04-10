@@ -1,16 +1,16 @@
-import type { DeckCard } from '@/types'
-import { DECK_LIST } from '@/types'
+import type { CardEntry } from '@/types'
+import { CARD_SET } from '@/types'
 import {
   addCardToDeck,
   removeCardFromDeck,
   moveCard as domainMoveCard,
   findCardAcrossLists,
+  mapAllDeckEntries,
 } from '@mtg-deckbuilder/shared'
-import { findCardIndexByName } from '@mtg-deckbuilder/shared'
 import type { CardSlice, SliceCreator } from './types'
 
 export const createCardSlice: SliceCreator<CardSlice> = (_set, get) => ({
-  addCardToDeck: async (deckId, card, target = DECK_LIST.MAINBOARD) => {
+  addCardToDeck: async (deckId, card, target = CARD_SET.MAINBOARD) => {
     const deck = get().decks.find(d => d.id === deckId)
     if (!deck) return
 
@@ -18,7 +18,7 @@ export const createCardSlice: SliceCreator<CardSlice> = (_set, get) => ({
     await get().updateDeck(result.deck)
   },
 
-  removeCardFromDeck: async (deckId, cardName, target = DECK_LIST.MAINBOARD) => {
+  removeCardFromDeck: async (deckId, cardName, target = CARD_SET.MAINBOARD) => {
     const deck = get().decks.find(d => d.id === deckId)
     if (!deck) return
 
@@ -34,18 +34,12 @@ export const createCardSlice: SliceCreator<CardSlice> = (_set, get) => ({
     const deck = get().decks.find(d => d.id === deckId)
     if (!deck) return
 
-    const updateList = (list: DeckCard[]): DeckCard[] => {
-      const index = findCardIndexByName(list, cardName)
-      if (index === -1) return list
-      return list.map((c, i) => i === index ? { ...c, ...updates } : c)
-    }
-
-    await get().updateDeck({
-      ...deck,
-      cards: updateList(deck.cards),
-      alternates: updateList(deck.alternates),
-      sideboard: updateList(deck.sideboard)
-    })
+    const updatedDeck = mapAllDeckEntries(deck, (entry: CardEntry) =>
+      entry.card.name.toLowerCase() === cardName.toLowerCase()
+        ? { ...entry, ...updates }
+        : entry
+    )
+    await get().updateDeck(updatedDeck)
   },
 
   moveCard: async (deckId, cardName, from, to) => {

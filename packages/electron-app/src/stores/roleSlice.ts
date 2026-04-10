@@ -1,51 +1,47 @@
-import type { DeckCard } from '@/types'
+import type { CardEntry, Deck } from '@/types'
 import {
   addRoleToList,
   updateRoleInList,
   deleteRoleFromList,
+  mapAllDeckEntries,
 } from '@mtg-deckbuilder/shared'
 import type { RoleSlice, SliceCreator } from './types'
 
-function updateCardInAllLists(
-  deck: { cards: DeckCard[]; alternates: DeckCard[]; sideboard: DeckCard[] },
+function updateNamedCardInDeck(
+  deck: Deck,
   cardName: string,
-  updater: (card: DeckCard) => DeckCard
-) {
-  const updateList = (list: DeckCard[]): DeckCard[] =>
-    list.map(c =>
-      c.card.name.toLowerCase() === cardName.toLowerCase() ? updater(c) : c
-    )
-  return {
-    cards: updateList(deck.cards),
-    alternates: updateList(deck.alternates),
-    sideboard: updateList(deck.sideboard),
-  }
+  updater: (card: CardEntry) => CardEntry
+): Deck {
+  const lower = cardName.toLowerCase()
+  return mapAllDeckEntries(deck, c =>
+    c.card.name.toLowerCase() === lower ? updater(c) : c
+  )
 }
 
 export const createRoleSlice: SliceCreator<RoleSlice> = (set, get) => ({
   addRoleToCard: async (deckId, cardName, roleId) => {
     const deck = get().decks.find(d => d.id === deckId)
     if (!deck) return
-    const updated = updateCardInAllLists(deck, cardName, c => ({
-      ...c, roles: [...new Set([...c.roles, roleId])]
+    const updated = updateNamedCardInDeck(deck, cardName, c => ({
+      ...c, roles: [...new Set([...(c.roles ?? []), roleId])]
     }))
-    await get().updateDeck({ ...deck, ...updated })
+    await get().updateDeck(updated)
   },
 
   removeRoleFromCard: async (deckId, cardName, roleId) => {
     const deck = get().decks.find(d => d.id === deckId)
     if (!deck) return
-    const updated = updateCardInAllLists(deck, cardName, c => ({
-      ...c, roles: c.roles.filter(r => r !== roleId)
+    const updated = updateNamedCardInDeck(deck, cardName, c => ({
+      ...c, roles: (c.roles ?? []).filter(r => r !== roleId)
     }))
-    await get().updateDeck({ ...deck, ...updated })
+    await get().updateDeck(updated)
   },
 
   setCardRoles: async (deckId, cardName, roles) => {
     const deck = get().decks.find(d => d.id === deckId)
     if (!deck) return
-    const updated = updateCardInAllLists(deck, cardName, c => ({ ...c, roles }))
-    await get().updateDeck({ ...deck, ...updated })
+    const updated = updateNamedCardInDeck(deck, cardName, c => ({ ...c, roles }))
+    await get().updateDeck(updated)
   },
 
   addCustomRole: async (deckId, role) => {

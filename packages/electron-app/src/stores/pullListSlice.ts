@@ -1,6 +1,7 @@
 import type { PullListSlice, SliceCreator } from './types'
-import type { PullListConfig, DeckCard, PulledPrinting } from '@/types'
+import type { PullListConfig, CardEntry, PulledPrinting } from '@/types'
 import { OWNERSHIP_STATUS } from '@/types'
+import { mapAllDeckEntries } from '@mtg-deckbuilder/shared'
 
 export const createPullListSlice: SliceCreator<PullListSlice> = (set, get) => ({
   loadPullListConfig: async () => {
@@ -71,47 +72,36 @@ export const createPullListSlice: SliceCreator<PullListSlice> = (set, get) => ({
       return
     }
 
-    // Find card in all lists
-    const findAndUpdateCard = (cards: DeckCard[]): DeckCard[] => {
-      return cards.map(card => {
-        if (card.card.name.toLowerCase() !== cardName.toLowerCase()) {
-          return card
+    const lowerName = cardName.toLowerCase()
+    const updatedDeck = mapAllDeckEntries(deck, (card: CardEntry) => {
+      if (card.card.name.toLowerCase() !== lowerName) return card
+
+      const pulledPrintings = [...(card.pulledPrintings ?? [])]
+      const existingIndex = pulledPrintings.findIndex(
+        p => p.setCode.toLowerCase() === setCode.toLowerCase() &&
+             p.collectorNumber === collectorNumber
+      )
+
+      if (existingIndex >= 0) {
+        pulledPrintings[existingIndex] = {
+          ...pulledPrintings[existingIndex],
+          quantity: pulledPrintings[existingIndex].quantity + quantity
         }
+      } else {
+        pulledPrintings.push({
+          setCode: setCode.toLowerCase(),
+          collectorNumber,
+          quantity
+        })
+      }
 
-        const pulledPrintings = [...(card.pulledPrintings ?? [])]
-        const existingIndex = pulledPrintings.findIndex(
-          p => p.setCode.toLowerCase() === setCode.toLowerCase() &&
-               p.collectorNumber === collectorNumber
-        )
-
-        if (existingIndex >= 0) {
-          pulledPrintings[existingIndex] = {
-            ...pulledPrintings[existingIndex],
-            quantity: pulledPrintings[existingIndex].quantity + quantity
-          }
-        } else {
-          pulledPrintings.push({
-            setCode: setCode.toLowerCase(),
-            collectorNumber,
-            quantity
-          })
-        }
-
-        // When pulling a card, also mark it as owned (removes from buylist)
-        return {
-          ...card,
-          pulledPrintings,
-          ownership: OWNERSHIP_STATUS.OWNED
-        }
-      })
-    }
-
-    const updatedDeck = {
-      ...deck,
-      cards: findAndUpdateCard(deck.cards),
-      alternates: findAndUpdateCard(deck.alternates),
-      sideboard: findAndUpdateCard(deck.sideboard)
-    }
+      // When pulling a card, also mark it as owned (removes from buylist)
+      return {
+        ...card,
+        pulledPrintings,
+        ownership: OWNERSHIP_STATUS.OWNED
+      }
+    })
 
     await window.electronAPI.saveDeck(updatedDeck)
     set({
@@ -156,38 +146,28 @@ export const createPullListSlice: SliceCreator<PullListSlice> = (set, get) => ({
       return
     }
 
-    const findAndUpdateCard = (cards: DeckCard[]): DeckCard[] => {
-      return cards.map(card => {
-        if (card.card.name.toLowerCase() !== cardName.toLowerCase()) {
-          return card
-        }
+    const lowerName = cardName.toLowerCase()
+    const updatedDeck = mapAllDeckEntries(deck, (card: CardEntry) => {
+      if (card.card.name.toLowerCase() !== lowerName) return card
 
-        const pulledPrintings = (card.pulledPrintings ?? [])
-          .map((p: { setCode: string; collectorNumber: string; quantity: number }) => {
-            if (p.setCode.toLowerCase() === setCode.toLowerCase() &&
-                p.collectorNumber === collectorNumber) {
-              return {
-                ...p,
-                quantity: Math.max(0, p.quantity - quantity)
-              }
+      const pulledPrintings = (card.pulledPrintings ?? [])
+        .map((p: PulledPrinting) => {
+          if (p.setCode.toLowerCase() === setCode.toLowerCase() &&
+              p.collectorNumber === collectorNumber) {
+            return {
+              ...p,
+              quantity: Math.max(0, p.quantity - quantity)
             }
-            return p
-          })
-          .filter((p: { quantity: number }) => p.quantity > 0)
+          }
+          return p
+        })
+        .filter((p: PulledPrinting) => p.quantity > 0)
 
-        return {
-          ...card,
-          pulledPrintings: pulledPrintings.length > 0 ? pulledPrintings : undefined
-        }
-      })
-    }
-
-    const updatedDeck = {
-      ...deck,
-      cards: findAndUpdateCard(deck.cards),
-      alternates: findAndUpdateCard(deck.alternates),
-      sideboard: findAndUpdateCard(deck.sideboard)
-    }
+      return {
+        ...card,
+        pulledPrintings: pulledPrintings.length > 0 ? pulledPrintings : undefined
+      }
+    })
 
     await window.electronAPI.saveDeck(updatedDeck)
     set({
@@ -200,18 +180,12 @@ export const createPullListSlice: SliceCreator<PullListSlice> = (set, get) => ({
     const deck = state.decks.find(d => d.id === deckId)
     if (!deck) return
 
-    const clearPulled = (cards: DeckCard[]): DeckCard[] => {
-      return cards.map(card => ({
-        ...card,
-        pulledPrintings: undefined
-      }))
-    }
-
+    const cleared = mapAllDeckEntries(deck, (card: CardEntry) => ({
+      ...card,
+      pulledPrintings: undefined
+    }))
     const updatedDeck = {
-      ...deck,
-      cards: clearPulled(deck.cards),
-      alternates: clearPulled(deck.alternates),
-      sideboard: clearPulled(deck.sideboard),
+      ...cleared,
       commandersPulled: undefined  // Also clear commander pulled status
     }
 

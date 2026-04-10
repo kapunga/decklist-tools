@@ -1,4 +1,5 @@
 import { INCLUSION_STATUS, FORMAT_TYPE, type Deck } from '@/types'
+import { getMainboard, getSideboard } from '@mtg-deckbuilder/shared'
 import type { DeckFormat, ParsedCard, RenderOptions } from './types'
 import { PARSER_SECTION } from './types'
 
@@ -64,15 +65,16 @@ export const simpleFormat: DeckFormat = {
       lines.push('')
     }
 
-    deck.cards
+    getMainboard(deck)
       .filter(c => c.inclusion === INCLUSION_STATUS.CONFIRMED)
       .forEach(c => {
         lines.push(`${c.quantity} ${c.card.name}`)
       })
 
-    if (options.includeSideboard && deck.sideboard.length > 0) {
+    const sideboard = getSideboard(deck)
+    if (options.includeSideboard && sideboard.length > 0) {
       lines.push('', 'Sideboard:')
-      deck.sideboard.forEach(c => {
+      sideboard.forEach(c => {
         lines.push(`${c.quantity} ${c.card.name}`)
       })
     }

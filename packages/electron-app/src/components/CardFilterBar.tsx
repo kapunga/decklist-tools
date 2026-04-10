@@ -77,9 +77,9 @@ function computeAvailableValues(cards: EnrichedDeckCard[]): AvailableValues {
     const primaryType = getPrimaryType(typeLine || 'Other')
     typeSet.add(primaryType)
 
-    for (const r of deckCard.roles) roleSet.add(r)
+    for (const r of (deckCard.roles ?? [])) roleSet.add(r)
 
-    ownershipSet.add(deckCard.ownership)
+    if (deckCard.ownership) ownershipSet.add(deckCard.ownership)
   }
 
   const cmcBuckets = [...cmcSet].sort((a, b) => a - b)

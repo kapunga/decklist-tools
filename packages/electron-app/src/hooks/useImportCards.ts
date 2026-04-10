@@ -2,8 +2,8 @@ import { useState, useCallback, useRef } from 'react'
 import { formats, detectFormat, type ParsedCard } from '@/lib/formats'
 import { searchCardByName, getCardBySetAndNumber } from '@/lib/scryfall'
 import { SCRYFALL, IMPORT_PREVIEW } from '@/lib/constants'
-import type { DeckCard } from '@/types'
-import { generateDeckCardId, INCLUSION_STATUS, OWNERSHIP_STATUS, ADDED_BY, DECK_LIST } from '@/types'
+import type { CardEntry } from '@/types'
+import { generateDeckCardId, INCLUSION_STATUS, OWNERSHIP_STATUS, CARD_SOURCE, CARD_SET } from '@/types'
 import type { ImportProgress, ResolvedCard, UseImportCardsResult } from './types'
 
 export type { ImportProgress, ResolvedCard, UseImportCardsResult } from './types'
@@ -97,7 +97,7 @@ export function useImportCards(sideboardSize?: number): UseImportCardsResult {
         // Use any roles from the parsed data
         const roles = [...(parsed.roles || [])]
 
-        const deckCard: DeckCard = {
+        const deckCard: CardEntry = {
           id: generateDeckCardId(),
           card: {
             scryfallId: scryfallCard.id,
@@ -112,14 +112,14 @@ export function useImportCards(sideboardSize?: number): UseImportCardsResult {
           typeLine: scryfallCard.type_line,  // Store type line for grouping
           isPinned: false,
           addedAt: new Date().toISOString(),
-          addedBy: ADDED_BY.IMPORT
+          source: CARD_SOURCE.IMPORT
         }
 
         const hasSideboard = sideboardSize !== undefined && sideboardSize > 0
         const listType = parsed.isSideboard
-          ? (hasSideboard ? DECK_LIST.SIDEBOARD : DECK_LIST.ALTERNATES)
-          : parsed.isMaybeboard ? DECK_LIST.ALTERNATES
-          : DECK_LIST.MAINBOARD
+          ? (hasSideboard ? CARD_SET.SIDEBOARD : CARD_SET.ALTERNATES)
+          : parsed.isMaybeboard ? CARD_SET.ALTERNATES
+          : CARD_SET.MAINBOARD
 
         resolvedCards.push({ card: deckCard, listType })
 
