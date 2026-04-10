@@ -1,4 +1,4 @@
-import { Storage, generateDeckCardId, INTEREST_LIST_ID, CARD_SET, CARD_SOURCE } from '@mtg-deckbuilder/shared'
+import { Storage, INTEREST_LIST_ID, CARD_SET, CARD_SOURCE, makeCardEntry } from '@mtg-deckbuilder/shared'
 import type { CardEntry, CardList, CardSource } from '@mtg-deckbuilder/shared'
 import { fetchScryfallCard, createCardIdentifier } from './helpers.js'
 import type { ManageInterestListArgs } from './types.js'
@@ -46,17 +46,12 @@ export async function manageInterestList(storage: Storage, args: ManageInterestL
       // Normalise source to the CardSource union
       const source: CardSource = (args.source === 'import' || args.source === 'claude') ? args.source : CARD_SOURCE.USER
 
-      const entry: CardEntry = {
-        id: generateDeckCardId(),
+      const entry = makeCardEntry({
         card: createCardIdentifier(scryfallCard),
         notes: args.notes,
         potentialDecks: args.potential_decks,
-        addedAt: new Date().toISOString(),
         source,
-        quantity: 1,
-        ownership: 'unknown',
-        roles: [],
-      }
+      })
 
       const updated = setMainEntries(list, [...getMainEntries(list), entry])
       storage.saveCardList(updated)

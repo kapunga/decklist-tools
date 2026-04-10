@@ -1,8 +1,49 @@
-import type { CardEntry, CardSetName, Deck, OwnershipStatus } from '../types/index.js'
-import { generateDeckCardId } from '../types/index.js'
+import type { CardEntry, CardIdentifier, CardSetName, CardSource, Deck, OwnershipStatus, PulledPrinting } from '../types/index.js'
+import { CARD_SOURCE, OWNERSHIP_STATUS, generateDeckCardId } from '../types/index.js'
 import { findCardByName, findCardIndexByName } from '../utils/card-utils.js'
 import { getCardSetEntries, withDeckCardSet, getAllDeckEntries } from './card-sets.js'
 import type { OpResult, AddCardMeta, RemoveCardMeta, MoveCardMeta, UpdateCardMeta } from './types.js'
+
+// --- Factory ---
+
+/** Inputs for `makeCardEntry`. Required fields with sensible defaults can be omitted. */
+export interface MakeCardEntryInput {
+  card: CardIdentifier
+  quantity?: number
+  ownership?: OwnershipStatus
+  roles?: string[]
+  source?: CardSource
+  typeLine?: string
+  notes?: string
+  pulledPrintings?: PulledPrinting[]
+  potentialDecks?: string[]
+}
+
+/**
+ * Create a new `CardEntry` with sensible defaults for required fields.
+ *
+ * Defaults: `quantity: 1`, `ownership: 'unknown'`, `roles: []`, `source: 'user'`.
+ * The `id` is auto-generated and `addedAt` is set to the current timestamp.
+ *
+ * Use this for normal card creation. Synthetic entries (e.g. commander
+ * pseudo-cards keyed by `commander-${name}`) should construct their CardEntry
+ * inline since they need a deterministic id.
+ */
+export function makeCardEntry(input: MakeCardEntryInput): CardEntry {
+  return {
+    id: generateDeckCardId(),
+    card: input.card,
+    addedAt: new Date().toISOString(),
+    quantity: input.quantity ?? 1,
+    ownership: input.ownership ?? OWNERSHIP_STATUS.UNKNOWN,
+    roles: input.roles ?? [],
+    source: input.source ?? CARD_SOURCE.USER,
+    typeLine: input.typeLine,
+    notes: input.notes,
+    pulledPrintings: input.pulledPrintings,
+    potentialDecks: input.potentialDecks,
+  }
+}
 
 // --- Core Operations ---
 

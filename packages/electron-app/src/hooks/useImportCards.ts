@@ -2,8 +2,7 @@ import { useState, useCallback, useRef } from 'react'
 import { formats, detectFormat, type ParsedCard } from '@/lib/formats'
 import { searchCardByName, getCardBySetAndNumber } from '@/lib/scryfall'
 import { SCRYFALL, IMPORT_PREVIEW } from '@/lib/constants'
-import type { CardEntry } from '@/types'
-import { generateDeckCardId, OWNERSHIP_STATUS, CARD_SOURCE, CARD_SET } from '@/types'
+import { OWNERSHIP_STATUS, CARD_SOURCE, CARD_SET, makeCardEntry } from '@/types'
 import type { ImportProgress, ResolvedCard, UseImportCardsResult } from './types'
 
 export type { ImportProgress, ResolvedCard, UseImportCardsResult } from './types'
@@ -97,8 +96,7 @@ export function useImportCards(sideboardSize?: number): UseImportCardsResult {
         // Use any roles from the parsed data
         const roles = [...(parsed.roles || [])]
 
-        const deckCard: CardEntry = {
-          id: generateDeckCardId(),
+        const deckCard = makeCardEntry({
           card: {
             scryfallId: scryfallCard.id,
             name: scryfallCard.name,
@@ -108,10 +106,9 @@ export function useImportCards(sideboardSize?: number): UseImportCardsResult {
           quantity: parsed.quantity,
           ownership: OWNERSHIP_STATUS.OWNED,
           roles,
-          typeLine: scryfallCard.type_line,  // Store type line for grouping
-          addedAt: new Date().toISOString(),
-          source: CARD_SOURCE.IMPORT
-        }
+          typeLine: scryfallCard.type_line,
+          source: CARD_SOURCE.IMPORT,
+        })
 
         const hasSideboard = sideboardSize !== undefined && sideboardSize > 0
         const listType = parsed.isSideboard

@@ -1,5 +1,5 @@
 import type { CardEntry, CardList } from '@/types'
-import { INTEREST_LIST_ID, CARD_SET, CARD_SOURCE } from '@/types'
+import { INTEREST_LIST_ID, CARD_SET, CARD_SOURCE, makeCardEntry } from '@/types'
 import type { InterestListSlice, SliceCreator } from './types'
 
 function findInterestList(cardLists: CardList[]): CardList | undefined {
@@ -32,16 +32,11 @@ export const createInterestListSlice: SliceCreator<InterestListSlice> = (set, ge
     const state = get()
     const existing = findInterestList(state.cardLists) ?? createEmptyInterestList()
 
-    const entry: CardEntry = {
-      id: crypto.randomUUID(),
+    const entry = makeCardEntry({
       card,
       notes,
       source: source ?? CARD_SOURCE.USER,
-      addedAt: new Date().toISOString(),
-      quantity: 1,
-      ownership: 'unknown',
-      roles: [],
-    }
+    })
 
     const updated = withMainEntries(existing, [...getMainEntries(existing), entry])
     await window.electronAPI.saveCardList(updated)

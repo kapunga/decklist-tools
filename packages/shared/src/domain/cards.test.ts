@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { mergeCardIntoList, addCardToDeck, removeCardFromDeck, moveCard, findCardAcrossLists } from './cards.js'
+import { mergeCardIntoList, addCardToDeck, removeCardFromDeck, moveCard, findCardAcrossLists, makeCardEntry } from './cards.js'
 import { getMainboard, getSideboard, getAlternates } from './card-sets.js'
 import type { Deck, CardEntry } from '../types/index.js'
 import { CARD_SET, CARD_SOURCE, FORMAT_TYPE, OWNERSHIP_STATUS } from '../types/index.js'
@@ -291,5 +291,43 @@ describe('findCardAcrossLists', () => {
   it('is case-insensitive', () => {
     const deck = makeDeck({ mainboard: [makeEntry('Sol Ring')] })
     expect(findCardAcrossLists(deck, 'sol ring')).toBeDefined()
+  })
+})
+
+describe('makeCardEntry', () => {
+  const card = { name: 'Sol Ring', setCode: 'lea', collectorNumber: '270' }
+
+  it('applies sensible defaults to required fields', () => {
+    const entry = makeCardEntry({ card })
+    expect(entry.quantity).toBe(1)
+    expect(entry.ownership).toBe('unknown')
+    expect(entry.roles).toEqual([])
+    expect(entry.source).toBe('user')
+  })
+
+  it('generates a fresh id and addedAt', () => {
+    const a = makeCardEntry({ card })
+    const b = makeCardEntry({ card })
+    expect(a.id).not.toBe(b.id)
+    expect(a.addedAt).toBeTruthy()
+  })
+
+  it('respects overrides for required fields', () => {
+    const entry = makeCardEntry({ card, quantity: 4, source: 'import', roles: ['ramp'] })
+    expect(entry.quantity).toBe(4)
+    expect(entry.source).toBe('import')
+    expect(entry.roles).toEqual(['ramp'])
+  })
+
+  it('passes through optional fields', () => {
+    const entry = makeCardEntry({
+      card,
+      typeLine: 'Artifact',
+      notes: 'classic ramp',
+      potentialDecks: ['deck-1'],
+    })
+    expect(entry.typeLine).toBe('Artifact')
+    expect(entry.notes).toBe('classic ramp')
+    expect(entry.potentialDecks).toEqual(['deck-1'])
   })
 })

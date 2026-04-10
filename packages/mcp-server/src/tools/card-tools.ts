@@ -1,24 +1,21 @@
 import {
   Storage,
-  type CardEntry,
   type OwnershipStatus,
   type ScryfallCard,
   type CardSetName,
-  generateDeckCardId,
   searchCardByNameExact,
   searchCardByName,
   getCardBySetAndNumber,
   getCardById,
   searchCards,
   getOracleText,
-  OWNERSHIP_STATUS,
-  CARD_SOURCE,
   CARD_SET,
   addCardToDeck,
   removeCardFromDeck,
   moveCard,
   updateCardInDeck,
   findCardAcrossLists,
+  makeCardEntry,
 } from '@mtg-deckbuilder/shared'
 import { getDeckOrThrow, fetchScryfallCard, createCardIdentifier, parseCardString } from './helpers.js'
 import type { ManageCardArgs, SearchCardsArgs } from './types.js'
@@ -84,16 +81,13 @@ export async function manageCard(storage: Storage, args: ManageCardArgs) {
         const cardIdentifier = createCardIdentifier(scryfallCard)
         const target = resolveTargetList(args, deck.format.sideboardSize)
 
-        const deckCard: CardEntry = {
-          id: generateDeckCardId(),
+        const deckCard = makeCardEntry({
           card: cardIdentifier,
           quantity,
-          ownership: (args.ownership as OwnershipStatus) || OWNERSHIP_STATUS.UNKNOWN,
-          roles: args.roles || [],
+          ownership: args.ownership as OwnershipStatus | undefined,
+          roles: args.roles,
           typeLine: scryfallCard.type_line,
-          addedAt: new Date().toISOString(),
-          source: CARD_SOURCE.USER,
-        }
+        })
 
         const result = addCardToDeck(deck, deckCard, target)
         deck = result.deck
