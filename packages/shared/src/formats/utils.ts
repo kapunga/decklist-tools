@@ -1,5 +1,4 @@
 import type { Deck, CardEntry } from '../types/index.js'
-import { INCLUSION_STATUS } from '../types/index.js'
 import { getMainboard, getAlternates, getSideboard } from '../domain/card-sets.js'
 import type { ParsedCard, LineParserConfig, ParserSection } from './types.js'
 import { PARSER_SECTION } from './types.js'
@@ -56,15 +55,15 @@ export function parseLinesWithSections(text: string, config: LineParserConfig): 
   return cards
 }
 
+// Format-parser-friendly aliases. After the inclusion → CardSet refactor,
+// "confirmed" is simply the mainboard, "maybeboard" is the alternates set,
+// and "sideboard" is the sideboard set.
 export function getConfirmedCards(deck: Deck): CardEntry[] {
-  return getMainboard(deck).filter(c => c.inclusion === INCLUSION_STATUS.CONFIRMED)
+  return getMainboard(deck)
 }
 
 export function getMaybeboardCards(deck: Deck): CardEntry[] {
-  return [
-    ...getMainboard(deck).filter(c => c.inclusion === INCLUSION_STATUS.CONSIDERING),
-    ...getAlternates(deck),
-  ]
+  return getAlternates(deck)
 }
 
 export function getSideboardCards(deck: Deck): CardEntry[] {

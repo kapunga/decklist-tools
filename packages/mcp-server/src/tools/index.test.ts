@@ -317,16 +317,15 @@ describe('Card Management', () => {
       expect(getMainboard(mock._decks.get(deck.id)!)[0].roles).toEqual(['engine'])
     })
 
-    it('updates status and ownership', async () => {
+    it('updates ownership', async () => {
       const deck = makeDeck()
       pushMainboard(deck,makeDeckCard('Sol Ring'))
       mock._decks.set(deck.id, deck)
 
       await call('manage_card', {
-        action: 'update', deck_id: deck.id, name: 'Sol Ring', status: 'considering', ownership: 'need_to_buy'
+        action: 'update', deck_id: deck.id, name: 'Sol Ring', ownership: 'need_to_buy'
       })
       const saved = mock._decks.get(deck.id)!
-      expect(getMainboard(saved)[0].inclusion).toBe('considering')
       expect(getMainboard(saved)[0].ownership).toBe('need_to_buy')
     })
 

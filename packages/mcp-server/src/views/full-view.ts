@@ -1,5 +1,5 @@
 import type { Deck, CardEntry, RoleDefinition, ScryfallCard } from '@mtg-deckbuilder/shared'
-import { getPrimaryType, getCardCount, getCardDisplayName, getCanonicalSuffix, buildRoleLookup, CARD_TYPE_ORDER, isCardFullyPulled, INCLUSION_STATUS, getMainboard, getSideboard, getAlternates } from '@mtg-deckbuilder/shared'
+import { getPrimaryType, getCardCount, getCardDisplayName, getCanonicalSuffix, buildRoleLookup, CARD_TYPE_ORDER, isCardFullyPulled, getMainboard, getSideboard, getAlternates } from '@mtg-deckbuilder/shared'
 import { formatCardLine, type DetailLevel } from './formatters.js'
 
 export function renderFullView(
@@ -31,38 +31,24 @@ export function renderFullView(
   }
 
   const mainboard = getMainboard(deck)
-  let confirmedCards = mainboard.filter(c => c.inclusion === INCLUSION_STATUS.CONFIRMED)
+  let mainboardCards = mainboard
   if (filteredCardIds) {
-    confirmedCards = confirmedCards.filter(c => filteredCardIds.has(c.id))
+    mainboardCards = mainboardCards.filter(c => filteredCardIds.has(c.id))
   }
 
-  const consideringCards = filteredCardIds
-    ? mainboard.filter(c => c.inclusion === INCLUSION_STATUS.CONSIDERING && filteredCardIds.has(c.id))
-    : mainboard.filter(c => c.inclusion === INCLUSION_STATUS.CONSIDERING)
-
   if (groupBy === 'role') {
-    renderByRole(lines, confirmedCards, roleLookup)
+    renderByRole(lines, mainboardCards, roleLookup)
   } else if (groupBy === 'type') {
-    renderByType(lines, confirmedCards)
+    renderByType(lines, mainboardCards)
   } else if (sortBy === 'set') {
-    renderChecklist(lines, confirmedCards)
+    renderChecklist(lines, mainboardCards)
   } else {
-    if (confirmedCards.length > 0 || consideringCards.length > 0) {
+    if (mainboardCards.length > 0) {
       lines.push('## Main Deck')
-      if (confirmedCards.length > 0) {
-        lines.push('### Confirmed')
-        for (const c of confirmedCards) {
-          lines.push(formatCardLine(c, globalRoles, deck.customRoles, scryfallCache, detail, roleLookup))
-        }
-        lines.push('')
+      for (const c of mainboardCards) {
+        lines.push(formatCardLine(c, globalRoles, deck.customRoles, scryfallCache, detail, roleLookup))
       }
-      if (consideringCards.length > 0) {
-        lines.push('### Considering')
-        for (const c of consideringCards) {
-          lines.push(formatCardLine(c, globalRoles, deck.customRoles, scryfallCache, detail, roleLookup))
-        }
-        lines.push('')
-      }
+      lines.push('')
     }
   }
 

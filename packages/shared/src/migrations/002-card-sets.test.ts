@@ -109,7 +109,8 @@ describe('migrateCardSets', () => {
 
     const entry = (deck as unknown as { cardSets: CardSet[] }).cardSets[0].entries[0]
     expect(entry.quantity).toBe(4)
-    expect(entry.inclusion).toBe('confirmed')
+    // Migration 002 still preserves the legacy `inclusion` field; migration 003 strips it.
+    expect((entry as unknown as Record<string, unknown>).inclusion).toBe('confirmed')
     expect(entry.ownership).toBe('need_to_buy')
     expect(entry.roles).toEqual(['removal'])
     expect(entry.typeLine).toBe('Instant')

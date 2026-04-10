@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { addCommander, removeCommander, swapCommander, getDeckColorIdentity } from './commanders.js'
 import type { Deck, CardIdentifier, CardEntry } from '../types/index.js'
-import { CARD_SET, CARD_SOURCE, FORMAT_TYPE, INCLUSION_STATUS, OWNERSHIP_STATUS } from '../types/index.js'
+import { CARD_SET, CARD_SOURCE, FORMAT_TYPE, OWNERSHIP_STATUS } from '../types/index.js'
 
 function makeCommander(name: string, colorIdentity: string[] = []): CardIdentifier {
   return { name, setCode: 'test', collectorNumber: '1', colorIdentity }
@@ -11,6 +11,7 @@ interface MakeDeckOptions {
   mainboard?: CardEntry[]
   sideboard?: CardEntry[]
   alternates?: CardEntry[]
+  cut?: CardEntry[]
   format?: Deck['format']
   commanders?: Deck['commanders']
   colorIdentity?: string[]
@@ -28,6 +29,7 @@ function makeDeck(opts: MakeDeckOptions = {}): Deck {
       { name: CARD_SET.MAINBOARD, entries: opts.mainboard ?? [] },
       { name: CARD_SET.SIDEBOARD, entries: opts.sideboard ?? [] },
       { name: CARD_SET.ALTERNATES, entries: opts.alternates ?? [] },
+      { name: CARD_SET.CUT, entries: opts.cut ?? [] },
     ],
     commanders: opts.commanders ?? [],
     customRoles: [],
@@ -130,7 +132,6 @@ function makeEntry(name: string, overrides: Partial<CardEntry> = {}): CardEntry 
     id: `card-${name}`,
     card: { name, setCode: 'test', collectorNumber: '1' },
     quantity: 1,
-    inclusion: INCLUSION_STATUS.CONFIRMED,
     ownership: OWNERSHIP_STATUS.UNKNOWN,
     roles: [],
     addedAt: '2024-01-01T00:00:00.000Z',
@@ -180,14 +181,15 @@ describe('getDeckColorIdentity', () => {
     expect(getDeckColorIdentity(deck)).toEqual(expect.arrayContaining(['R', 'W']))
   })
 
-  it('skips cut cards for non-commander decks', () => {
+  it('skips cards in the cut set for non-commander decks', () => {
     const deck = makeDeck({
       format: { type: FORMAT_TYPE.STANDARD, deckSize: 60, sideboardSize: 15, cardLimit: 4, unlimitedCards: [] },
       mainboard: [
         makeEntry('Bolt', { card: { name: 'Bolt', setCode: 'test', collectorNumber: '1', colorIdentity: ['R'] } }),
+      ],
+      cut: [
         makeEntry('Growth', {
           card: { name: 'Growth', setCode: 'test', collectorNumber: '2', colorIdentity: ['G'] },
-          inclusion: INCLUSION_STATUS.CUT,
         }),
       ],
     })

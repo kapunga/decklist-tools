@@ -3,7 +3,7 @@ import { formats, detectFormat, type ParsedCard } from '@/lib/formats'
 import { searchCardByName, getCardBySetAndNumber } from '@/lib/scryfall'
 import { SCRYFALL, IMPORT_PREVIEW } from '@/lib/constants'
 import type { CardEntry } from '@/types'
-import { generateDeckCardId, INCLUSION_STATUS, OWNERSHIP_STATUS, CARD_SOURCE, CARD_SET } from '@/types'
+import { generateDeckCardId, OWNERSHIP_STATUS, CARD_SOURCE, CARD_SET } from '@/types'
 import type { ImportProgress, ResolvedCard, UseImportCardsResult } from './types'
 
 export type { ImportProgress, ResolvedCard, UseImportCardsResult } from './types'
@@ -106,7 +106,6 @@ export function useImportCards(sideboardSize?: number): UseImportCardsResult {
             collectorNumber: parsed.collectorNumber || scryfallCard.collector_number
           },
           quantity: parsed.quantity,
-          inclusion: parsed.isMaybeboard ? INCLUSION_STATUS.CONSIDERING : INCLUSION_STATUS.CONFIRMED,
           ownership: OWNERSHIP_STATUS.OWNED,
           roles,
           typeLine: scryfallCard.type_line,  // Store type line for grouping

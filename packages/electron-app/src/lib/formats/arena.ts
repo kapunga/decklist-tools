@@ -1,4 +1,4 @@
-import { INCLUSION_STATUS, FORMAT_TYPE, type Deck } from '@/types'
+import { FORMAT_TYPE, type Deck } from '@/types'
 import { getMainboard, getSideboard, getAlternates } from '@mtg-deckbuilder/shared'
 import type { DeckFormat, ParsedCard, RenderOptions } from './types'
 import { PARSER_SECTION } from './types'
@@ -97,13 +97,11 @@ export const arenaFormat: DeckFormat = {
 
     lines.push('Deck')
     const mainboard = getMainboard(deck)
-    mainboard
-      .filter(c => c.inclusion === INCLUSION_STATUS.CONFIRMED)
-      .forEach(c => {
-        lines.push(
-          `${c.quantity} ${c.card.name} (${c.card.setCode.toUpperCase()}) ${c.card.collectorNumber}`
-        )
-      })
+    mainboard.forEach(c => {
+      lines.push(
+        `${c.quantity} ${c.card.name} (${c.card.setCode.toUpperCase()}) ${c.card.collectorNumber}`
+      )
+    })
 
     const sideboard = getSideboard(deck)
     if (options.includeSideboard && sideboard.length > 0) {
@@ -116,10 +114,7 @@ export const arenaFormat: DeckFormat = {
     }
 
     if (options.includeMaybeboard) {
-      const maybe = [
-        ...mainboard.filter(c => c.inclusion === INCLUSION_STATUS.CONSIDERING),
-        ...getAlternates(deck)
-      ]
+      const maybe = getAlternates(deck)
       if (maybe.length > 0) {
         lines.push('', 'Maybeboard')
         maybe.forEach(c => {

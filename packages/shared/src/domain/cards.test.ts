@@ -2,14 +2,13 @@ import { describe, it, expect } from 'vitest'
 import { mergeCardIntoList, addCardToDeck, removeCardFromDeck, moveCard, findCardAcrossLists } from './cards.js'
 import { getMainboard, getSideboard, getAlternates } from './card-sets.js'
 import type { Deck, CardEntry } from '../types/index.js'
-import { CARD_SET, CARD_SOURCE, FORMAT_TYPE, INCLUSION_STATUS, OWNERSHIP_STATUS } from '../types/index.js'
+import { CARD_SET, CARD_SOURCE, FORMAT_TYPE, OWNERSHIP_STATUS } from '../types/index.js'
 
 function makeEntry(name: string, overrides: Partial<CardEntry> = {}): CardEntry {
   return {
     id: `test-${name}`,
     card: { name, setCode: 'test', collectorNumber: '1' },
     quantity: 1,
-    inclusion: INCLUSION_STATUS.CONFIRMED,
     ownership: OWNERSHIP_STATUS.OWNED,
     roles: [],
     addedAt: '2024-01-01T00:00:00.000Z',

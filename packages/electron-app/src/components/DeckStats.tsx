@@ -18,7 +18,7 @@ export function DeckStats({ deck }: DeckStatsProps) {
   const globalRoles = useGlobalRoles()
   const [matrixRoles, setMatrixRoles] = useState<string[]>([])
   const confirmedCards = useMemo(
-    () => getMainboard(deck).filter(c => c.inclusion === 'confirmed'),
+    () => getMainboard(deck),
     [deck.cardSets]
   )
   const { cache: scryfallCache, isLoading: scryfallLoading } = useScryfallCache(confirmedCards)

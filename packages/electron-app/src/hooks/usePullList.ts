@@ -3,7 +3,7 @@ import { useQueries } from '@tanstack/react-query'
 import { useStore } from '@/hooks/useStore'
 import { getCardPrintings } from '@/lib/scryfall'
 import type { Deck, CardEntry, ScryfallCard, PullListSortKey, PullListSource } from '@/types'
-import { getTotalPulledQuantity, isBasicLand, INCLUSION_STATUS, OWNERSHIP_STATUS, CARD_SOURCE } from '@/types'
+import { getTotalPulledQuantity, isBasicLand, OWNERSHIP_STATUS, CARD_SOURCE } from '@/types'
 import { getMainboard, getSideboard, getAlternates } from '@mtg-deckbuilder/shared'
 import type { PullListItem, PullListGroup } from './types'
 
@@ -130,8 +130,8 @@ export function usePullList(deck: Deck | null) {
     if (!deck) return []
 
     if (source === 'maybeboard') {
-      // Maybeboard: only alternates (not cut), no commanders
-      let cards = getAlternates(deck).filter(c => c.inclusion !== INCLUSION_STATUS.CUT)
+      // Maybeboard: only alternates, no commanders
+      let cards = getAlternates(deck)
 
       // Filter out basic lands if option is enabled
       if (hideBasicLands) {
@@ -142,8 +142,8 @@ export function usePullList(deck: Deck | null) {
     }
 
     // Main Deck: main + sideboard + commanders
-    let mainCards = getMainboard(deck).filter(c => c.inclusion !== INCLUSION_STATUS.CUT)
-    let sideboardCards = getSideboard(deck).filter(c => c.inclusion !== INCLUSION_STATUS.CUT)
+    let mainCards = getMainboard(deck)
+    let sideboardCards = getSideboard(deck)
 
     // Filter out basic lands if option is enabled
     if (hideBasicLands) {
@@ -163,7 +163,6 @@ export function usePullList(deck: Deck | null) {
         id: `commander-${cmd.name}`,
         card: cmd,
         quantity: 1,
-        inclusion: INCLUSION_STATUS.CONFIRMED,
         ownership: OWNERSHIP_STATUS.UNKNOWN,
         roles: ['commander'],
         typeLine: '',

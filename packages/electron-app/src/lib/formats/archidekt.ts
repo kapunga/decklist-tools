@@ -1,4 +1,4 @@
-import { INCLUSION_STATUS, FORMAT_TYPE, type Deck, type CardEntry } from '@/types'
+import { FORMAT_TYPE, type Deck, type CardEntry } from '@/types'
 import { getMainboard, getSideboard, getAlternates } from '@mtg-deckbuilder/shared'
 import type { DeckFormat, ParsedCard, RenderOptions } from './types'
 import { PARSER_SECTION } from './types'
@@ -80,14 +80,12 @@ export const archidektFormat: DeckFormat = {
     }
 
     const mainboard = getMainboard(deck)
-    mainboard
-      .filter(c => c.inclusion === INCLUSION_STATUS.CONFIRMED)
-      .forEach(c => {
-        // Use first role for category, fallback to 'Other'
-        const primaryRole = (c.roles ?? [])[0]
-        const category = primaryRole ? (roleToCategoryMap[primaryRole] || 'Other') : 'Other'
-        renderCard(c, category)
-      })
+    mainboard.forEach(c => {
+      // Use first role for category, fallback to 'Other'
+      const primaryRole = (c.roles ?? [])[0]
+      const category = primaryRole ? (roleToCategoryMap[primaryRole] || 'Other') : 'Other'
+      renderCard(c, category)
+    })
 
     const sideboard = getSideboard(deck)
     if (options.includeSideboard && sideboard.length > 0) {
@@ -95,11 +93,7 @@ export const archidektFormat: DeckFormat = {
     }
 
     if (options.includeMaybeboard) {
-      const maybe = [
-        ...mainboard.filter(c => c.inclusion === INCLUSION_STATUS.CONSIDERING),
-        ...getAlternates(deck)
-      ]
-      maybe.forEach(c => renderCard(c, 'Maybeboard'))
+      getAlternates(deck).forEach(c => renderCard(c, 'Maybeboard'))
     }
 
     return lines.join('\n')

@@ -70,6 +70,11 @@ export function getAllDeckEntries(deck: Deck): CardEntry[] {
   return getAllEntries(deck.cardSets)
 }
 
+/** Flat union of all entries except those in the cut set. The cards the deck is "still about". */
+export function getNonCutEntries(deck: Deck): CardEntry[] {
+  return deck.cardSets.filter(s => s.name !== CARD_SET.CUT).flatMap(s => s.entries)
+}
+
 /** Return a new deck with the named set's entries replaced. Creates the set if absent. */
 export function withDeckCardSet(deck: Deck, name: string, entries: CardEntry[]): Deck {
   return { ...deck, cardSets: withCardSet(deck.cardSets, name, entries) }

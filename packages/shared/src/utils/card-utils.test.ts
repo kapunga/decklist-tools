@@ -14,7 +14,6 @@ const createDeckCard = (
     collectorNumber: '1',
   },
   quantity,
-  inclusion: 'confirmed',
   ownership: 'owned',
   roles: [],
   addedAt: new Date().toISOString(),

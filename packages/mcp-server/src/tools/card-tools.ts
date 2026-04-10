@@ -1,7 +1,6 @@
 import {
   Storage,
   type CardEntry,
-  type InclusionStatus,
   type OwnershipStatus,
   type ScryfallCard,
   type CardSetName,
@@ -12,7 +11,6 @@ import {
   getCardById,
   searchCards,
   getOracleText,
-  INCLUSION_STATUS,
   OWNERSHIP_STATUS,
   CARD_SOURCE,
   CARD_SET,
@@ -53,7 +51,8 @@ function toListName(name: string): CardSetName {
     case 'mainboard': return CARD_SET.MAINBOARD
     case 'alternates': return CARD_SET.ALTERNATES
     case 'sideboard': return CARD_SET.SIDEBOARD
-    default: throw new Error(`Invalid list: "${name}". Valid lists are: mainboard, sideboard, alternates`)
+    case 'cut': return CARD_SET.CUT
+    default: throw new Error(`Invalid list: "${name}". Valid lists are: mainboard, sideboard, alternates, cut`)
   }
 }
 
@@ -89,7 +88,6 @@ export async function manageCard(storage: Storage, args: ManageCardArgs) {
           id: generateDeckCardId(),
           card: cardIdentifier,
           quantity,
-          inclusion: (args.status as InclusionStatus) || INCLUSION_STATUS.CONFIRMED,
           ownership: (args.ownership as OwnershipStatus) || OWNERSHIP_STATUS.UNKNOWN,
           roles: args.roles || [],
           typeLine: scryfallCard.type_line,
@@ -147,7 +145,6 @@ export async function manageCard(storage: Storage, args: ManageCardArgs) {
           roles: args.roles,
           addRoles: args.add_roles,
           removeRoles: args.remove_roles,
-          inclusion: args.status as InclusionStatus | undefined,
           ownership: args.ownership as OwnershipStatus | undefined,
           notes: args.notes,
         })

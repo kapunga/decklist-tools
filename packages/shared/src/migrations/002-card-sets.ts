@@ -7,7 +7,7 @@ interface LegacyDeckCard {
   id: string
   card: CardEntry['card']
   quantity: number
-  inclusion: CardEntry['inclusion']
+  inclusion: 'confirmed' | 'considering' | 'cut'
   ownership: CardEntry['ownership']
   roles: string[]
   typeLine?: string
@@ -18,8 +18,15 @@ interface LegacyDeckCard {
   pulledPrintings?: CardEntry['pulledPrintings']
 }
 
-/** Convert a single legacy DeckCard to the unified CardEntry shape. */
-function legacyCardToEntry(card: LegacyDeckCard): CardEntry {
+// Post-v2 entry shape: identical to the current CardEntry but still carries
+// the legacy `inclusion` field. Migration 003 consumes this and routes each
+// entry into the appropriate CardSet (`cut`, `alternates`, or its original set).
+type PostV2Entry = CardEntry & {
+  inclusion?: 'confirmed' | 'considering' | 'cut'
+}
+
+/** Convert a single legacy DeckCard to the post-v2 shape (still carries inclusion). */
+function legacyCardToEntry(card: LegacyDeckCard): PostV2Entry {
   return {
     id: card.id,
     card: card.card,

@@ -23,7 +23,7 @@ import { useStore, useAllRoles, useGlobalRoles } from '@/hooks/useStore'
 import { getRoleColor } from '@/lib/constants'
 import { CardEditModal } from '@/components/CardEditModal'
 import type { CardEntry, OwnershipStatus, RoleDefinition, CardSetName } from '@/types'
-import { isCardFullyPulled, getCardDisplayName, getCanonicalSuffix, INCLUSION_STATUS, OWNERSHIP_STATUS, CARD_SET } from '@/types'
+import { isCardFullyPulled, getCardDisplayName, getCanonicalSuffix, OWNERSHIP_STATUS, CARD_SET } from '@/types'
 
 const ownershipLabels: Record<OwnershipStatus, string> = {
   [OWNERSHIP_STATUS.UNKNOWN]: 'Unknown',
@@ -181,9 +181,6 @@ export function CardItem({ card, deckId, listType }: CardItemProps) {
           </button>
         )}
 
-        {card.inclusion === INCLUSION_STATUS.CONSIDERING && (
-          <Badge variant="outline" className="text-xs flex-shrink-0">?</Badge>
-        )}
         {card.ownership === OWNERSHIP_STATUS.NEED_TO_BUY && (
           <Badge variant="destructive" className="text-xs flex-shrink-0">Buy</Badge>
         )}

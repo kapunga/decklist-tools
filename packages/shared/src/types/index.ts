@@ -53,13 +53,6 @@ export function getCanonicalSuffix(card: CardIdentifier): string {
 
 // Discriminator constants — single source of truth; types derived via typeof
 
-export const INCLUSION_STATUS = {
-  CONFIRMED: 'confirmed',
-  CONSIDERING: 'considering',
-  CUT: 'cut',
-} as const
-export type InclusionStatus = typeof INCLUSION_STATUS[keyof typeof INCLUSION_STATUS]
-
 export const OWNERSHIP_STATUS = {
   UNKNOWN: 'unknown',
   OWNED: 'owned',
@@ -196,7 +189,6 @@ export interface CardEntry {
   source?: CardSource
   // Deck-context fields
   quantity?: number
-  inclusion?: InclusionStatus
   ownership?: OwnershipStatus
   roles?: string[]
   pulledPrintings?: PulledPrinting[]
@@ -420,9 +412,7 @@ export function getCardLimit(cardName: string, format: DeckFormat): number {
 
 export function getCardCount(deck: Deck): number {
   const mainboard = deck.cardSets.find(s => s.name === CARD_SET.MAINBOARD)?.entries ?? []
-  const mainDeckCount = mainboard
-    .filter(c => c.inclusion === INCLUSION_STATUS.CONFIRMED)
-    .reduce((sum, c) => sum + (c.quantity ?? 0), 0)
+  const mainDeckCount = mainboard.reduce((sum, c) => sum + (c.quantity ?? 0), 0)
 
   // Commanders count towards deck size in Commander format
   const commanderCount = deck.commanders?.length || 0

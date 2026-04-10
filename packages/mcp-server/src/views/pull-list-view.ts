@@ -1,5 +1,5 @@
 import type { Deck, CardEntry, SetCollectionFile, ScryfallCard, CollectionLevel, PullListItem, PullListGroup } from '@mtg-deckbuilder/shared'
-import { getTotalPulledQuantity, getCardDisplayName, COLLECTION_LEVEL_RARITIES, isBasicLand, INCLUSION_STATUS, OWNERSHIP_STATUS, CARD_SOURCE, getMainboard, getSideboard, getAlternates } from '@mtg-deckbuilder/shared'
+import { getTotalPulledQuantity, getCardDisplayName, COLLECTION_LEVEL_RARITIES, isBasicLand, OWNERSHIP_STATUS, CARD_SOURCE, getMainboard, getSideboard, getAlternates } from '@mtg-deckbuilder/shared'
 
 // Rarity order for sorting
 const RARITY_ORDER: Record<string, number> = {
@@ -33,16 +33,16 @@ export function renderPullListView(
   let confirmedCards: CardEntry[]
 
   if (source === 'maybeboard') {
-    // Maybeboard: only alternates (confirmed), no commanders
-    let alternateCards = getAlternates(deck).filter(c => c.inclusion === INCLUSION_STATUS.CONFIRMED)
+    // Maybeboard: only the alternates set, no commanders
+    let alternateCards = getAlternates(deck)
     if (hideBasicLands) {
       alternateCards = alternateCards.filter(c => !isBasicLand(c.card.name))
     }
     confirmedCards = alternateCards
   } else {
     // Main Deck: main + sideboard + commanders
-    let mainCards = getMainboard(deck).filter(c => c.inclusion === INCLUSION_STATUS.CONFIRMED)
-    let sideboardCards = getSideboard(deck).filter(c => c.inclusion === INCLUSION_STATUS.CONFIRMED)
+    let mainCards = getMainboard(deck)
+    let sideboardCards = getSideboard(deck)
     if (hideBasicLands) {
       mainCards = mainCards.filter(c => !isBasicLand(c.card.name))
       sideboardCards = sideboardCards.filter(c => !isBasicLand(c.card.name))
@@ -55,7 +55,6 @@ export function renderPullListView(
         id: `commander-${cmd.name}`,
         card: cmd,
         quantity: 1,
-        inclusion: INCLUSION_STATUS.CONFIRMED,
         ownership: OWNERSHIP_STATUS.UNKNOWN,
         roles: ['commander'],
         typeLine: '',

@@ -1,7 +1,7 @@
 import type { Deck, ScryfallCard } from '../types/index.js'
-import { FORMAT_TYPE, INCLUSION_STATUS, getCardLimit, getCardCount } from '../types/index.js'
+import { FORMAT_TYPE, getCardLimit, getCardCount } from '../types/index.js'
 import { isLegalInFormat } from '../scryfall/index.js'
-import { getSideboard, getAllDeckEntries } from './card-sets.js'
+import { getSideboard, getNonCutEntries } from './card-sets.js'
 import type { ValidationIssue } from './types.js'
 import { ISSUE_CATEGORY, composeValidators } from './types.js'
 
@@ -57,9 +57,8 @@ export function validateCardLimits(deck: Deck): ValidationIssue[] {
   const issues: ValidationIssue[] = []
   const cardCounts = new Map<string, number>()
 
-  // Aggregate quantities across all card sets
-  for (const card of getAllDeckEntries(deck)) {
-    if (card.inclusion === INCLUSION_STATUS.CUT) continue
+  // Aggregate quantities across all playable card sets (exclude cut)
+  for (const card of getNonCutEntries(deck)) {
     const current = cardCounts.get(card.card.name) || 0
     cardCounts.set(card.card.name, current + (card.quantity ?? 0))
   }
@@ -103,8 +102,7 @@ export function validateFormatLegality(deck: Deck, scryfallCache: Map<string, Sc
 
   const issues: ValidationIssue[] = []
 
-  for (const card of getAllDeckEntries(deck)) {
-    if (card.inclusion === INCLUSION_STATUS.CUT) continue
+  for (const card of getNonCutEntries(deck)) {
     const scryfallCard = card.card.scryfallId ? scryfallCache.get(card.card.scryfallId) : undefined
     if (!scryfallCard) continue
 
@@ -132,8 +130,7 @@ export function validateColorIdentity(deck: Deck): ValidationIssue[] {
   const issues: ValidationIssue[] = []
   const allowed = new Set(deck.colorIdentity)
 
-  for (const card of getAllDeckEntries(deck)) {
-    if (card.inclusion === INCLUSION_STATUS.CUT) continue
+  for (const card of getNonCutEntries(deck)) {
     if (!card.card.colorIdentity) continue
 
     const violates = card.card.colorIdentity.some(c => !allowed.has(c))

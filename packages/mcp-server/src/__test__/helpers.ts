@@ -134,7 +134,6 @@ export function makeDeckCard(name: string, overrides?: Partial<CardEntry>): Card
       collectorNumber: '1',
     },
     quantity: 1,
-    inclusion: 'confirmed',
     ownership: 'owned',
     roles: [],
     typeLine: 'Creature — Human Wizard',

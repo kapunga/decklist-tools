@@ -1,5 +1,5 @@
-import type { CardEntry, CardSetName, Deck, InclusionStatus, OwnershipStatus } from '../types/index.js'
-import { INCLUSION_STATUS, generateDeckCardId } from '../types/index.js'
+import type { CardEntry, CardSetName, Deck, OwnershipStatus } from '../types/index.js'
+import { generateDeckCardId } from '../types/index.js'
 import { findCardByName, findCardIndexByName } from '../utils/card-utils.js'
 import { getCardSetEntries, withDeckCardSet, getAllDeckEntries } from './card-sets.js'
 import type { OpResult, AddCardMeta, RemoveCardMeta, MoveCardMeta, UpdateCardMeta } from './types.js'
@@ -16,14 +16,9 @@ export function mergeCardIntoList(list: CardEntry[], card: CardEntry): { list: C
 
   if (existingIndex >= 0) {
     const existing = list[existingIndex]
-    // Upgrade inclusion: confirmed wins over considering (explicit add confirms the card)
-    const inclusion = card.inclusion === INCLUSION_STATUS.CONFIRMED
-      ? INCLUSION_STATUS.CONFIRMED
-      : existing.inclusion
     const mergedCard: CardEntry = {
       ...existing,
       quantity: (existing.quantity ?? 0) + (card.quantity ?? 0),
-      inclusion,
       roles: [...new Set([...(existing.roles ?? []), ...(card.roles ?? [])])],
       notes: existing.notes && card.notes && existing.notes !== card.notes
         ? `${existing.notes}\n${card.notes}`
@@ -182,7 +177,6 @@ export interface CardFieldUpdates {
   roles?: string[]
   addRoles?: string[]
   removeRoles?: string[]
-  inclusion?: InclusionStatus
   ownership?: OwnershipStatus
   notes?: string
 }
@@ -212,10 +206,6 @@ export function updateCardInDeck(
     if (updates.removeRoles) {
       updated.roles = (updated.roles ?? []).filter(r => !updates.removeRoles!.includes(r))
       updatedFields.push('roles')
-    }
-    if (updates.inclusion !== undefined) {
-      updated.inclusion = updates.inclusion
-      updatedFields.push('inclusion')
     }
     if (updates.ownership !== undefined) {
       updated.ownership = updates.ownership

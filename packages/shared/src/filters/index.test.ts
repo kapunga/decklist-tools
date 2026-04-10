@@ -18,7 +18,6 @@ function makeEnriched(overrides: {
       id: 'test',
       card: { name: overrides.name || 'Test Card', setCode: 'test', collectorNumber: '1' },
       quantity: overrides.quantity ?? 1,
-      inclusion: 'confirmed',
       ownership: (overrides.ownership as any) || 'owned',
       roles: overrides.roles || [],
       typeLine: overrides.typeLine || 'Creature — Human',
@@ -188,7 +187,7 @@ describe('enrichCards', () => {
   it('pairs deck cards with cached Scryfall data', () => {
     const deckCard: CardEntry = {
       id: 'test', card: { scryfallId: 'sf-1', name: 'Sol Ring', setCode: 'c21', collectorNumber: '263' },
-      quantity: 1, inclusion: 'confirmed', ownership: 'owned', roles: [],
+      quantity: 1, ownership: 'owned', roles: [],
       addedAt: '', source: 'user',
     }
     const cache = new Map<string, ScryfallCard>()
@@ -202,7 +201,7 @@ describe('enrichCards', () => {
   it('leaves scryfallCard undefined when not in cache', () => {
     const deckCard: CardEntry = {
       id: 'test', card: { name: 'Sol Ring', setCode: 'c21', collectorNumber: '263' },
-      quantity: 1, inclusion: 'confirmed', ownership: 'owned', roles: [],
+      quantity: 1, ownership: 'owned', roles: [],
       addedAt: '', source: 'user',
     }
     const result = enrichCards([deckCard], new Map())

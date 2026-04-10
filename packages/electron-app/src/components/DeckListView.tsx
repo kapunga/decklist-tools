@@ -14,7 +14,7 @@ import { useStore, useGlobalRoles } from '@/hooks/useStore'
 import { useScryfallCache } from '@/hooks/useScryfallCache'
 import { getCardById } from '@/lib/scryfall'
 import type { CardEntry, ScryfallCard, Deck, CardSetName } from '@/types'
-import { getCardLimit, isCardFullyPulled, getCardDisplayName, getCanonicalSuffix, INCLUSION_STATUS, OWNERSHIP_STATUS, CARD_SOURCE, CARD_SET } from '@/types'
+import { getCardLimit, isCardFullyPulled, getCardDisplayName, getCanonicalSuffix, OWNERSHIP_STATUS, CARD_SOURCE, CARD_SET } from '@/types'
 import { getPrimaryType, CARD_TYPE_SORT_ORDER } from '@/lib/constants'
 import type { CardFilter } from '@mtg-deckbuilder/shared'
 import { enrichCards, applyFilters, getMainboard, getCardSetEntries } from '@mtg-deckbuilder/shared'
@@ -47,7 +47,6 @@ export function DeckListView({ deck, listType }: DeckListViewProps) {
       id: `commander-${commander.name}`,
       card: commander,
       quantity: 1,
-      inclusion: INCLUSION_STATUS.CONFIRMED,
       ownership: OWNERSHIP_STATUS.UNKNOWN,
       roles: [],
       addedAt: deck.createdAt,
@@ -58,9 +57,8 @@ export function DeckListView({ deck, listType }: DeckListViewProps) {
   // Get cards for current list (memoized to prevent infinite re-renders)
   const cards = useMemo(() => {
     if (listType === CARD_SET.MAINBOARD) {
-      const mainCards = getMainboard(deck).filter(c => c.inclusion !== INCLUSION_STATUS.CUT)
       // Include commanders at the start of the main deck list
-      return [...commanderCards, ...mainCards]
+      return [...commanderCards, ...getMainboard(deck)]
     }
     return getCardSetEntries(deck.cardSets, listType)
   }, [listType, deck.cardSets, commanderCards])

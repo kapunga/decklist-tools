@@ -18,7 +18,6 @@ export interface ManageCardArgs {
   collector_number?: string
   quantity?: number
   roles?: string[]
-  status?: string
   ownership?: string
   to_alternates?: boolean
   to_sideboard?: boolean
@@ -137,7 +136,6 @@ export function validateManageCardArgs(args: Record<string, unknown>): ManageCar
     collector_number: args.collector_number as string | undefined,
     quantity: args.quantity as number | undefined,
     roles: args.roles as string[] | undefined,
-    status: args.status as string | undefined,
     ownership: args.ownership as string | undefined,
     to_alternates: args.to_alternates as boolean | undefined,
     to_sideboard: args.to_sideboard as boolean | undefined,

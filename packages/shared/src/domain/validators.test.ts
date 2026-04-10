@@ -9,14 +9,13 @@ import {
 } from './validators.js'
 import { ISSUE_CATEGORY } from './types.js'
 import type { Deck, CardEntry } from '../types/index.js'
-import { CARD_SET, CARD_SOURCE, FORMAT_TYPE, INCLUSION_STATUS, OWNERSHIP_STATUS } from '../types/index.js'
+import { CARD_SET, CARD_SOURCE, FORMAT_TYPE, OWNERSHIP_STATUS } from '../types/index.js'
 
 function makeEntry(name: string, overrides: Partial<CardEntry> = {}): CardEntry {
   return {
     id: `test-${name}`,
     card: { name, setCode: 'test', collectorNumber: '1' },
     quantity: 1,
-    inclusion: INCLUSION_STATUS.CONFIRMED,
     ownership: OWNERSHIP_STATUS.OWNED,
     roles: [],
     addedAt: '2024-01-01T00:00:00.000Z',
@@ -29,6 +28,7 @@ interface MakeDeckOptions {
   mainboard?: CardEntry[]
   sideboard?: CardEntry[]
   alternates?: CardEntry[]
+  cut?: CardEntry[]
   format?: Deck['format']
   commanders?: Deck['commanders']
   colorIdentity?: string[]
@@ -46,6 +46,7 @@ function makeDeck(opts: MakeDeckOptions = {}): Deck {
       { name: CARD_SET.MAINBOARD, entries: opts.mainboard ?? [] },
       { name: CARD_SET.SIDEBOARD, entries: opts.sideboard ?? [] },
       { name: CARD_SET.ALTERNATES, entries: opts.alternates ?? [] },
+      { name: CARD_SET.CUT, entries: opts.cut ?? [] },
     ],
     commanders: opts.commanders ?? [{ name: 'Kenrith', setCode: 'eld', collectorNumber: '303', colorIdentity: ['W', 'U', 'B', 'R', 'G'] }],
     customRoles: [],
@@ -120,9 +121,9 @@ describe('validateCardLimits', () => {
     expect(validateCardLimits(deck)).toHaveLength(0)
   })
 
-  it('skips cut cards', () => {
+  it('skips cards in the cut set', () => {
     const deck = makeDeck({
-      mainboard: [makeEntry('Sol Ring', { quantity: 2, inclusion: INCLUSION_STATUS.CUT })],
+      cut: [makeEntry('Sol Ring', { quantity: 2 })],
     })
     expect(validateCardLimits(deck)).toHaveLength(0)
   })

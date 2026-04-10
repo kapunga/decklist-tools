@@ -36,13 +36,13 @@ describe('full view', () => {
     expect(result).toContain('Kenrith')
   })
 
-  it('separates confirmed and considering cards', () => {
+  it('renders mainboard and alternates as separate sections', () => {
     const deck = makeDeck()
-    pushMainboard(deck,makeDeckCard('Sol Ring', { inclusion: 'confirmed' }))
-    pushMainboard(deck,makeDeckCard('Mana Crypt', { inclusion: 'considering' }))
+    pushMainboard(deck,makeDeckCard('Sol Ring'))
+    pushAlternates(deck,makeDeckCard('Mana Crypt'))
     const result = renderDeckView(deck, 'full', globalRoles)
-    expect(result).toContain('### Confirmed')
-    expect(result).toContain('### Considering')
+    expect(result).toContain('## Main Deck')
+    expect(result).toContain('## Alternates')
     expect(result).toContain('Sol Ring')
     expect(result).toContain('Mana Crypt')
   })
@@ -93,9 +93,9 @@ describe('full view with group_by=role', () => {
     expect(result).toContain('## Unassigned')
   })
 
-  it('only includes confirmed cards', () => {
+  it('does not include alternates when grouping by role', () => {
     const deck = makeDeck()
-    pushMainboard(deck,makeDeckCard('Sol Ring', { inclusion: 'considering', roles: ['ramp'] }))
+    pushAlternates(deck,makeDeckCard('Sol Ring', { roles: ['ramp'] }))
     const result = renderDeckView(deck, 'full', globalRoles, undefined, 'role')
     expect(result).not.toContain('Sol Ring')
   })

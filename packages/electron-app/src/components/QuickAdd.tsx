@@ -6,7 +6,7 @@ import { autocomplete, searchCardByName } from '@/lib/scryfall'
 import { AUTOCOMPLETE } from '@/lib/constants'
 import { CardAddModal } from '@/components/CardAddModal'
 import type { CardEntry, ScryfallCard, DeckFormat, RoleDefinition, CardSetName } from '@/types'
-import { generateDeckCardId, INCLUSION_STATUS, OWNERSHIP_STATUS, CARD_SOURCE } from '@/types'
+import { generateDeckCardId, OWNERSHIP_STATUS, CARD_SOURCE } from '@/types'
 
 interface QuickAddProps {
   deckId: string
@@ -116,7 +116,6 @@ export function QuickAdd({ deckId, format, colorIdentity, customRoles, activeTab
         collectorNumber: pendingCard.collector_number
       },
       quantity,
-      inclusion: INCLUSION_STATUS.CONFIRMED,
       ownership: OWNERSHIP_STATUS.UNKNOWN,
       roles,
       typeLine: pendingCard.type_line,

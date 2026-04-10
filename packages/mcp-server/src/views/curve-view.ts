@@ -1,15 +1,15 @@
 import type { Deck, ScryfallCard } from '@mtg-deckbuilder/shared'
-import { getPrimaryType, getCardCount, CARD_TYPE_ORDER, enrichCards, getCmcDistribution, countManaPips, INCLUSION_STATUS, getMainboard } from '@mtg-deckbuilder/shared'
+import { getPrimaryType, getCardCount, CARD_TYPE_ORDER, enrichCards, getCmcDistribution, countManaPips, getMainboard } from '@mtg-deckbuilder/shared'
 
 export function renderCurveView(deck: Deck, scryfallCache?: Map<string, ScryfallCard>, filteredCardIds?: Set<string>): string {
   const lines: string[] = []
   lines.push(`# ${deck.name} (Mana Curve)`)
   lines.push('')
 
-  const confirmedCards = getMainboard(deck).filter((c) => c.inclusion === INCLUSION_STATUS.CONFIRMED)
+  const mainboardCards = getMainboard(deck)
   const activeCards = filteredCardIds
-    ? confirmedCards.filter(c => filteredCardIds.has(c.id))
-    : confirmedCards
+    ? mainboardCards.filter(c => filteredCardIds.has(c.id))
+    : mainboardCards
 
   const cache = scryfallCache || new Map<string, ScryfallCard>()
   const enriched = enrichCards(activeCards, cache)

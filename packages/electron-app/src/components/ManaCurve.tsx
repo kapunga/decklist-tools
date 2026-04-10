@@ -33,7 +33,7 @@ export function ManaCurve({ deck, scryfallCache }: ManaCurveProps) {
   const [filters, setFilters] = useState<CardFilter[]>([])
 
   const confirmedCards = useMemo(
-    () => getMainboard(deck).filter(c => c.inclusion === 'confirmed'),
+    () => getMainboard(deck),
     [deck.cardSets]
   )
 
