@@ -86,7 +86,6 @@ export async function manageCard(storage: Storage, args: ManageCardArgs) {
           quantity,
           ownership: args.ownership as OwnershipStatus | undefined,
           roles: args.roles,
-          typeLine: scryfallCard.type_line,
         })
 
         const result = addCardToDeck(deck, deckCard, target)

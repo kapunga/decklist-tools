@@ -113,7 +113,6 @@ describe('migrateCardSets', () => {
     expect((entry as unknown as Record<string, unknown>).inclusion).toBe('confirmed')
     expect(entry.ownership).toBe('need_to_buy')
     expect(entry.roles).toEqual(['removal'])
-    expect(entry.typeLine).toBe('Instant')
     expect(entry.notes).toBe('key removal')
     expect(entry.pulledPrintings).toEqual([{ setCode: 'lea', collectorNumber: '1', quantity: 2 }])
   })

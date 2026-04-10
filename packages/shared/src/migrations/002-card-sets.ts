@@ -34,7 +34,6 @@ function legacyCardToEntry(card: LegacyDeckCard): PostV2Entry {
     inclusion: card.inclusion,
     ownership: card.ownership,
     roles: card.roles,
-    typeLine: card.typeLine,
     notes: card.notes,
     addedAt: card.addedAt,
     source: card.addedBy,

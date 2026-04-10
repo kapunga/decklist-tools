@@ -192,12 +192,13 @@ describe('migrateCardEntryCleanup', () => {
       expect(entry.isPinned).toBeUndefined()
     })
 
-    it('preserves typeLine (stripped in a later migration)', () => {
+    it('drops legacy typeLine (also handled by migration 004)', () => {
       const deck = makeDeck([
         { name: CARD_SET.MAINBOARD, entries: [makeEntry('Sol Ring', { typeLine: 'Artifact' })] },
       ])
       migrateCardEntryCleanup.migrate(deck, ctx)
-      expect(getSet(deck, CARD_SET.MAINBOARD)?.entries[0].typeLine).toBe('Artifact')
+      const entry = getSet(deck, CARD_SET.MAINBOARD)?.entries[0] as unknown as Record<string, unknown>
+      expect(entry.typeLine).toBeUndefined()
     })
 
     it('preserves pulledPrintings and potentialDecks', () => {

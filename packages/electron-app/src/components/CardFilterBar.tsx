@@ -58,7 +58,7 @@ function computeAvailableValues(cards: EnrichedDeckCard[]): AvailableValues {
   const ownershipSet = new Set<string>()
 
   for (const { deckCard, scryfallCard } of cards) {
-    const typeLine = scryfallCard?.type_line || deckCard.typeLine || ''
+    const typeLine = scryfallCard?.type_line || ''
     const isLand = typeLine.toLowerCase().includes('land')
 
     if (!isLand && scryfallCard) {

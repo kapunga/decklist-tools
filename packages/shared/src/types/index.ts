@@ -183,7 +183,6 @@ export function generateDeckCardId(): string {
 export interface CardEntry {
   id: string
   card: CardIdentifier
-  typeLine?: string
   notes?: string
   addedAt: string
   source: CardSource

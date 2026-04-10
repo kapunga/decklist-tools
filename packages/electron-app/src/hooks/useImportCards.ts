@@ -106,7 +106,6 @@ export function useImportCards(sideboardSize?: number): UseImportCardsResult {
           quantity: parsed.quantity,
           ownership: OWNERSHIP_STATUS.OWNED,
           roles,
-          typeLine: scryfallCard.type_line,
           source: CARD_SOURCE.IMPORT,
         })
 

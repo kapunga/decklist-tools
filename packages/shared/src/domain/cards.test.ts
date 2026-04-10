@@ -322,11 +322,9 @@ describe('makeCardEntry', () => {
   it('passes through optional fields', () => {
     const entry = makeCardEntry({
       card,
-      typeLine: 'Artifact',
       notes: 'classic ramp',
       potentialDecks: ['deck-1'],
     })
-    expect(entry.typeLine).toBe('Artifact')
     expect(entry.notes).toBe('classic ramp')
     expect(entry.potentialDecks).toEqual(['deck-1'])
   })

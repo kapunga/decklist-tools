@@ -116,7 +116,6 @@ export function QuickAdd({ deckId, format, colorIdentity, customRoles, activeTab
       },
       quantity,
       roles,
-      typeLine: pendingCard.type_line,
     })
 
     await addCardToDeck(deckId, deckCard, destination)

@@ -3,9 +3,8 @@ import { CARD_SET, CARD_SOURCE, OWNERSHIP_STATUS } from '../types/index.js'
 import type { Migration } from './index.js'
 
 // Pre-migration shape: may carry `inclusion` and `isPinned` fields that
-// this migration strips. `CardEntry` still carries both at this point in
-// the codebase, but once the type change lands they'll be gone; the cast
-// below lets this file remain compile-clean across both schema versions.
+// this migration strips. `CardEntry` no longer declares them; the cast below
+// lets this file remain compile-clean while still reading the legacy fields.
 type LegacyEntry = CardEntry & {
   inclusion?: 'confirmed' | 'considering' | 'cut'
   isPinned?: boolean
@@ -17,6 +16,11 @@ type InclusionValue = 'confirmed' | 'considering' | 'cut' | undefined
  * Apply defaults for fields that are being made required, then strip
  * `isPinned` and `inclusion` from the entry. Returns the cleaned entry
  * along with the inclusion value the caller needs to route the entry.
+ *
+ * Note: any `typeLine` field on the input is dropped here. Users coming
+ * from schema 2 (pre-003) lose their stored typeLine immediately; users
+ * coming from schema 3 (which preserved typeLine in an older version of
+ * this migration) get it stripped by migration 004 in the same pass.
  */
 function cleanEntry(entry: LegacyEntry): {
   cleaned: CardEntry
@@ -31,7 +35,6 @@ function cleanEntry(entry: LegacyEntry): {
     roles: entry.roles ?? [],
     source: entry.source ?? CARD_SOURCE.USER,
     ownership: entry.ownership ?? OWNERSHIP_STATUS.UNKNOWN,
-    typeLine: entry.typeLine,
     notes: entry.notes,
     pulledPrintings: entry.pulledPrintings,
     potentialDecks: entry.potentialDecks,

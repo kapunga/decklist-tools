@@ -20,7 +20,6 @@ function makeEnriched(overrides: {
       quantity: overrides.quantity ?? 1,
       ownership: (overrides.ownership as any) || 'owned',
       roles: overrides.roles || [],
-      typeLine: overrides.typeLine || 'Creature — Human',
       addedAt: '2024-01-01T00:00:00.000Z',
       source: 'user',
     },

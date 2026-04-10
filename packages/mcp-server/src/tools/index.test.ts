@@ -474,8 +474,8 @@ describe('Views', () => {
 
     it('accepts filter parameters', async () => {
       const deck = makeDeck({ name: 'Filter Test' })
-      pushMainboard(deck,makeDeckCard('Elf', { typeLine: 'Creature — Elf', roles: ['ramp'] }))
-      pushMainboard(deck,makeDeckCard('Bolt', { typeLine: 'Instant', roles: ['removal'] }))
+      pushMainboard(deck,makeDeckCard('Elf', { roles: ['ramp'] }))
+      pushMainboard(deck,makeDeckCard('Bolt', { roles: ['removal'] }))
       mock._decks.set(deck.id, deck)
       mock._setGlobalRoles([])
 
@@ -975,7 +975,6 @@ describe('Validation', () => {
     for (let i = 0; i < 99; i++) {
       pushMainboard(deck,makeDeckCard(`Card ${i}`, {
         card: { name: `Card ${i}`, setCode: 'test', collectorNumber: `${i}` },
-        typeLine: 'Land',
       }))
     }
     mock._decks.set(deck.id, deck)

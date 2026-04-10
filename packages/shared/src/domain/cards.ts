@@ -13,7 +13,6 @@ export interface MakeCardEntryInput {
   ownership?: OwnershipStatus
   roles?: string[]
   source?: CardSource
-  typeLine?: string
   notes?: string
   pulledPrintings?: PulledPrinting[]
   potentialDecks?: string[]
@@ -38,7 +37,6 @@ export function makeCardEntry(input: MakeCardEntryInput): CardEntry {
     ownership: input.ownership ?? OWNERSHIP_STATUS.UNKNOWN,
     roles: input.roles ?? [],
     source: input.source ?? CARD_SOURCE.USER,
-    typeLine: input.typeLine,
     notes: input.notes,
     pulledPrintings: input.pulledPrintings,
     potentialDecks: input.potentialDecks,

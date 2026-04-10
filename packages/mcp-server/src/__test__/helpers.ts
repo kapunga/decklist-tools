@@ -136,9 +136,23 @@ export function makeDeckCard(name: string, overrides?: Partial<CardEntry>): Card
     quantity: 1,
     ownership: 'owned',
     roles: [],
-    typeLine: 'Creature — Human Wizard',
     addedAt: new Date().toISOString(),
     source: 'user',
     ...overrides,
   }
+}
+
+/**
+ * Build a mock Scryfall cache keyed by the same `scryfall-${name}` ids that
+ * `makeDeckCard` uses, so view rendering can resolve type lines without
+ * touching the network. Pass `{ 'Sol Ring': 'Artifact' }` to get a cache that
+ * answers `getTypeLine` for Sol Ring.
+ */
+export function makeMockCache(typeLines: Record<string, string>): Map<string, ScryfallCard> {
+  const cache = new Map<string, ScryfallCard>()
+  for (const [name, typeLine] of Object.entries(typeLines)) {
+    const scryfallId = `scryfall-${name.toLowerCase().replace(/\s+/g, '-')}`
+    cache.set(scryfallId, mockScryfallCard(name, { id: scryfallId, type_line: typeLine }))
+  }
+  return cache
 }
