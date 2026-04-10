@@ -102,7 +102,7 @@ function removeRoleFromNoteCards(deck: Deck, note: DeckNote): void {
   for (const set of deck.cardSets) {
     for (const card of set.entries) {
       if (refNames.has(card.card.name.toLowerCase())) {
-        card.roles = (card.roles ?? []).filter(r => r !== note.roleId)
+        card.roles = card.roles.filter(r => r !== note.roleId)
       }
     }
   }

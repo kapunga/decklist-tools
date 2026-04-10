@@ -84,11 +84,10 @@ function renderByRole(
   const noRole: CardEntry[] = []
 
   for (const card of cards) {
-    const roles = card.roles ?? []
-    if (roles.length === 0) {
+    if (card.roles.length === 0) {
       noRole.push(card)
     } else {
-      for (const roleId of roles) {
+      for (const roleId of card.roles) {
         if (!byRole.has(roleId)) {
           byRole.set(roleId, [])
         }
@@ -102,22 +101,22 @@ function renderByRole(
   for (const [roleId, roleCards] of sortedRoles) {
     const role = roleLookup.get(roleId)
     const roleName = role?.name || roleId
-    const count = roleCards.reduce((sum, c) => sum + (c.quantity ?? 0), 0)
+    const count = roleCards.reduce((sum, c) => sum + c.quantity, 0)
     lines.push(`## ${roleName} (${count})`)
     if (role?.description) {
       lines.push(`*${role.description}*`)
     }
     for (const c of roleCards) {
-      lines.push(`- ${c.quantity ?? 0}x ${getCardDisplayName(c.card)}${getCanonicalSuffix(c.card)}`)
+      lines.push(`- ${c.quantity}x ${getCardDisplayName(c.card)}${getCanonicalSuffix(c.card)}`)
     }
     lines.push('')
   }
 
   if (noRole.length > 0) {
-    const count = noRole.reduce((sum, c) => sum + (c.quantity ?? 0), 0)
+    const count = noRole.reduce((sum, c) => sum + c.quantity, 0)
     lines.push(`## Unassigned (${count})`)
     for (const c of noRole) {
-      lines.push(`- ${c.quantity ?? 0}x ${getCardDisplayName(c.card)}${getCanonicalSuffix(c.card)}`)
+      lines.push(`- ${c.quantity}x ${getCardDisplayName(c.card)}${getCanonicalSuffix(c.card)}`)
     }
   }
 }
@@ -140,11 +139,11 @@ function renderByType(lines: string[], cards: CardEntry[]): void {
   })
 
   for (const [type, typeCards] of sortedTypes) {
-    const count = typeCards.reduce((sum, c) => sum + (c.quantity ?? 0), 0)
+    const count = typeCards.reduce((sum, c) => sum + c.quantity, 0)
     lines.push(`## ${type} (${count})`)
     const sortedCards = [...typeCards].sort((a, b) => a.card.name.localeCompare(b.card.name))
     for (const c of sortedCards) {
-      lines.push(`- ${c.quantity ?? 0}x ${getCardDisplayName(c.card)}${getCanonicalSuffix(c.card)}`)
+      lines.push(`- ${c.quantity}x ${getCardDisplayName(c.card)}${getCanonicalSuffix(c.card)}`)
     }
     lines.push('')
   }

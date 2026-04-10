@@ -47,7 +47,7 @@ export function getDeck(storage: Storage, identifier: string) {
 function validateDeck(deck: Deck) {
   const validationIssues = validateDeckStructure(deck)
   const cardCount = getCardCount(deck)
-  const sideboardCount = getSideboard(deck).reduce((sum, c) => sum + (c.quantity ?? 0), 0)
+  const sideboardCount = getSideboard(deck).reduce((sum, c) => sum + c.quantity, 0)
 
   return {
     valid: validationIssues.length === 0,
@@ -131,7 +131,7 @@ export function searchDecksForCard(storage: Storage, cardName: string) {
             deckId: deck.id,
             deckName: deck.name,
             location: set.name,
-            quantity: card.quantity ?? 0,
+            quantity: card.quantity,
           })
         }
       }

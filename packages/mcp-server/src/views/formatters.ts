@@ -41,9 +41,8 @@ export function formatCardLine(
     }
   }
 
-  const cardRoles = card.roles ?? []
-  if (cardRoles.length > 0) {
-    const roleNames = cardRoles
+  if (card.roles.length > 0) {
+    const roleNames = card.roles
       .map((r) => {
         const role = roleLookup ? roleLookup.get(r) : getRoleById(r, globalRoles, customRoles)
         return role?.name || r

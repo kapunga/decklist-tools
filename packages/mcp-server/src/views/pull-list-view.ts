@@ -1,5 +1,5 @@
 import type { Deck, CardEntry, SetCollectionFile, ScryfallCard, CollectionLevel, PullListItem, PullListGroup } from '@mtg-deckbuilder/shared'
-import { getTotalPulledQuantity, getCardDisplayName, COLLECTION_LEVEL_RARITIES, isBasicLand, OWNERSHIP_STATUS, CARD_SOURCE, getMainboard, getSideboard, getAlternates } from '@mtg-deckbuilder/shared'
+import { getTotalPulledQuantity, getCardDisplayName, COLLECTION_LEVEL_RARITIES, isBasicLand, OWNERSHIP_STATUS, CARD_SOURCE, getMainboard, getSideboard, getAlternates, getPulledPrintings } from '@mtg-deckbuilder/shared'
 
 // Rarity order for sorting
 const RARITY_ORDER: Record<string, number> = {
@@ -91,7 +91,7 @@ export function renderPullListView(
   for (const deckCard of confirmedCards) {
     const cardName = getCardDisplayName(deckCard.card)
     const totalPulled = getTotalPulledQuantity(deckCard)
-    const deckCardQty = deckCard.quantity ?? 0
+    const deckCardQty = deckCard.quantity
     const remainingNeeded = deckCardQty - totalPulled
 
     // Find the card in cache by scryfall ID
@@ -151,7 +151,7 @@ export function renderPullListView(
 
     // Create items for each owned printing
     for (const printing of ownedPrintings) {
-      const pulledFromThisPrint = (deckCard.pulledPrintings ?? []).find(
+      const pulledFromThisPrint = getPulledPrintings(deckCard).find(
         p => p.setCode.toLowerCase() === printing.set.toLowerCase() &&
              p.collectorNumber === printing.collector_number
       )?.quantity ?? 0
