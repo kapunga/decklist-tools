@@ -2,8 +2,8 @@ import { useMemo } from 'react'
 import { useQueries } from '@tanstack/react-query'
 import { useStore } from '@/hooks/useStore'
 import { getCardPrintings } from '@/lib/scryfall'
-import type { Deck, DeckCard, ScryfallCard, PullListSortKey, PullListSource, CollectionLevel } from '@/types'
-import { getTotalPulledQuantity, COLLECTION_LEVEL_RARITIES, isBasicLand, INCLUSION_STATUS, OWNERSHIP_STATUS, ADDED_BY } from '@/types'
+import type { Deck, DeckCard, ScryfallCard, PullListSortKey, PullListSource } from '@/types'
+import { getTotalPulledQuantity, isBasicLand, INCLUSION_STATUS, OWNERSHIP_STATUS, ADDED_BY } from '@/types'
 import type { PullListItem, PullListGroup } from './types'
 
 export type { PullListItem, PullListGroup } from './types'
@@ -70,12 +70,6 @@ function getManaCostSortValue(manaCost: string | undefined): number {
   return cmc * 100 + colorComplexity
 }
 
-// Check if a rarity is included at a collection level
-function isRarityAvailable(rarity: string, collectionLevel: CollectionLevel): boolean {
-  const allowedRarities = COLLECTION_LEVEL_RARITIES[collectionLevel]
-  return allowedRarities.includes(rarity.toLowerCase())
-}
-
 // Compare function for a single sort key
 function compareByKey(
   a: PullListItem,
@@ -135,8 +129,8 @@ export function usePullList(deck: Deck | null) {
     if (!deck) return []
 
     if (source === 'maybeboard') {
-      // Maybeboard: only alternates (confirmed), no commanders
-      let cards = deck.alternates.filter(c => c.inclusion === INCLUSION_STATUS.CONFIRMED)
+      // Maybeboard: only alternates (not cut), no commanders
+      let cards = deck.alternates.filter(c => c.inclusion !== INCLUSION_STATUS.CUT)
 
       // Filter out basic lands if option is enabled
       if (hideBasicLands) {
@@ -147,8 +141,8 @@ export function usePullList(deck: Deck | null) {
     }
 
     // Main Deck: main + sideboard + commanders
-    let mainCards = deck.cards.filter(c => c.inclusion === INCLUSION_STATUS.CONFIRMED)
-    let sideboardCards = deck.sideboard.filter(c => c.inclusion === INCLUSION_STATUS.CONFIRMED)
+    let mainCards = deck.cards.filter(c => c.inclusion !== INCLUSION_STATUS.CUT)
+    let sideboardCards = deck.sideboard.filter(c => c.inclusion !== INCLUSION_STATUS.CUT)
 
     // Filter out basic lands if option is enabled
     if (hideBasicLands) {
@@ -159,14 +153,10 @@ export function usePullList(deck: Deck | null) {
     // Add commanders as pseudo-cards for pulling
     // Include commandersPulled data so pull status is tracked correctly
     const commanderCards: DeckCard[] = deck.commanders.map(cmd => {
-      // Find pulled printings for this commander from commandersPulled
-      // Since commandersPulled tracks by set/collector, we include all pulled printings
-      // that match any printing of this commander (for now, just use the deck's commandersPulled)
-      const pulledPrintings = deck.commandersPulled?.filter(p =>
-        // Match by set+collector number to the commander's card
-        p.setCode.toLowerCase() === cmd.setCode.toLowerCase() &&
-        p.collectorNumber === cmd.collectorNumber
-      ) ?? []
+      // Assign all commandersPulled entries to this commander.
+      // For partner commanders (2 commanders), a cardName discriminator
+      // should be added to commandersPulled entries in the future.
+      const pulledPrintings = deck.commandersPulled ?? []
 
       return {
         id: `commander-${cmd.name}`,
@@ -221,9 +211,6 @@ export function usePullList(deck: Deck | null) {
     const ownedSetCodes = new Set(
       setCollection.sets.map(s => s.setCode.toLowerCase())
     )
-    const setLevelMap = new Map(
-      setCollection.sets.map(s => [s.setCode.toLowerCase(), s.collectionLevel])
-    )
     const setNameMap = new Map(
       setCollection.sets.map(s => [s.setCode.toLowerCase(), s.setName])
     )
@@ -238,11 +225,9 @@ export function usePullList(deck: Deck | null) {
       const remainingNeeded = deckCard.quantity - totalPulled
 
       // Get printings from owned sets
-      const ownedPrintings = printings.filter(p => {
-        if (!ownedSetCodes.has(p.set.toLowerCase())) return false
-        const level = setLevelMap.get(p.set.toLowerCase()) || 1
-        return isRarityAvailable(p.rarity, level)
-      })
+      const ownedPrintings = printings.filter(p =>
+        ownedSetCodes.has(p.set.toLowerCase())
+      )
 
       // If no owned printings, show original printing as "not in collection"
       if (ownedPrintings.length === 0) {
