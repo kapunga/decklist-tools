@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { X } from 'lucide-react'
 import { buildConsistencyMatrix } from '@mtg-deckbuilder/shared'
-import type { ConsistencyMode, DeckCard, Deck } from '@mtg-deckbuilder/shared'
+import type { ConsistencyMode, CardEntry, Deck } from '@mtg-deckbuilder/shared'
 import { getAllRoles } from '@/lib/constants'
 import { useGlobalRoles } from '@/hooks/useStore'
 import { HeatmapTable } from '@/components/HeatmapTable'
@@ -14,13 +14,13 @@ const LANDS_VIRTUAL_ROLE = '__lands__'
 
 interface ConsistencyMatrixProps {
   deck: Deck
-  confirmedCards: DeckCard[]
+  confirmedCards: CardEntry[]
   byRole: Record<string, number>
   selectedRoles: string[]
   onToggleRole: (roleId: string) => void
 }
 
-function countLands(cards: DeckCard[]): number {
+function countLands(cards: CardEntry[]): number {
   return cards.reduce((sum, c) => {
     const typeLine = c.typeLine || ''
     if (typeLine.toLowerCase().includes('land')) {

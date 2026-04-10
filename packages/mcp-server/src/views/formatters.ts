@@ -1,10 +1,10 @@
-import type { DeckCard, RoleDefinition, ScryfallCard } from '@mtg-deckbuilder/shared'
+import type { CardEntry, RoleDefinition, ScryfallCard } from '@mtg-deckbuilder/shared'
 import { getPrimaryType, getRoleById, isCardFullyPulled, getOracleText, getCardDisplayName, getCanonicalSuffix, OWNERSHIP_STATUS } from '@mtg-deckbuilder/shared'
 
 export type DetailLevel = 'summary' | 'compact' | 'full'
 
 export function formatCardLine(
-  card: DeckCard,
+  card: CardEntry,
   globalRoles: RoleDefinition[],
   customRoles: RoleDefinition[],
   scryfallCache?: Map<string, ScryfallCard>,

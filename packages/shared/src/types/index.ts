@@ -67,12 +67,6 @@ export const OWNERSHIP_STATUS = {
 } as const
 export type OwnershipStatus = typeof OWNERSHIP_STATUS[keyof typeof OWNERSHIP_STATUS]
 
-export const ADDED_BY = {
-  USER: 'user',
-  IMPORT: 'import',
-} as const
-export type AddedBy = typeof ADDED_BY[keyof typeof ADDED_BY]
-
 export const CARD_SOURCE = {
   USER: 'user',
   IMPORT: 'import',
@@ -175,12 +169,6 @@ export interface PulledPrinting {
   quantity: number
 }
 
-/**
- * @deprecated Use `CardEntry` directly. Kept as a type alias during the
- * Phase 3 migration for incremental refactoring of consumers.
- */
-export type DeckCard = CardEntry
-
 // Helper to get total pulled quantity across all printings
 export function getTotalPulledQuantity(card: CardEntry): number {
   return (card.pulledPrintings ?? []).reduce((sum, p) => sum + p.quantity, 0)
@@ -224,7 +212,7 @@ export interface CardSet {
 
 // Note Card Reference
 export interface NoteCardRef {
-  cardName: string   // matches DeckCard.card.name
+  cardName: string   // matches CardEntry.card.name
   ordinal: number    // 1-based rank (lower = more relevant)
 }
 
@@ -294,22 +282,6 @@ export interface Taxonomy {
   version: number
   updatedAt: string
   globalRoles: RoleDefinition[]
-}
-
-// Interest List
-export interface InterestItem {
-  id: string
-  card: CardIdentifier
-  notes?: string
-  potentialDecks?: string[]
-  addedAt: string
-  source?: string
-}
-
-export interface InterestList {
-  version: number
-  updatedAt: string
-  items: InterestItem[]
 }
 
 // Card List — generic named collection of cards (replaces InterestList)

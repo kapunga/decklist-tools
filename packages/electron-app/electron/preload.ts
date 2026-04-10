@@ -13,9 +13,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getTaxonomy: () => ipcRenderer.invoke('taxonomy:get'),
   saveTaxonomy: (taxonomy: unknown) => ipcRenderer.invoke('taxonomy:save', taxonomy),
 
-  // Interest List
-  getInterestList: () => ipcRenderer.invoke('interest:get'),
-  saveInterestList: (list: unknown) => ipcRenderer.invoke('interest:save', list),
+  // Card Lists
+  listCardLists: () => ipcRenderer.invoke('lists:list'),
+  getCardList: (id: string) => ipcRenderer.invoke('lists:get', id),
+  saveCardList: (list: unknown) => ipcRenderer.invoke('lists:save', list),
+  deleteCardList: (id: string) => ipcRenderer.invoke('lists:delete', id),
 
   // Config
   getConfig: () => ipcRenderer.invoke('config:get'),
@@ -129,8 +131,10 @@ export interface ElectronAPI {
   deleteDeck: (id: string) => Promise<void>
   getTaxonomy: () => Promise<unknown>
   saveTaxonomy: (taxonomy: unknown) => Promise<void>
-  getInterestList: () => Promise<unknown>
-  saveInterestList: (list: unknown) => Promise<void>
+  listCardLists: () => Promise<unknown[]>
+  getCardList: (id: string) => Promise<unknown | null>
+  saveCardList: (list: unknown) => Promise<void>
+  deleteCardList: (id: string) => Promise<boolean>
   getConfig: () => Promise<unknown>
   saveConfig: (config: unknown) => Promise<void>
   getGlobalRoles: () => Promise<unknown[]>

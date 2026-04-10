@@ -19,13 +19,13 @@ import { RolePill } from '@/components/RolePill'
 import { RoleAutocomplete } from '@/components/RoleAutocomplete'
 import { useStore, useGlobalRoles, useDeckById } from '@/hooks/useStore'
 import { getCardPrintings } from '@/lib/scryfall'
-import type { DeckCard, ScryfallCard, OwnershipStatus, CardSetName } from '@/types'
+import type { CardEntry, ScryfallCard, OwnershipStatus, CardSetName } from '@/types'
 import { getCardLimit, getCardDisplayName, OWNERSHIP_STATUS } from '@/types'
 
 interface CardEditModalProps {
   isOpen: boolean
   onClose: () => void
-  card: DeckCard
+  card: CardEntry
   deckId: string
   listType: CardSetName
 }
@@ -110,7 +110,7 @@ export function CardEditModal({
   }, [deck, card.card.name])
 
   const handleSave = async () => {
-    const updates: Partial<DeckCard> = {}
+    const updates: Partial<CardEntry> = {}
 
     if (quantity !== card.quantity) {
       updates.quantity = quantity

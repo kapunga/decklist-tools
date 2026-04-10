@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Deck, Taxonomy, InterestList, Config, RoleDefinition, SetCollectionFile, PullListConfig } from '@/types'
+import type { Deck, Taxonomy, CardList, Config, RoleDefinition, SetCollectionFile, PullListConfig } from '@/types'
 import { getMainboard } from '@mtg-deckbuilder/shared'
 import type { AppState } from '@/stores/types'
 import { createDeckSlice } from '@/stores/deckSlice'
@@ -19,7 +19,7 @@ export const useStore = create<AppState>((set, get) => ({
   // Initial state
   decks: [],
   taxonomy: null,
-  interestList: null,
+  cardLists: [],
   config: null,
   globalRoles: [],
   setCollection: null,
@@ -37,10 +37,10 @@ export const useStore = create<AppState>((set, get) => ({
       set({ isLoading: true, error: null })
     }
     try {
-      const [decks, taxonomy, interestList, config, globalRoles, setCollection, pullListConfig] = await Promise.all([
+      const [decks, taxonomy, cardLists, config, globalRoles, setCollection, pullListConfig] = await Promise.all([
         window.electronAPI.listDecks(),
         window.electronAPI.getTaxonomy(),
-        window.electronAPI.getInterestList(),
+        window.electronAPI.listCardLists(),
         window.electronAPI.getConfig(),
         window.electronAPI.getGlobalRoles(),
         window.electronAPI.getSetCollection(),
@@ -49,7 +49,7 @@ export const useStore = create<AppState>((set, get) => ({
       set({
         decks: decks as Deck[],
         taxonomy: taxonomy as Taxonomy,
-        interestList: interestList as InterestList,
+        cardLists: cardLists as CardList[],
         config: config as Config,
         globalRoles: globalRoles as RoleDefinition[],
         setCollection: setCollection as SetCollectionFile,

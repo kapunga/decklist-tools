@@ -62,15 +62,24 @@ All packages operate on the same JSON files:
 - `config.json` - App configuration
 - `taxonomy.json` - Global tag taxonomy
 - `decks/{uuid}.json` - Individual deck files
-- `interest-list.json` - Cards of interest
+- `lists/{uuid}.json` - Generic card lists (e.g. the well-known interest list)
 - `cache/scryfall/{id}.json` - Cached Scryfall data
 - `global-roles.json` - Global role definitions
 
-Concurrency is handled via optimistic locking with a version field on decks.
+Concurrency is handled via optimistic locking with a version field on decks and card lists.
+
+**Core card model.** Every card in the app is a `CardEntry` — a unified type with optional fields
+for both deck contexts (quantity, inclusion, ownership, roles, isPinned, pulledPrintings) and list
+contexts (potentialDecks). A `CardSet` is a named group of entries. A `Deck` holds
+`cardSets: CardSet[]` with well-known set names (`mainboard`, `sideboard`, `alternates`), and a
+`CardList` (generic collection) also holds `cardSets`. The interest list is a well-known
+`CardList` identified by `INTEREST_LIST_ID`. Accessor functions (`getMainboard`, `getSideboard`,
+`getAllDeckEntries`, `mapAllDeckEntries`, etc.) in `@mtg-deckbuilder/shared` provide the
+primary API for reading and transforming these structures.
 
 ### Shared Package (packages/shared/)
 TypeScript library with common code:
-- `src/types/` - All TypeScript interfaces (Deck, DeckCard, etc.)
+- `src/types/` - All TypeScript interfaces (Deck, CardEntry, CardSet, CardList, etc.)
 - `src/scryfall/` - Scryfall API client with rate limiting
 - `src/formats/` - Import/export parsers (Arena, Moxfield, Archidekt, MTGO, Simple)
 - `src/constants/` - Default roles, card types, configuration

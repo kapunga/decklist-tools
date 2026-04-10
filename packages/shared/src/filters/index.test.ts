@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { applyFilters, countManaPips, getCmcDistribution, enrichCards } from './index.js'
 import type { EnrichedDeckCard, CardFilter } from './index.js'
-import type { DeckCard, ScryfallCard } from '../types/index.js'
+import type { CardEntry, ScryfallCard } from '../types/index.js'
 
 function makeEnriched(overrides: {
   name?: string
@@ -187,7 +187,7 @@ describe('getCmcDistribution', () => {
 
 describe('enrichCards', () => {
   it('pairs deck cards with cached Scryfall data', () => {
-    const deckCard: DeckCard = {
+    const deckCard: CardEntry = {
       id: 'test', card: { scryfallId: 'sf-1', name: 'Sol Ring', setCode: 'c21', collectorNumber: '263' },
       quantity: 1, inclusion: 'confirmed', ownership: 'owned', roles: [],
       isPinned: false, addedAt: '', source: 'user',
@@ -201,7 +201,7 @@ describe('enrichCards', () => {
   })
 
   it('leaves scryfallCard undefined when not in cache', () => {
-    const deckCard: DeckCard = {
+    const deckCard: CardEntry = {
       id: 'test', card: { name: 'Sol Ring', setCode: 'c21', collectorNumber: '263' },
       quantity: 1, inclusion: 'confirmed', ownership: 'owned', roles: [],
       isPinned: false, addedAt: '', source: 'user',

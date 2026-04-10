@@ -4,12 +4,13 @@ import {
   createEmptyDeck,
   generateDeckCardId,
   CARD_SET,
+  INTEREST_LIST_ID,
   type Deck,
   type CardEntry,
+  type CardList,
   type ScryfallCard,
   type FormatType,
   type RoleDefinition,
-  type InterestList,
   type SetCollectionFile,
 } from '@mtg-deckbuilder/shared'
 
@@ -29,8 +30,8 @@ export function pushAlternates(deck: Deck, ...cards: CardEntry[]): void {
 
 export function createMockStorage() {
   const decks = new Map<string, Deck>()
+  const cardLists = new Map<string, CardList>()
   let globalRoles: RoleDefinition[] = []
-  let interestList: InterestList = { version: 1, updatedAt: '', items: [] }
   let setCollection: SetCollectionFile = { version: 1, updatedAt: '', sets: [] }
 
   const storage = {
@@ -56,9 +57,17 @@ export function createMockStorage() {
     saveGlobalRoles: vi.fn((roles: RoleDefinition[]) => {
       globalRoles = roles
     }),
-    getInterestList: vi.fn(() => interestList),
-    saveInterestList: vi.fn((list: InterestList) => {
-      interestList = list
+    listCardLists: vi.fn(() => [...cardLists.values()]),
+    getCardList: vi.fn((id: string) => cardLists.get(id) ?? null),
+    saveCardList: vi.fn((list: CardList) => {
+      cardLists.set(list.id, list)
+    }),
+    deleteCardList: vi.fn((id: string) => {
+      if (cardLists.has(id)) {
+        cardLists.delete(id)
+        return true
+      }
+      return false
     }),
     getTaxonomy: vi.fn(() => ({ version: 1, updatedAt: '', globalRoles })),
     saveTaxonomy: vi.fn(),
@@ -83,11 +92,14 @@ export function createMockStorage() {
   return {
     storage: storage as unknown as Storage,
     _decks: decks,
+    _cardLists: cardLists,
     _setGlobalRoles: (roles: RoleDefinition[]) => { globalRoles = roles },
-    _setInterestList: (list: InterestList) => { interestList = list },
     _setSetCollection: (col: SetCollectionFile) => { setCollection = col },
   }
 }
+
+// Re-export INTEREST_LIST_ID for test convenience
+export { INTEREST_LIST_ID }
 
 export function mockScryfallCard(name: string, overrides?: Partial<ScryfallCard>): ScryfallCard {
   return {

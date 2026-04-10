@@ -1,7 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import os from 'os'
-import type { Deck, Taxonomy, InterestList, InterestItem, CardList, CardEntry, Config, RoleDefinition, SetCollectionFile, PullListConfig, CacheIndex, CacheEntryMeta, CacheStats, ScryfallCard } from '../types/index.js'
+import type { Deck, Taxonomy, CardList, CardEntry, Config, RoleDefinition, SetCollectionFile, PullListConfig, CacheIndex, CacheEntryMeta, CacheStats, ScryfallCard } from '../types/index.js'
 import { DEFAULT_GLOBAL_ROLES } from '../constants/index.js'
 import { DEFAULT_PULL_LIST_CONFIG, isDoubleFacedCard, INTEREST_LIST_ID, CARD_SET } from '../types/index.js'
 import { runMigrations } from '../migrations/index.js'
@@ -202,19 +202,6 @@ export class Storage {
     return path.join(this.listsDir, `${id}.json`)
   }
 
-  /** Create an empty CardList for the well-known interest list. */
-  private createEmptyInterestList(): CardList {
-    const now = new Date().toISOString()
-    return {
-      id: INTEREST_LIST_ID,
-      name: 'Interest List',
-      version: 1,
-      createdAt: now,
-      updatedAt: now,
-      cardSets: [{ name: CARD_SET.MAINBOARD, entries: [] }],
-    }
-  }
-
   /**
    * Migrate legacy interest-list.json to lists/{INTEREST_LIST_ID}.json.
    * Runs on Storage construction; safe if either file is already in the new state.
@@ -226,18 +213,33 @@ export class Storage {
     if (!fs.existsSync(legacyPath)) return
     if (fs.existsSync(newPath)) return
 
+    // Legacy shape — kept here as a local type because InterestList is no longer exported.
+    interface LegacyInterestItem {
+      id: string
+      card: CardEntry['card']
+      notes?: string
+      potentialDecks?: string[]
+      addedAt: string
+      source?: string
+    }
+    interface LegacyInterestList {
+      version: number
+      updatedAt: string
+      items: LegacyInterestItem[]
+    }
+
     try {
-      const legacy = this.readJson<InterestList>(legacyPath)
+      const legacy = this.readJson<LegacyInterestList>(legacyPath)
       if (!legacy) return
 
       const now = new Date().toISOString()
-      const entries: CardEntry[] = (legacy.items ?? []).map((item: InterestItem) => ({
+      const entries: CardEntry[] = (legacy.items ?? []).map((item) => ({
         id: item.id,
         card: item.card,
         notes: item.notes,
         potentialDecks: item.potentialDecks,
         addedAt: item.addedAt,
-        // Legacy InterestItem.source was free-form string; map to CardSource union where possible.
+        // Legacy source field was free-form; map to CardSource union where possible.
         source: (item.source === 'import' || item.source === 'claude') ? item.source : 'user',
       }))
 
@@ -302,56 +304,6 @@ export class Storage {
       return true
     }
     return false
-  }
-
-  // --- Legacy Interest List API (shims over CardList) ---
-  // Kept for backwards compatibility during migration. Translates between
-  // the old flat InterestList shape and the new CardList/CardSet structure.
-
-  getInterestList(): InterestList {
-    let cardList = this.getCardList(INTEREST_LIST_ID)
-    if (!cardList) {
-      cardList = this.createEmptyInterestList()
-    }
-
-    const entries = cardList.cardSets.flatMap(s => s.entries)
-    const items: InterestItem[] = entries.map(e => ({
-      id: e.id,
-      card: e.card,
-      notes: e.notes,
-      potentialDecks: e.potentialDecks,
-      addedAt: e.addedAt,
-      source: e.source,
-    }))
-
-    return {
-      version: cardList.version,
-      updatedAt: cardList.updatedAt,
-      items,
-    }
-  }
-
-  saveInterestList(list: InterestList): void {
-    // Read the existing CardList (or create fresh) and rewrite the first set's entries.
-    const existing = this.getCardList(INTEREST_LIST_ID) ?? this.createEmptyInterestList()
-
-    const entries: CardEntry[] = (list.items ?? []).map(item => ({
-      id: item.id,
-      card: item.card,
-      notes: item.notes,
-      potentialDecks: item.potentialDecks,
-      addedAt: item.addedAt,
-      source: (item.source === 'import' || item.source === 'claude') ? item.source : 'user',
-    }))
-
-    const setName = existing.cardSets[0]?.name ?? CARD_SET.MAINBOARD
-    const updated: CardList = {
-      ...existing,
-      cardSets: [{ name: setName, entries }],
-    }
-
-    // Note: saveCardList does its own version check + bump
-    this.saveCardList(updated)
   }
 
   // Config

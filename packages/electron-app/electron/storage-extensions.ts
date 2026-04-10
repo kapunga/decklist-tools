@@ -37,7 +37,7 @@ export function watchForChanges(
 export function exportCollection(storage: Storage): Record<string, unknown> {
   const config = storage.getConfig()
   const taxonomy = storage.getTaxonomy()
-  const interestList = storage.getInterestList()
+  const cardLists = storage.listCardLists()
   const setCollection = storage.getSetCollection()
   const pullListConfig = storage.getPullListConfig()
   const decks = storage.listDecks()
@@ -63,7 +63,7 @@ export function exportCollection(storage: Storage): Record<string, unknown> {
   if (config) result.config = config
   if (taxonomy) result.taxonomy = taxonomy
   if (globalRoles) result.globalRoles = globalRoles
-  if (interestList) result.interestList = interestList
+  if (cardLists.length > 0) result.cardLists = cardLists
   if (setCollection) result.setCollection = setCollection
   if (pullListConfig) result.pullListConfig = pullListConfig
 
@@ -121,6 +121,18 @@ export function importCollection(
   if (data.globalRoles) {
     writeJson(path.join(baseDir, 'global-roles.json'), data.globalRoles)
   }
+  // New-format card lists: one file per list in lists/
+  if (Array.isArray(data.cardLists)) {
+    const listsDir = path.join(baseDir, 'lists')
+    fs.mkdirSync(listsDir, { recursive: true })
+    for (const list of data.cardLists as Array<{ id: string }>) {
+      if (typeof list.id === 'string') {
+        writeJson(path.join(listsDir, `${list.id}.json`), list)
+      }
+    }
+  }
+  // Legacy interest list: write as interest-list.json so the Storage
+  // constructor picks it up and migrates it to the new location.
   if (data.interestList) {
     writeJson(path.join(baseDir, 'interest-list.json'), data.interestList)
   }

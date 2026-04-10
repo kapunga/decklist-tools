@@ -3,7 +3,7 @@ import path from 'path'
 import fs from 'fs'
 import os from 'os'
 import { Storage } from '@mtg-deckbuilder/shared'
-import type { Deck, Taxonomy, InterestList, Config, RoleDefinition, SetCollectionFile, PullListConfig } from '@mtg-deckbuilder/shared'
+import type { Deck, Taxonomy, CardList, Config, RoleDefinition, SetCollectionFile, PullListConfig } from '@mtg-deckbuilder/shared'
 import {
   watchForChanges,
   exportCollection,
@@ -284,13 +284,21 @@ function setupIpcHandlers() {
     return storage!.saveTaxonomy(taxonomy as Taxonomy)
   })
 
-  // Interest List
-  ipcMain.handle('interest:get', async () => {
-    return storage!.getInterestList()
+  // Card Lists
+  ipcMain.handle('lists:list', async () => {
+    return storage!.listCardLists()
   })
 
-  ipcMain.handle('interest:save', async (_, list: unknown) => {
-    return storage!.saveInterestList(list as InterestList)
+  ipcMain.handle('lists:get', async (_, id: string) => {
+    return storage!.getCardList(id)
+  })
+
+  ipcMain.handle('lists:save', async (_, list: unknown) => {
+    return storage!.saveCardList(list as CardList)
+  })
+
+  ipcMain.handle('lists:delete', async (_, id: string) => {
+    return storage!.deleteCardList(id)
   })
 
   // Config

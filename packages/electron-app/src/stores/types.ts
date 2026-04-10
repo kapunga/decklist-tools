@@ -1,4 +1,4 @@
-import type { Deck, Taxonomy, InterestList, Config, CardEntry, DeckNote, CardIdentifier, RoleDefinition, SetCollectionFile, SetCollectionEntry, CollectionLevel, PullListConfig, CardSetName } from '@/types'
+import type { Deck, Taxonomy, CardList, Config, CardEntry, DeckNote, CardIdentifier, RoleDefinition, SetCollectionFile, SetCollectionEntry, CollectionLevel, PullListConfig, CardSetName, CardSource } from '@/types'
 
 export type AppView = 'decks' | 'deck-detail' | 'interest-list' | 'buy-list' | 'settings'
 
@@ -16,7 +16,7 @@ export interface AppState
   // Data
   decks: Deck[]
   taxonomy: Taxonomy | null
-  interestList: InterestList | null
+  cardLists: CardList[]
   config: Config | null
   globalRoles: RoleDefinition[]
   setCollection: SetCollectionFile | null
@@ -75,7 +75,7 @@ export interface NoteSlice {
 }
 
 export interface InterestListSlice {
-  addToInterestList: (card: CardIdentifier, notes?: string, source?: string) => Promise<void>
+  addToInterestList: (card: CardIdentifier, notes?: string, source?: CardSource) => Promise<void>
   removeFromInterestList: (cardName: string) => Promise<void>
   updateInterestItem: (cardName: string, updates: { notes?: string; potentialDecks?: string[] }) => Promise<void>
 }

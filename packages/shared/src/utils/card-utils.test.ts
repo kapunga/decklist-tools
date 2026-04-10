@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest'
 import { findCardByName, findCardIndexByName } from './card-utils.js'
-import type { DeckCard } from '../types/index.js'
+import type { CardEntry } from '../types/index.js'
 
 const createDeckCard = (
   name: string,
   quantity: number = 1,
-  overrides: Partial<DeckCard> = {}
-): DeckCard => ({
+  overrides: Partial<CardEntry> = {}
+): CardEntry => ({
   id: `test-${name}-${Math.random()}`,
   card: {
     name,

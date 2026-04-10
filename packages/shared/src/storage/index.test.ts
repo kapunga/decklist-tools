@@ -3,7 +3,7 @@ import fs from 'fs'
 import path from 'path'
 import os from 'os'
 import { Storage } from './index.js'
-import type { Deck, InterestList, CardList, Config } from '../types/index.js'
+import type { Deck, CardList, Config } from '../types/index.js'
 import { CARD_SET, INTEREST_LIST_ID } from '../types/index.js'
 
 function makeDeck(overrides: Partial<Deck> = {}): Deck {
@@ -145,30 +145,6 @@ describe('Storage', () => {
     })
   })
 
-  describe('interest list', () => {
-    it('returns default when no file exists', () => {
-      const list = storage.getInterestList()
-      expect(list.items).toEqual([])
-      expect(list.version).toBe(1)
-    })
-
-    it('save and load round-trip', () => {
-      const list: InterestList = {
-        version: 1,
-        updatedAt: '2024-01-01T00:00:00.000Z',
-        items: [{
-          id: 'item-1',
-          card: { name: 'Sol Ring', setCode: 'c21', collectorNumber: '263' },
-          addedAt: '2024-01-01T00:00:00.000Z',
-        }],
-      }
-      storage.saveInterestList(list)
-      const loaded = storage.getInterestList()
-      expect(loaded.items).toHaveLength(1)
-      expect(loaded.items[0].card.name).toBe('Sol Ring')
-    })
-  })
-
   describe('card lists', () => {
     function makeCardList(overrides: Partial<CardList> = {}): CardList {
       return {
@@ -251,7 +227,8 @@ describe('Storage', () => {
     it('migrates legacy interest-list.json to lists/{INTEREST_LIST_ID}.json', () => {
       // Set up a legacy interest-list.json directly
       const legacyPath = path.join(tmpDir, 'interest-list.json')
-      const legacy: InterestList = {
+      // Legacy shape — InterestList type no longer exported, use literal JSON
+      const legacy = {
         version: 3,
         updatedAt: '2024-06-01T00:00:00.000Z',
         items: [{
@@ -312,27 +289,6 @@ describe('Storage', () => {
       expect(fs.existsSync(newPath)).toBe(false)
     })
 
-    it('legacy getInterestList still works after migration (via shim)', () => {
-      // Set up a legacy file
-      const legacyPath = path.join(tmpDir, 'interest-list.json')
-      const legacy: InterestList = {
-        version: 2,
-        updatedAt: '2024-06-01T00:00:00.000Z',
-        items: [{
-          id: 'item-1',
-          card: { name: 'Lightning Bolt', setCode: 'lea', collectorNumber: '161' },
-          addedAt: '2024-01-01T00:00:00.000Z',
-        }],
-      }
-      fs.writeFileSync(legacyPath, JSON.stringify(legacy))
-
-      const newStorage = new Storage(tmpDir)
-
-      // Legacy API still works
-      const result = newStorage.getInterestList()
-      expect(result.items).toHaveLength(1)
-      expect(result.items[0].card.name).toBe('Lightning Bolt')
-    })
   })
 
   describe('config', () => {

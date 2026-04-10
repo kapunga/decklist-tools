@@ -10,7 +10,7 @@ export type { ImportProgress, ResolvedCard, UseImportCardsResult } from './types
 
 /**
  * Hook to encapsulate shared import logic between ImportDialog and ImportNewDeckDialog.
- * Handles format detection, text parsing, Scryfall lookups, and DeckCard construction.
+ * Handles format detection, text parsing, Scryfall lookups, and CardEntry construction.
  */
 export function useImportCards(sideboardSize?: number): UseImportCardsResult {
   const [text, setText] = useState('')
@@ -50,7 +50,7 @@ export function useImportCards(sideboardSize?: number): UseImportCardsResult {
   }, [text])
 
   /**
-   * Look up all parsed cards on Scryfall and construct DeckCard objects.
+   * Look up all parsed cards on Scryfall and construct CardEntry objects.
    * Returns resolved cards and any errors encountered.
    */
   const lookupCards = useCallback(async (): Promise<{ resolvedCards: ResolvedCard[]; errors: string[] }> => {

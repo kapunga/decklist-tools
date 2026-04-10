@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/dialog'
 import { CardImage } from '@/components/CardImage'
 import { ColorPips } from '@/components/ColorPips'
-import type { ScryfallCard, DeckCard } from '@/types'
+import type { ScryfallCard, CardEntry } from '@/types'
 import { getCardDisplayName } from '@/types'
 import { searchCardByName, searchCards } from '@/lib/scryfall'
 import { AUTOCOMPLETE } from '@/lib/constants'
@@ -24,7 +24,7 @@ interface SelectCommanderModalProps {
   title?: string
   description?: string
   // For post-import selection: list of legendary creatures already in deck
-  existingLegendaries?: DeckCard[]
+  existingLegendaries?: CardEntry[]
   // For commander swap: only allow same color identity
   requiredColorIdentity?: string[]
 }
@@ -122,7 +122,7 @@ export function SelectCommanderModal({
     }
   }, [])
 
-  const handleSelectExisting = useCallback(async (deckCard: DeckCard) => {
+  const handleSelectExisting = useCallback(async (deckCard: CardEntry) => {
     setIsLoading(true)
     try {
       const card = await searchCardByName(deckCard.card.name)

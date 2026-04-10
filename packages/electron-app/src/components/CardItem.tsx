@@ -22,7 +22,7 @@ import {
 import { useStore, useAllRoles, useGlobalRoles } from '@/hooks/useStore'
 import { getRoleColor } from '@/lib/constants'
 import { CardEditModal } from '@/components/CardEditModal'
-import type { DeckCard, OwnershipStatus, RoleDefinition, CardSetName } from '@/types'
+import type { CardEntry, OwnershipStatus, RoleDefinition, CardSetName } from '@/types'
 import { isCardFullyPulled, getCardDisplayName, getCanonicalSuffix, INCLUSION_STATUS, OWNERSHIP_STATUS, CARD_SET } from '@/types'
 
 const ownershipLabels: Record<OwnershipStatus, string> = {
@@ -72,7 +72,7 @@ function RolePill({ roleId, roleDefinition, globalRoles, onRemove }: RolePillPro
 }
 
 interface CardItemProps {
-  card: DeckCard
+  card: CardEntry
   deckId: string
   listType: CardSetName
 }

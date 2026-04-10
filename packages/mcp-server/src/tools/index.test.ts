@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { createMockStorage, mockScryfallCard, makeDeck, makeDeckCard, pushMainboard, pushSideboard, pushAlternates } from '../__test__/helpers.js'
+import { createMockStorage, mockScryfallCard, makeDeck, makeDeckCard, pushMainboard, pushSideboard, pushAlternates, INTEREST_LIST_ID } from '../__test__/helpers.js'
 import { getMainboard, getSideboard, getAlternates } from '@mtg-deckbuilder/shared'
 import { handleToolCall, getToolDefinitions } from './index.js'
 import type { Storage } from '@mtg-deckbuilder/shared'
@@ -782,7 +782,8 @@ describe('Interest List', () => {
   describe('get_interest_list', () => {
     it('returns the interest list', async () => {
       const result = await call('get_interest_list') as any
-      expect(result.items).toEqual([])
+      expect(result.cardSets).toBeDefined()
+      expect(result.cardSets[0].entries).toEqual([])
     })
   })
 
@@ -802,11 +803,20 @@ describe('Interest List', () => {
 
   describe('manage_interest_list remove', () => {
     it('removes a card', async () => {
-      mock._setInterestList({
-        version: 1, updatedAt: '', items: [{
-          id: '1', card: { name: 'Rhystic Study', setCode: 'pcy', collectorNumber: '45' },
-          addedAt: '',
-        }]
+      mock._cardLists.set(INTEREST_LIST_ID, {
+        id: INTEREST_LIST_ID,
+        name: 'Interest List',
+        version: 1,
+        createdAt: '',
+        updatedAt: '',
+        cardSets: [{
+          name: 'mainboard',
+          entries: [{
+            id: '1',
+            card: { name: 'Rhystic Study', setCode: 'pcy', collectorNumber: '45' },
+            addedAt: '',
+          }],
+        }],
       })
       const result = await call('manage_interest_list', { action: 'remove', card_name: 'Rhystic Study' }) as any
       expect(result.success).toBe(true)

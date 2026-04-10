@@ -5,7 +5,7 @@ import { useStore } from '@/hooks/useStore'
 import { autocomplete, searchCardByName } from '@/lib/scryfall'
 import { AUTOCOMPLETE } from '@/lib/constants'
 import { CardAddModal } from '@/components/CardAddModal'
-import type { DeckCard, ScryfallCard, DeckFormat, RoleDefinition, CardSetName } from '@/types'
+import type { CardEntry, ScryfallCard, DeckFormat, RoleDefinition, CardSetName } from '@/types'
 import { generateDeckCardId, INCLUSION_STATUS, OWNERSHIP_STATUS, CARD_SOURCE } from '@/types'
 
 interface QuickAddProps {
@@ -107,7 +107,7 @@ export function QuickAdd({ deckId, format, colorIdentity, customRoles, activeTab
   const handleConfirmAdd = useCallback(async (quantity: number, roles: string[], destination: CardSetName) => {
     if (!pendingCard) return
 
-    const deckCard: DeckCard = {
+    const deckCard: CardEntry = {
       id: generateDeckCardId(),
       card: {
         scryfallId: pendingCard.id,

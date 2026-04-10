@@ -1,4 +1,4 @@
-import type { DeckCard, ScryfallCard } from '../types/index.js'
+import type { CardEntry, ScryfallCard } from '../types/index.js'
 import { getPrimaryType } from '../constants/index.js'
 import type { EnrichedDeckCard, CardFilter, ManaPipCounts } from './types.js'
 
@@ -121,7 +121,7 @@ export function getCmcDistribution(cards: EnrichedDeckCard[]): Record<number, nu
 
 // Helper to enrich cards with Scryfall data
 export function enrichCards(
-  cards: DeckCard[],
+  cards: CardEntry[],
   cache: Map<string, ScryfallCard>
 ): EnrichedDeckCard[] {
   return cards.map(deckCard => ({
