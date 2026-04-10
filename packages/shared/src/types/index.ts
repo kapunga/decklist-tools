@@ -96,6 +96,7 @@ export const CARD_SET = {
   MAINBOARD: 'mainboard',
   SIDEBOARD: 'sideboard',
   ALTERNATES: 'alternates',
+  CUT: 'cut',
 } as const
 export type CardSetName = typeof CARD_SET[keyof typeof CARD_SET]
 

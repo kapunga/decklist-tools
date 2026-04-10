@@ -60,6 +60,11 @@ export function getAlternates(deck: Deck): CardEntry[] {
   return getCardSetEntries(deck.cardSets, CARD_SET.ALTERNATES)
 }
 
+/** Shorthand: get cut entries from a deck. */
+export function getCutList(deck: Deck): CardEntry[] {
+  return getCardSetEntries(deck.cardSets, CARD_SET.CUT)
+}
+
 /** Flat union of all entries across all card sets in a deck. */
 export function getAllDeckEntries(deck: Deck): CardEntry[] {
   return getAllEntries(deck.cardSets)
