@@ -125,7 +125,7 @@ export const useBuyList = (): BuyListItem[] => {
       if (card.ownership === 'need_to_buy') {
         const key = card.card.name.toLowerCase()
         const existing = buyMap.get(key)
-        const qty = card.quantity ?? 0
+        const qty = card.quantity
 
         if (existing) {
           existing.totalQuantity += qty

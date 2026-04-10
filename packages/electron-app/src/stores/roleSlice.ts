@@ -23,7 +23,7 @@ export const createRoleSlice: SliceCreator<RoleSlice> = (set, get) => ({
     const deck = get().decks.find(d => d.id === deckId)
     if (!deck) return
     const updated = updateNamedCardInDeck(deck, cardName, c => ({
-      ...c, roles: [...new Set([...(c.roles ?? []), roleId])]
+      ...c, roles: [...new Set([...c.roles, roleId])]
     }))
     await get().updateDeck(updated)
   },
@@ -32,7 +32,7 @@ export const createRoleSlice: SliceCreator<RoleSlice> = (set, get) => ({
     const deck = get().decks.find(d => d.id === deckId)
     if (!deck) return
     const updated = updateNamedCardInDeck(deck, cardName, c => ({
-      ...c, roles: (c.roles ?? []).filter(r => r !== roleId)
+      ...c, roles: c.roles.filter(r => r !== roleId)
     }))
     await get().updateDeck(updated)
   },

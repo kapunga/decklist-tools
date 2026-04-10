@@ -25,13 +25,11 @@ export function DeckStats({ deck }: DeckStatsProps) {
 
   // Group by role - cards with multiple roles appear in multiple groups
   const byRole = confirmedCards.reduce<Record<string, number>>((acc, card) => {
-    const roles = card.roles ?? []
-    const qty = card.quantity ?? 0
-    if (roles.length === 0) {
-      acc['Unassigned'] = (acc['Unassigned'] || 0) + qty
+    if (card.roles.length === 0) {
+      acc['Unassigned'] = (acc['Unassigned'] || 0) + card.quantity
     } else {
-      roles.forEach(role => {
-        acc[role] = (acc[role] || 0) + qty
+      card.roles.forEach(role => {
+        acc[role] = (acc[role] || 0) + card.quantity
       })
     }
     return acc
@@ -40,7 +38,7 @@ export function DeckStats({ deck }: DeckStatsProps) {
   // Count cards needing purchase
   const needToBuy = getAllDeckEntries(deck).filter(c => c.ownership === 'need_to_buy')
 
-  const totalNeedToBuy = needToBuy.reduce((sum, c) => sum + (c.quantity ?? 0), 0)
+  const totalNeedToBuy = needToBuy.reduce((sum, c) => sum + c.quantity, 0)
 
   // Get all role definitions for display names
   const allRoles = getAllRoles(globalRoles, deck.customRoles)

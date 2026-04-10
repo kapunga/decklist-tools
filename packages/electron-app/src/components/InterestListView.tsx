@@ -7,7 +7,7 @@ import { useStore } from '@/hooks/useStore'
 import { autocomplete, searchCardByName, getCardImageUrl } from '@/lib/scryfall'
 import { AUTOCOMPLETE } from '@/lib/constants'
 import type { CardEntry } from '@/types'
-import { INTEREST_LIST_ID } from '@/types'
+import { INTEREST_LIST_ID, getPotentialDecks } from '@/types'
 
 export function InterestListView() {
   const cardLists = useStore(state => state.cardLists)
@@ -244,7 +244,7 @@ function InterestListItem({
   }
 
   // Get deck names for potential decks
-  const potentialDeckNames = (item.potentialDecks || [])
+  const potentialDeckNames = getPotentialDecks(item)
     .map(id => decks.find(d => d.id === id))
     .filter(Boolean)
 

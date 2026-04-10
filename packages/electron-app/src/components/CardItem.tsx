@@ -123,8 +123,7 @@ export function CardItem({ card, deckId, listType }: CardItemProps) {
   }
 
   // Get available roles that aren't already assigned
-  const cardRoles = card.roles ?? []
-  const availableRoles = allRoles.filter(r => !cardRoles.includes(r.id))
+  const availableRoles = allRoles.filter(r => !card.roles.includes(r.id))
 
   return (
     <div className="flex items-center justify-between p-2 bg-secondary/50 rounded hover:bg-secondary transition-colors group">
@@ -141,7 +140,7 @@ export function CardItem({ card, deckId, listType }: CardItemProps) {
 
         {/* Role pills */}
         <div className="flex items-center gap-1 flex-wrap">
-          {cardRoles.map(roleId => {
+          {card.roles.map(roleId => {
             const roleDef = allRoles.find(r => r.id === roleId)
             return (
               <RolePill

@@ -213,7 +213,7 @@ export function SettingsPage() {
     let deckCount = 0
 
     decks.forEach(deck => {
-      const cardsWithRole = getAllDeckEntries(deck).filter(c => (c.roles ?? []).includes(roleId))
+      const cardsWithRole = getAllDeckEntries(deck).filter(c => c.roles.includes(roleId))
       if (cardsWithRole.length > 0) {
         deckCount++
         cardCount += cardsWithRole.length

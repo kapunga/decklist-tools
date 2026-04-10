@@ -1,7 +1,7 @@
 import type { PullListSlice, SliceCreator } from './types'
 import type { PullListConfig, CardEntry, PulledPrinting } from '@/types'
 import { OWNERSHIP_STATUS } from '@/types'
-import { mapAllDeckEntries } from '@mtg-deckbuilder/shared'
+import { mapAllDeckEntries, getPulledPrintings } from '@mtg-deckbuilder/shared'
 
 export const createPullListSlice: SliceCreator<PullListSlice> = (set, get) => ({
   loadPullListConfig: async () => {
@@ -76,7 +76,7 @@ export const createPullListSlice: SliceCreator<PullListSlice> = (set, get) => ({
     const updatedDeck = mapAllDeckEntries(deck, (card: CardEntry) => {
       if (card.card.name.toLowerCase() !== lowerName) return card
 
-      const pulledPrintings = [...(card.pulledPrintings ?? [])]
+      const pulledPrintings = [...getPulledPrintings(card)]
       const existingIndex = pulledPrintings.findIndex(
         p => p.setCode.toLowerCase() === setCode.toLowerCase() &&
              p.collectorNumber === collectorNumber
@@ -150,7 +150,7 @@ export const createPullListSlice: SliceCreator<PullListSlice> = (set, get) => ({
     const updatedDeck = mapAllDeckEntries(deck, (card: CardEntry) => {
       if (card.card.name.toLowerCase() !== lowerName) return card
 
-      const pulledPrintings = (card.pulledPrintings ?? [])
+      const pulledPrintings = getPulledPrintings(card)
         .map((p: PulledPrinting) => {
           if (p.setCode.toLowerCase() === setCode.toLowerCase() &&
               p.collectorNumber === collectorNumber) {

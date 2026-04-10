@@ -92,7 +92,7 @@ export const createSelectionSlice: SliceCreator<SelectionSlice> = (set, get) => 
     const nameSet = new Set(cardNames)
     const updatedDeck = mapAllDeckEntries(deck, (c: CardEntry) =>
       nameSet.has(c.card.name)
-        ? { ...c, roles: [...new Set([...(c.roles ?? []), roleId])] }
+        ? { ...c, roles: [...new Set([...c.roles, roleId])] }
         : c
     )
     await get().updateDeck(updatedDeck)

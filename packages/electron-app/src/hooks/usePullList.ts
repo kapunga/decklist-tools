@@ -3,7 +3,7 @@ import { useQueries } from '@tanstack/react-query'
 import { useStore } from '@/hooks/useStore'
 import { getCardPrintings } from '@/lib/scryfall'
 import type { Deck, CardEntry, ScryfallCard, PullListSortKey, PullListSource } from '@/types'
-import { getTotalPulledQuantity, isBasicLand, OWNERSHIP_STATUS, CARD_SOURCE } from '@/types'
+import { getTotalPulledQuantity, isBasicLand, OWNERSHIP_STATUS, CARD_SOURCE, getPulledPrintings } from '@/types'
 import { getMainboard, getSideboard, getAlternates } from '@mtg-deckbuilder/shared'
 import type { PullListItem, PullListGroup } from './types'
 
@@ -221,7 +221,7 @@ export function usePullList(deck: Deck | null) {
       const cardName = deckCard.card.name
       const printings = printingsMap.get(cardName.toLowerCase()) || []
       const totalPulled = getTotalPulledQuantity(deckCard)
-      const deckCardQty = deckCard.quantity ?? 0
+      const deckCardQty = deckCard.quantity
       const remainingNeeded = deckCardQty - totalPulled
 
       // Get printings from owned sets
@@ -258,8 +258,8 @@ export function usePullList(deck: Deck | null) {
 
       // Create items for each owned printing
       for (const printing of ownedPrintings) {
-        const pulledFromThisPrint = (deckCard.pulledPrintings ?? []).find(
-          (p: { setCode: string; collectorNumber: string; quantity: number }) =>
+        const pulledFromThisPrint = getPulledPrintings(deckCard).find(
+          (p) =>
             p.setCode.toLowerCase() === printing.set.toLowerCase() &&
             p.collectorNumber === printing.collector_number
         )?.quantity ?? 0

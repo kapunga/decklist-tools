@@ -171,7 +171,7 @@ export function DeckListView({ deck, listType }: DeckListViewProps) {
     if (!card) return
 
     const maxQty = getCardLimit(card.card.name, deck.format)
-    const currentQty = card.quantity ?? 0
+    const currentQty = card.quantity
     const newQty = Math.max(1, Math.min(maxQty === Infinity ? 99 : maxQty, currentQty + delta))
 
     if (newQty !== currentQty) {
@@ -249,7 +249,7 @@ export function DeckListView({ deck, listType }: DeckListViewProps) {
         />
         <div className="space-y-4">
           {sortedGroups.map(([typeName, groupCards]) => {
-            const groupCount = groupCards.reduce((sum, c) => sum + (c.quantity ?? 0), 0)
+            const groupCount = groupCards.reduce((sum, c) => sum + c.quantity, 0)
             const groupSelected = isGroupSelected(groupCards)
             const isCommanderGroup = typeName === 'Commander'
 
@@ -356,7 +356,7 @@ function CardRow({
   onUpdateNotes
 }: CardRowProps) {
   const maxQty = getCardLimit(card.card.name, deck.format)
-  const displayRoles = card.roles ?? []
+  const displayRoles = card.roles
 
   // Notes editing state
   const [isEditingNotes, setIsEditingNotes] = useState(false)
@@ -406,11 +406,11 @@ function CardRow({
             e.stopPropagation()
             onQuantityChange(card.card.name, -1)
           }}
-          disabled={isCommander || (card.quantity ?? 0) <= 1}
+          disabled={isCommander || card.quantity <= 1}
         >
           <Minus className="w-3 h-3" />
         </Button>
-        <span className="w-5 text-center text-sm font-medium">{card.quantity ?? 0}</span>
+        <span className="w-5 text-center text-sm font-medium">{card.quantity}</span>
         <Button
           variant="ghost"
           size="icon"
@@ -419,7 +419,7 @@ function CardRow({
             e.stopPropagation()
             onQuantityChange(card.card.name, 1)
           }}
-          disabled={isCommander || (maxQty !== Infinity && (card.quantity ?? 0) >= maxQty)}
+          disabled={isCommander || (maxQty !== Infinity && card.quantity >= maxQty)}
         >
           <Plus className="w-3 h-3" />
         </Button>
@@ -448,7 +448,7 @@ function CardRow({
 
         <RoleAutocomplete
           deck={deck}
-          existingRoles={card.roles ?? []}
+          existingRoles={card.roles}
           onAdd={onAddRole}
           placeholder={displayRoles.length === 0 ? "No roles" : undefined}
           disabled={isCommander}

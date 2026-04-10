@@ -50,9 +50,9 @@ export function CardEditModal({
   const removeRoleFromCard = useStore(state => state.removeRoleFromCard)
 
   // Local state for edits
-  const [quantity, setQuantity] = useState(card.quantity ?? 1)
+  const [quantity, setQuantity] = useState(card.quantity)
   const [notes, setNotes] = useState(card.notes || '')
-  const [ownership, setOwnership] = useState<OwnershipStatus>(card.ownership ?? 'unknown')
+  const [ownership, setOwnership] = useState<OwnershipStatus>(card.ownership)
   const [selectedPrinting, setSelectedPrinting] = useState<ScryfallCard | null>(null)
 
   // Printings loading state
@@ -61,9 +61,9 @@ export function CardEditModal({
 
   // Reset local state when card changes
   useEffect(() => {
-    setQuantity(card.quantity ?? 1)
+    setQuantity(card.quantity)
     setNotes(card.notes || '')
-    setOwnership(card.ownership ?? 'unknown')
+    setOwnership(card.ownership)
     setSelectedPrinting(null)
   }, [card])
 
@@ -210,7 +210,7 @@ export function CardEditModal({
           <div className="space-y-2">
             <Label>Roles</Label>
             <div className="flex items-center gap-1 flex-wrap">
-              {(card.roles ?? []).map(roleId => (
+              {card.roles.map(roleId => (
                 <RolePill
                   key={roleId}
                   roleId={roleId}
@@ -221,9 +221,9 @@ export function CardEditModal({
               ))}
               <RoleAutocomplete
                 deck={deck}
-                existingRoles={card.roles ?? []}
+                existingRoles={card.roles}
                 onAdd={handleAddRole}
-                placeholder={(card.roles ?? []).length === 0 ? 'Add role...' : undefined}
+                placeholder={card.roles.length === 0 ? 'Add role...' : undefined}
               />
             </div>
           </div>

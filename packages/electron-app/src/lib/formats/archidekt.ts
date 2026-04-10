@@ -55,7 +55,7 @@ export const archidektFormat: DeckFormat = {
     const lines: string[] = []
 
     const renderCard = (c: CardEntry, category: string) => {
-      const roleStr = (c.roles ?? []).map(r => `^${r}^`).join(' ')
+      const roleStr = c.roles.map(r => `^${r}^`).join(' ')
       let line = `${c.quantity}x ${c.card.name} (${c.card.setCode.toUpperCase()}) ${c.card.collectorNumber} [${category}]`
       if (roleStr) line += ` ${roleStr}`
       lines.push(line)
@@ -82,7 +82,7 @@ export const archidektFormat: DeckFormat = {
     const mainboard = getMainboard(deck)
     mainboard.forEach(c => {
       // Use first role for category, fallback to 'Other'
-      const primaryRole = (c.roles ?? [])[0]
+      const primaryRole = c.roles[0]
       const category = primaryRole ? (roleToCategoryMap[primaryRole] || 'Other') : 'Other'
       renderCard(c, category)
     })

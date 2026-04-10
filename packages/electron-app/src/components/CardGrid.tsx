@@ -30,12 +30,11 @@ export function CardGrid({ cards, deckId, listType, customRoles, groupBy = 'role
     // Group cards by role - cards with multiple roles appear in multiple groups
     const roleGroups: Record<string, CardEntry[]> = {}
     confirmedCards.forEach(card => {
-      const roles = card.roles ?? []
-      if (roles.length === 0) {
+      if (card.roles.length === 0) {
         if (!roleGroups['Unassigned']) roleGroups['Unassigned'] = []
         roleGroups['Unassigned'].push(card)
       } else {
-        roles.forEach(roleId => {
+        card.roles.forEach(roleId => {
           if (!roleGroups[roleId]) roleGroups[roleId] = []
           roleGroups[roleId].push(card)
         })
@@ -65,7 +64,7 @@ export function CardGrid({ cards, deckId, listType, customRoles, groupBy = 'role
                 <Badge style={{ backgroundColor: color }} className="text-white">
                   {displayName}
                 </Badge>
-                <span>({groupCards.reduce((sum, c) => sum + (c.quantity ?? 0), 0)})</span>
+                <span>({groupCards.reduce((sum, c) => sum + c.quantity, 0)})</span>
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
                 {groupCards.sort((a, b) => a.card.name.localeCompare(b.card.name)).map((card, index) => (
@@ -88,7 +87,7 @@ export function CardGrid({ cards, deckId, listType, customRoles, groupBy = 'role
     // Group by card type (land vs non-land for now since we don't have full type info)
     const typeGroups: Record<string, CardEntry[]> = { 'Nonland': [], 'Land': [] }
     confirmedCards.forEach(card => {
-      if ((card.roles ?? []).includes('land')) {
+      if (card.roles.includes('land')) {
         typeGroups['Land'].push(card)
       } else {
         typeGroups['Nonland'].push(card)
@@ -110,7 +109,7 @@ export function CardGrid({ cards, deckId, listType, customRoles, groupBy = 'role
           <div key={typeName}>
             <h3 className="text-sm font-semibold text-muted-foreground mb-2 flex items-center gap-2">
               <Badge variant="secondary">{typeName}</Badge>
-              <span>({groupCards.reduce((sum, c) => sum + (c.quantity ?? 0), 0)})</span>
+              <span>({groupCards.reduce((sum, c) => sum + c.quantity, 0)})</span>
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
               {groupCards.sort((a, b) => a.card.name.localeCompare(b.card.name)).map((card, index) => (

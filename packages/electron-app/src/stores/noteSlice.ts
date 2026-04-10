@@ -49,7 +49,7 @@ export const createNoteSlice: SliceCreator<NoteSlice> = (_set, get) => ({
       const refNames = new Set(note.cardRefs.map(r => r.cardName.toLowerCase()))
       updatedDeck = mapAllDeckEntries(updatedDeck, (c: CardEntry) =>
         refNames.has(c.card.name.toLowerCase())
-          ? { ...c, roles: (c.roles ?? []).filter(r => r !== note.roleId) }
+          ? { ...c, roles: c.roles.filter(r => r !== note.roleId) }
           : c
       )
     }
