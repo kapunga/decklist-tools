@@ -59,8 +59,8 @@ export function mergeCardIntoList(list: CardEntry[], card: CardEntry): { list: C
     const existing = list[existingIndex]
     const mergedCard: CardEntry = {
       ...existing,
-      quantity: (existing.quantity ?? 0) + (card.quantity ?? 0),
-      roles: [...new Set([...(existing.roles ?? []), ...(card.roles ?? [])])],
+      quantity: existing.quantity + card.quantity,
+      roles: [...new Set([...existing.roles, ...card.roles])],
       notes: existing.notes && card.notes && existing.notes !== card.notes
         ? `${existing.notes}\n${card.notes}`
         : card.notes || existing.notes,
@@ -70,7 +70,7 @@ export function mergeCardIntoList(list: CardEntry[], card: CardEntry): { list: C
     return { list: newList, merged: true }
   }
 
-  return { list: [...list, { ...card, roles: [...(card.roles ?? [])] }], merged: false }
+  return { list: [...list, { ...card, roles: [...card.roles] }], merged: false }
 }
 
 /**
@@ -105,7 +105,7 @@ export function removeCardFromDeck(
   }
 
   const card = currentList[index]
-  const currentQty = card.quantity ?? 0
+  const currentQty = card.quantity
   let newList: CardEntry[]
   let remainingQty: number
 
@@ -155,7 +155,7 @@ export function moveCard(
   }
 
   const card = fromList[index]
-  const currentQty = card.quantity ?? 1
+  const currentQty = card.quantity
 
   let moveQty: number
   if (quantity === undefined) {
@@ -241,11 +241,11 @@ export function updateCardInDeck(
       updatedFields.push('roles')
     }
     if (updates.addRoles) {
-      updated.roles = [...new Set([...(updated.roles ?? []), ...updates.addRoles])]
+      updated.roles = [...new Set([...updated.roles, ...updates.addRoles])]
       updatedFields.push('roles')
     }
     if (updates.removeRoles) {
-      updated.roles = (updated.roles ?? []).filter(r => !updates.removeRoles!.includes(r))
+      updated.roles = updated.roles.filter(r => !updates.removeRoles!.includes(r))
       updatedFields.push('roles')
     }
     if (updates.ownership !== undefined) {

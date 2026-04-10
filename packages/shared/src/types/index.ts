@@ -170,7 +170,7 @@ export function getTotalPulledQuantity(card: CardEntry): number {
 
 // Check if a card is fully pulled based on pulledPrintings
 export function isCardFullyPulled(card: CardEntry): boolean {
-  return getTotalPulledQuantity(card) >= (card.quantity ?? 0)
+  return getTotalPulledQuantity(card) >= card.quantity
 }
 
 
@@ -411,7 +411,7 @@ export function getCardLimit(cardName: string, format: DeckFormat): number {
 
 export function getCardCount(deck: Deck): number {
   const mainboard = deck.cardSets.find(s => s.name === CARD_SET.MAINBOARD)?.entries ?? []
-  const mainDeckCount = mainboard.reduce((sum, c) => sum + (c.quantity ?? 0), 0)
+  const mainDeckCount = mainboard.reduce((sum, c) => sum + c.quantity, 0)
 
   // Commanders count towards deck size in Commander format
   const commanderCount = deck.commanders?.length || 0

@@ -36,7 +36,7 @@ export function validateDeckSize(deck: Deck): ValidationIssue[] {
  * Validate sideboard doesn't exceed format limit.
  */
 export function validateSideboardSize(deck: Deck): ValidationIssue[] {
-  const sideboardCount = getSideboard(deck).reduce((sum, c) => sum + (c.quantity ?? 0), 0)
+  const sideboardCount = getSideboard(deck).reduce((sum, c) => sum + c.quantity, 0)
 
   if (sideboardCount > deck.format.sideboardSize) {
     return [{
@@ -60,7 +60,7 @@ export function validateCardLimits(deck: Deck): ValidationIssue[] {
   // Aggregate quantities across all playable card sets (exclude cut)
   for (const card of getNonCutEntries(deck)) {
     const current = cardCounts.get(card.card.name) || 0
-    cardCounts.set(card.card.name, current + (card.quantity ?? 0))
+    cardCounts.set(card.card.name, current + card.quantity)
   }
 
   for (const [name, count] of cardCounts) {
