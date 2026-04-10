@@ -16,7 +16,21 @@ import {
 // MCP client integration
 type McpClientId = 'claude-desktop' | 'claude-code' | 'gemini-cli'
 
-const MCP_SERVER_NAME = 'mtg-deckbuilder'
+function getMcpServerName(): string {
+  return app.isPackaged ? 'mtg-deckbuilder' : 'mtg-deckbuilder-dev'
+}
+
+// In dev, __dirname is <repo>/packages/electron-app/dist-electron.
+function getRepoRoot(): string {
+  return path.resolve(__dirname, '..', '..', '..')
+}
+
+function getStorageDir(): string {
+  if (app.isPackaged) {
+    return path.join(app.getPath('appData'), 'mtg-deckbuilder')
+  }
+  return path.join(getRepoRoot(), 'dev-storage')
+}
 
 function getClaudeDesktopConfigPath(): string {
   switch (process.platform) {
@@ -29,10 +43,20 @@ function getClaudeDesktopConfigPath(): string {
   }
 }
 
-const MCP_CLIENT_CONFIGS: Record<McpClientId, string> = {
-  'claude-desktop': getClaudeDesktopConfigPath(),
-  'claude-code': path.join(os.homedir(), '.claude', 'settings.local.json'),
-  'gemini-cli': path.join(os.homedir(), '.gemini', 'settings.json'),
+function getMcpClientConfigPaths(): Record<McpClientId, string> {
+  if (!app.isPackaged) {
+    const devConfig = path.join(getRepoRoot(), '.mcp.json')
+    return {
+      'claude-desktop': devConfig,
+      'claude-code': devConfig,
+      'gemini-cli': devConfig,
+    }
+  }
+  return {
+    'claude-desktop': getClaudeDesktopConfigPath(),
+    'claude-code': path.join(os.homedir(), '.claude', 'settings.local.json'),
+    'gemini-cli': path.join(os.homedir(), '.gemini', 'settings.json'),
+  }
 }
 
 function readJsonConfig(configPath: string): Record<string, unknown> | null {
@@ -67,7 +91,7 @@ function registerMcpHandlers(clientId: string, configPath: string): void {
     const config = readJsonConfig(configPath)
     const servers = config?.mcpServers as Record<string, unknown> | undefined
     return {
-      connected: servers?.[MCP_SERVER_NAME] !== undefined,
+      connected: servers?.[getMcpServerName()] !== undefined,
       configPath,
       mcpServerPath: getMcpServerPath(),
     }
@@ -78,10 +102,13 @@ function registerMcpHandlers(clientId: string, configPath: string): void {
       const config = readJsonConfig(configPath) ?? {}
       const servers = (config.mcpServers as Record<string, unknown>) ?? {}
       const mcpServerPath = getMcpServerPath()
+      const args = app.isPackaged
+        ? [mcpServerPath]
+        : [mcpServerPath, '--storage-dir', getStorageDir()]
 
-      servers[MCP_SERVER_NAME] = {
+      servers[getMcpServerName()] = {
         command: 'node',
-        args: [mcpServerPath],
+        args,
       }
       config.mcpServers = servers
 
@@ -101,7 +128,7 @@ function registerMcpHandlers(clientId: string, configPath: string): void {
       if (!config?.mcpServers) return { success: true }
 
       const servers = config.mcpServers as Record<string, unknown>
-      delete servers[MCP_SERVER_NAME]
+      delete servers[getMcpServerName()]
 
       writeJsonConfig(configPath, config)
       return { success: true }
@@ -173,7 +200,7 @@ const createWindow = () => {
 app.setName('MTG Deckbuilder')
 
 app.whenReady().then(() => {
-  storage = new Storage(path.join(app.getPath('appData'), 'mtg-deckbuilder'))
+  storage = new Storage(getStorageDir())
 
   // Set Content Security Policy (production only - Vite dev server needs more permissive settings)
   if (app.isPackaged) {
@@ -345,7 +372,7 @@ function setupIpcHandlers() {
   })
 
   // MCP client integrations
-  for (const [clientId, configPath] of Object.entries(MCP_CLIENT_CONFIGS)) {
+  for (const [clientId, configPath] of Object.entries(getMcpClientConfigPaths())) {
     registerMcpHandlers(clientId, configPath)
   }
 

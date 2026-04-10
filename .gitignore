@@ -39,3 +39,6 @@ npm-debug.log*
 
 # Vite
 packages/electron-app/.vite/
+
+# Dev storage (used when running the Electron app in dev mode)
+dev-storage/
