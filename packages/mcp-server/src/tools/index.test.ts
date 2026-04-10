@@ -332,12 +332,12 @@ describe('Card Management', () => {
 
     it('finds card in alternates', async () => {
       const deck = makeDeck()
-      pushAlternates(deck,makeDeckCard('Sol Ring'))
+      pushAlternates(deck,makeDeckCard('Sol Ring', { ownership: 'need_to_buy' }))
       mock._decks.set(deck.id, deck)
 
-      const result = await call('manage_card', { action: 'update', deck_id: deck.id, name: 'Sol Ring', pinned: true }) as any
+      const result = await call('manage_card', { action: 'update', deck_id: deck.id, name: 'Sol Ring', ownership: 'owned' }) as any
       expect(result.success).toBe(true)
-      expect(getAlternates(mock._decks.get(deck.id)!)[0].isPinned).toBe(true)
+      expect(getAlternates(mock._decks.get(deck.id)!)[0].ownership).toBe('owned')
     })
 
     it('throws when card not found', async () => {

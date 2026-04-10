@@ -110,7 +110,6 @@ export function useImportCards(sideboardSize?: number): UseImportCardsResult {
           ownership: OWNERSHIP_STATUS.OWNED,
           roles,
           typeLine: scryfallCard.type_line,  // Store type line for grouping
-          isPinned: false,
           addedAt: new Date().toISOString(),
           source: CARD_SOURCE.IMPORT
         }

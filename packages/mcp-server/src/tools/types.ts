@@ -26,7 +26,6 @@ export interface ManageCardArgs {
   from_sideboard?: boolean
   add_roles?: string[]
   remove_roles?: string[]
-  pinned?: boolean
   notes?: string
   from?: string
   to?: string
@@ -146,7 +145,6 @@ export function validateManageCardArgs(args: Record<string, unknown>): ManageCar
     from_sideboard: args.from_sideboard as boolean | undefined,
     add_roles: args.add_roles as string[] | undefined,
     remove_roles: args.remove_roles as string[] | undefined,
-    pinned: args.pinned as boolean | undefined,
     notes: args.notes as string | undefined,
     from: args.from as string | undefined,
     to: args.to as string | undefined,

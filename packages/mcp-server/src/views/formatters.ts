@@ -58,10 +58,6 @@ export function formatCardLine(
     headerParts.push('[PULLED]')
   }
 
-  if (card.isPinned) {
-    headerParts.push('[PINNED]')
-  }
-
   const header = headerParts.join(' ')
 
   if ((level === 'compact' || level === 'full') && cached) {

@@ -28,7 +28,6 @@ function legacyCardToEntry(card: LegacyDeckCard): CardEntry {
     ownership: card.ownership,
     roles: card.roles,
     typeLine: card.typeLine,
-    isPinned: card.isPinned,
     notes: card.notes,
     addedAt: card.addedAt,
     source: card.addedBy,

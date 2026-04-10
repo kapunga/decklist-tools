@@ -25,7 +25,6 @@ export function mergeCardIntoList(list: CardEntry[], card: CardEntry): { list: C
       quantity: (existing.quantity ?? 0) + (card.quantity ?? 0),
       inclusion,
       roles: [...new Set([...(existing.roles ?? []), ...(card.roles ?? [])])],
-      isPinned: (existing.isPinned ?? false) || (card.isPinned ?? false),
       notes: existing.notes && card.notes && existing.notes !== card.notes
         ? `${existing.notes}\n${card.notes}`
         : card.notes || existing.notes,
@@ -185,7 +184,6 @@ export interface CardFieldUpdates {
   removeRoles?: string[]
   inclusion?: InclusionStatus
   ownership?: OwnershipStatus
-  isPinned?: boolean
   notes?: string
 }
 
@@ -222,10 +220,6 @@ export function updateCardInDeck(
     if (updates.ownership !== undefined) {
       updated.ownership = updates.ownership
       updatedFields.push('ownership')
-    }
-    if (updates.isPinned !== undefined) {
-      updated.isPinned = updates.isPinned
-      updatedFields.push('isPinned')
     }
     if (updates.notes !== undefined) {
       updated.notes = updates.notes

@@ -138,7 +138,6 @@ export function makeDeckCard(name: string, overrides?: Partial<CardEntry>): Card
     ownership: 'owned',
     roles: [],
     typeLine: 'Creature — Human Wizard',
-    isPinned: false,
     addedAt: new Date().toISOString(),
     source: 'user',
     ...overrides,

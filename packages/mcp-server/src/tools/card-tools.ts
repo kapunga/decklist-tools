@@ -93,7 +93,6 @@ export async function manageCard(storage: Storage, args: ManageCardArgs) {
           ownership: (args.ownership as OwnershipStatus) || OWNERSHIP_STATUS.UNKNOWN,
           roles: args.roles || [],
           typeLine: scryfallCard.type_line,
-          isPinned: false,
           addedAt: new Date().toISOString(),
           source: CARD_SOURCE.USER,
         }
@@ -150,7 +149,6 @@ export async function manageCard(storage: Storage, args: ManageCardArgs) {
           removeRoles: args.remove_roles,
           inclusion: args.status as InclusionStatus | undefined,
           ownership: args.ownership as OwnershipStatus | undefined,
-          isPinned: args.pinned,
           notes: args.notes,
         })
         deck = result.deck

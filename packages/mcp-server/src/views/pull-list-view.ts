@@ -59,7 +59,6 @@ export function renderPullListView(
         ownership: OWNERSHIP_STATUS.UNKNOWN,
         roles: ['commander'],
         typeLine: '',
-        isPinned: true,
         addedAt: deck.createdAt,
         source: CARD_SOURCE.USER
       }))

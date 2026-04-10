@@ -22,7 +22,6 @@ function makeEnriched(overrides: {
       ownership: (overrides.ownership as any) || 'owned',
       roles: overrides.roles || [],
       typeLine: overrides.typeLine || 'Creature — Human',
-      isPinned: false,
       addedAt: '2024-01-01T00:00:00.000Z',
       source: 'user',
     },
@@ -190,7 +189,7 @@ describe('enrichCards', () => {
     const deckCard: CardEntry = {
       id: 'test', card: { scryfallId: 'sf-1', name: 'Sol Ring', setCode: 'c21', collectorNumber: '263' },
       quantity: 1, inclusion: 'confirmed', ownership: 'owned', roles: [],
-      isPinned: false, addedAt: '', source: 'user',
+      addedAt: '', source: 'user',
     }
     const cache = new Map<string, ScryfallCard>()
     cache.set('sf-1', { id: 'sf-1', name: 'Sol Ring' } as ScryfallCard)
@@ -204,7 +203,7 @@ describe('enrichCards', () => {
     const deckCard: CardEntry = {
       id: 'test', card: { name: 'Sol Ring', setCode: 'c21', collectorNumber: '263' },
       quantity: 1, inclusion: 'confirmed', ownership: 'owned', roles: [],
-      isPinned: false, addedAt: '', source: 'user',
+      addedAt: '', source: 'user',
     }
     const result = enrichCards([deckCard], new Map())
     expect(result[0].scryfallCard).toBeUndefined()

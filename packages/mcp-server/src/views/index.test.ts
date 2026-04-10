@@ -60,11 +60,10 @@ describe('full view', () => {
 
   it('shows role names and ownership badges', () => {
     const deck = makeDeck()
-    pushMainboard(deck,makeDeckCard('Sol Ring', { roles: ['ramp'], ownership: 'need_to_buy', isPinned: true }))
+    pushMainboard(deck,makeDeckCard('Sol Ring', { roles: ['ramp'], ownership: 'need_to_buy' }))
     const result = renderDeckView(deck, 'full', globalRoles)
     expect(result).toContain('(Ramp)')
     expect(result).toContain('[NEED TO BUY]')
-    expect(result).toContain('[PINNED]')
   })
 
   it('shows pulled badge when fully pulled via pulledPrintings', () => {

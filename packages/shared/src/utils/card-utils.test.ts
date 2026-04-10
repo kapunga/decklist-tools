@@ -17,7 +17,6 @@ const createDeckCard = (
   inclusion: 'confirmed',
   ownership: 'owned',
   roles: [],
-  isPinned: false,
   addedAt: new Date().toISOString(),
   source: 'user',
   ...overrides,

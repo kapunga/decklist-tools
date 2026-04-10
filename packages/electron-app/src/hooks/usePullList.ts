@@ -167,7 +167,6 @@ export function usePullList(deck: Deck | null) {
         ownership: OWNERSHIP_STATUS.UNKNOWN,
         roles: ['commander'],
         typeLine: '',
-        isPinned: true,
         addedAt: deck.createdAt,
         source: CARD_SOURCE.USER,
         pulledPrintings: pulledPrintings.length > 0 ? pulledPrintings : undefined

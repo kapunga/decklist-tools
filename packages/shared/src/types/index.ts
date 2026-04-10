@@ -199,7 +199,6 @@ export interface CardEntry {
   inclusion?: InclusionStatus
   ownership?: OwnershipStatus
   roles?: string[]
-  isPinned?: boolean
   pulledPrintings?: PulledPrinting[]
   // List-context fields
   potentialDecks?: string[]

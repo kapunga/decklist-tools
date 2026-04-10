@@ -12,7 +12,6 @@ function makeEntry(name: string, overrides: Partial<CardEntry> = {}): CardEntry 
     inclusion: INCLUSION_STATUS.CONFIRMED,
     ownership: OWNERSHIP_STATUS.OWNED,
     roles: [],
-    isPinned: false,
     addedAt: '2024-01-01T00:00:00.000Z',
     source: CARD_SOURCE.USER,
     ...overrides,

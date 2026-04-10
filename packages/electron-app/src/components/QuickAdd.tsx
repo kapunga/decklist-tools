@@ -120,7 +120,6 @@ export function QuickAdd({ deckId, format, colorIdentity, customRoles, activeTab
       ownership: OWNERSHIP_STATUS.UNKNOWN,
       roles,
       typeLine: pendingCard.type_line,
-      isPinned: false,
       addedAt: new Date().toISOString(),
       source: CARD_SOURCE.USER
     }

@@ -50,7 +50,6 @@ export function DeckListView({ deck, listType }: DeckListViewProps) {
       inclusion: INCLUSION_STATUS.CONFIRMED,
       ownership: OWNERSHIP_STATUS.UNKNOWN,
       roles: [],
-      isPinned: true,
       addedAt: deck.createdAt,
       source: CARD_SOURCE.USER
     }))
