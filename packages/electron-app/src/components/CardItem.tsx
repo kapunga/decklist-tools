@@ -22,8 +22,8 @@ import {
 import { useStore, useAllRoles, useGlobalRoles } from '@/hooks/useStore'
 import { getRoleColor } from '@/lib/constants'
 import { CardEditModal } from '@/components/CardEditModal'
-import type { DeckCard, OwnershipStatus, RoleDefinition, DeckListName } from '@/types'
-import { isCardFullyPulled, getCardDisplayName, getCanonicalSuffix, INCLUSION_STATUS, OWNERSHIP_STATUS, DECK_LIST } from '@/types'
+import type { CardEntry, OwnershipStatus, RoleDefinition, CardSetName } from '@/types'
+import { isCardFullyPulled, getCardDisplayName, getCanonicalSuffix, OWNERSHIP_STATUS, CARD_SET } from '@/types'
 
 const ownershipLabels: Record<OwnershipStatus, string> = {
   [OWNERSHIP_STATUS.UNKNOWN]: 'Unknown',
@@ -72,9 +72,9 @@ function RolePill({ roleId, roleDefinition, globalRoles, onRemove }: RolePillPro
 }
 
 interface CardItemProps {
-  card: DeckCard
+  card: CardEntry
   deckId: string
-  listType: DeckListName
+  listType: CardSetName
 }
 
 export function CardItem({ card, deckId, listType }: CardItemProps) {
@@ -94,9 +94,9 @@ export function CardItem({ card, deckId, listType }: CardItemProps) {
     await updateCardInDeck(deckId, card.card.name, { ownership })
   }
 
-  const handleMove = async (to: DeckListName) => {
+  const handleMove = async (to: CardSetName) => {
     if (to !== listType) {
-      await moveCard(deckId, card.card.name, listType, to)
+      await moveCard(deckId, card.card.name, listType, to, card.quantity)
     }
   }
 
@@ -180,9 +180,6 @@ export function CardItem({ card, deckId, listType }: CardItemProps) {
           </button>
         )}
 
-        {card.inclusion === INCLUSION_STATUS.CONSIDERING && (
-          <Badge variant="outline" className="text-xs flex-shrink-0">?</Badge>
-        )}
         {card.ownership === OWNERSHIP_STATUS.NEED_TO_BUY && (
           <Badge variant="destructive" className="text-xs flex-shrink-0">Buy</Badge>
         )}
@@ -242,18 +239,18 @@ export function CardItem({ card, deckId, listType }: CardItemProps) {
                 Move to
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent>
-                {listType !== DECK_LIST.MAINBOARD && (
-                  <DropdownMenuItem onClick={() => handleMove(DECK_LIST.MAINBOARD)}>
+                {listType !== CARD_SET.MAINBOARD && (
+                  <DropdownMenuItem onClick={() => handleMove(CARD_SET.MAINBOARD)}>
                     Mainboard
                   </DropdownMenuItem>
                 )}
-                {listType !== DECK_LIST.ALTERNATES && (
-                  <DropdownMenuItem onClick={() => handleMove(DECK_LIST.ALTERNATES)}>
+                {listType !== CARD_SET.ALTERNATES && (
+                  <DropdownMenuItem onClick={() => handleMove(CARD_SET.ALTERNATES)}>
                     Alternates
                   </DropdownMenuItem>
                 )}
-                {listType !== DECK_LIST.SIDEBOARD && (
-                  <DropdownMenuItem onClick={() => handleMove(DECK_LIST.SIDEBOARD)}>
+                {listType !== CARD_SET.SIDEBOARD && (
+                  <DropdownMenuItem onClick={() => handleMove(CARD_SET.SIDEBOARD)}>
                     Sideboard
                   </DropdownMenuItem>
                 )}

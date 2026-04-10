@@ -1,6 +1,7 @@
 import type { Deck, ScryfallCard } from '../types/index.js'
-import { FORMAT_TYPE, INCLUSION_STATUS, getCardLimit, getCardCount } from '../types/index.js'
+import { FORMAT_TYPE, getCardLimit, getCardCount } from '../types/index.js'
 import { isLegalInFormat } from '../scryfall/index.js'
+import { getSideboard, getNonCutEntries } from './card-sets.js'
 import type { ValidationIssue } from './types.js'
 import { ISSUE_CATEGORY, composeValidators } from './types.js'
 
@@ -35,7 +36,7 @@ export function validateDeckSize(deck: Deck): ValidationIssue[] {
  * Validate sideboard doesn't exceed format limit.
  */
 export function validateSideboardSize(deck: Deck): ValidationIssue[] {
-  const sideboardCount = deck.sideboard.reduce((sum, c) => sum + c.quantity, 0)
+  const sideboardCount = getSideboard(deck).reduce((sum, c) => sum + c.quantity, 0)
 
   if (sideboardCount > deck.format.sideboardSize) {
     return [{
@@ -56,13 +57,10 @@ export function validateCardLimits(deck: Deck): ValidationIssue[] {
   const issues: ValidationIssue[] = []
   const cardCounts = new Map<string, number>()
 
-  // Aggregate quantities across all lists
-  for (const list of [deck.cards, deck.sideboard, deck.alternates]) {
-    for (const card of list) {
-      if (card.inclusion === INCLUSION_STATUS.CUT) continue
-      const current = cardCounts.get(card.card.name) || 0
-      cardCounts.set(card.card.name, current + card.quantity)
-    }
+  // Aggregate quantities across all playable card sets (exclude cut)
+  for (const card of getNonCutEntries(deck)) {
+    const current = cardCounts.get(card.card.name) || 0
+    cardCounts.set(card.card.name, current + card.quantity)
   }
 
   for (const [name, count] of cardCounts) {
@@ -104,19 +102,16 @@ export function validateFormatLegality(deck: Deck, scryfallCache: Map<string, Sc
 
   const issues: ValidationIssue[] = []
 
-  for (const list of [deck.cards, deck.sideboard, deck.alternates]) {
-    for (const card of list) {
-      if (card.inclusion === INCLUSION_STATUS.CUT) continue
-      const scryfallCard = card.card.scryfallId ? scryfallCache.get(card.card.scryfallId) : undefined
-      if (!scryfallCard) continue
+  for (const card of getNonCutEntries(deck)) {
+    const scryfallCard = card.card.scryfallId ? scryfallCache.get(card.card.scryfallId) : undefined
+    if (!scryfallCard) continue
 
-      if (!isLegalInFormat(scryfallCard, deck.format.type)) {
-        issues.push({
-          category: ISSUE_CATEGORY.LEGALITY,
-          code: 'not_legal_in_format',
-          message: `${card.card.name} is not legal in ${deck.format.type}`,
-        })
-      }
+    if (!isLegalInFormat(scryfallCard, deck.format.type)) {
+      issues.push({
+        category: ISSUE_CATEGORY.LEGALITY,
+        code: 'not_legal_in_format',
+        message: `${card.card.name} is not legal in ${deck.format.type}`,
+      })
     }
   }
 
@@ -135,21 +130,18 @@ export function validateColorIdentity(deck: Deck): ValidationIssue[] {
   const issues: ValidationIssue[] = []
   const allowed = new Set(deck.colorIdentity)
 
-  for (const list of [deck.cards, deck.sideboard, deck.alternates]) {
-    for (const card of list) {
-      if (card.inclusion === INCLUSION_STATUS.CUT) continue
-      if (!card.card.colorIdentity) continue
+  for (const card of getNonCutEntries(deck)) {
+    if (!card.card.colorIdentity) continue
 
-      const violates = card.card.colorIdentity.some(c => !allowed.has(c))
-      if (violates) {
-        const cardColors = card.card.colorIdentity.join('') || 'Colorless'
-        const deckColors = deck.colorIdentity.join('') || 'Colorless'
-        issues.push({
-          category: ISSUE_CATEGORY.LEGALITY,
-          code: 'color_identity_violation',
-          message: `${card.card.name} (${cardColors}) is outside deck's color identity (${deckColors})`,
-        })
-      }
+    const violates = card.card.colorIdentity.some(c => !allowed.has(c))
+    if (violates) {
+      const cardColors = card.card.colorIdentity.join('') || 'Colorless'
+      const deckColors = deck.colorIdentity.join('') || 'Colorless'
+      issues.push({
+        category: ISSUE_CATEGORY.LEGALITY,
+        code: 'color_identity_violation',
+        message: `${card.card.name} (${cardColors}) is outside deck's color identity (${deckColors})`,
+      })
     }
   }
 

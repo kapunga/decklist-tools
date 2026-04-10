@@ -1,23 +1,20 @@
 import { Badge } from '@/components/ui/badge'
 import { CardItem } from '@/components/CardItem'
-import type { DeckCard, RoleDefinition, DeckListName } from '@/types'
-import { INCLUSION_STATUS } from '@/types'
+import type { CardEntry, RoleDefinition, CardSetName } from '@/types'
 import { getRoleColor, getAllRoles, CARD_TYPE_SORT_ORDER } from '@/lib/constants'
 import { useGlobalRoles } from '@/hooks/useStore'
 
 interface CardGridProps {
-  cards: DeckCard[]
+  cards: CardEntry[]
   deckId: string
-  listType: DeckListName
+  listType: CardSetName
   customRoles?: RoleDefinition[]
   groupBy?: 'role' | 'type' | 'none'
 }
 
 export function CardGrid({ cards, deckId, listType, customRoles, groupBy = 'role' }: CardGridProps) {
   const globalRoles = useGlobalRoles()
-  const confirmedCards = listType === 'cards'
-    ? cards.filter(c => c.inclusion !== INCLUSION_STATUS.CUT)
-    : cards
+  const confirmedCards = cards
 
   if (confirmedCards.length === 0) {
     return (
@@ -31,7 +28,7 @@ export function CardGrid({ cards, deckId, listType, customRoles, groupBy = 'role
 
   if (groupBy === 'role') {
     // Group cards by role - cards with multiple roles appear in multiple groups
-    const roleGroups: Record<string, DeckCard[]> = {}
+    const roleGroups: Record<string, CardEntry[]> = {}
     confirmedCards.forEach(card => {
       if (card.roles.length === 0) {
         if (!roleGroups['Unassigned']) roleGroups['Unassigned'] = []
@@ -88,7 +85,7 @@ export function CardGrid({ cards, deckId, listType, customRoles, groupBy = 'role
 
   if (groupBy === 'type') {
     // Group by card type (land vs non-land for now since we don't have full type info)
-    const typeGroups: Record<string, DeckCard[]> = { 'Nonland': [], 'Land': [] }
+    const typeGroups: Record<string, CardEntry[]> = { 'Nonland': [], 'Land': [] }
     confirmedCards.forEach(card => {
       if (card.roles.includes('land')) {
         typeGroups['Land'].push(card)

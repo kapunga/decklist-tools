@@ -22,8 +22,9 @@ import { useStore } from '@/hooks/useStore'
 import { useImportCards } from '@/hooks/useImportCards'
 import { formats } from '@/lib/formats'
 import { getCardById } from '@/lib/scryfall'
-import type { FormatType, Deck, DeckCard, CardIdentifier } from '@/types'
-import { formatDefaults, FORMAT_TYPE } from '@/types'
+import type { FormatType, Deck, CardEntry, CardIdentifier } from '@/types'
+import { formatDefaults, FORMAT_TYPE, CARD_SET } from '@/types'
+import { withDeckCardSet, getCardSetEntries } from '@mtg-deckbuilder/shared'
 
 export function ImportNewDeckDialog() {
   const [open, setOpen] = useState(false)
@@ -84,10 +85,10 @@ export function ImportNewDeckDialog() {
       const deck = await createDeck(deckName.trim(), deckFormat)
 
       // Group cards by list type and add them all at once
-      const cardsByList: Record<string, DeckCard[]> = {
-        cards: [],
-        alternates: [],
-        sideboard: []
+      const cardsByList: Record<string, CardEntry[]> = {
+        [CARD_SET.MAINBOARD]: [],
+        [CARD_SET.ALTERNATES]: [],
+        [CARD_SET.SIDEBOARD]: []
       }
       for (const { card, listType } of resolvedCards) {
         cardsByList[listType].push(card)
@@ -114,15 +115,16 @@ export function ImportNewDeckDialog() {
             if (resolved) {
               commanders.push(resolved.card.card)
               // Remove from main deck since it's a commander
-              const cardIdx = cardsByList.cards.findIndex(c => c.card.name === parsed.name)
+              const mainboard = cardsByList[CARD_SET.MAINBOARD]
+              const cardIdx = mainboard.findIndex(c => c.card.name === parsed.name)
               if (cardIdx >= 0) {
-                cardsByList.cards.splice(cardIdx, 1)
+                mainboard.splice(cardIdx, 1)
               }
             }
           }
-        } else if (cardsByList.cards.length > 0) {
+        } else if (cardsByList[CARD_SET.MAINBOARD].length > 0) {
           // No explicit commanders - use first card as commander
-          const firstCard = cardsByList.cards.shift()!
+          const firstCard = cardsByList[CARD_SET.MAINBOARD].shift()!
           commanders.push(firstCard.card)
         }
 
@@ -135,15 +137,13 @@ export function ImportNewDeckDialog() {
         }
       }
 
-      // Build the complete deck with all cards
-      const completeDeck: Deck = {
-        ...deck,
-        cards: [...deck.cards, ...cardsByList.cards],
-        alternates: [...deck.alternates, ...cardsByList.alternates],
-        sideboard: [...deck.sideboard, ...cardsByList.sideboard],
-        commanders,
-        colorIdentity
+      // Build the complete deck by merging imported cards into existing sets
+      let completeDeck: Deck = deck
+      for (const setName of [CARD_SET.MAINBOARD, CARD_SET.SIDEBOARD, CARD_SET.ALTERNATES]) {
+        const existing = getCardSetEntries(completeDeck.cardSets, setName)
+        completeDeck = withDeckCardSet(completeDeck, setName, [...existing, ...cardsByList[setName]])
       }
+      completeDeck = { ...completeDeck, commanders, colorIdentity }
 
       await updateDeck(completeDeck)
 

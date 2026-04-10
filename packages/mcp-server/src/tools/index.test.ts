@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { createMockStorage, mockScryfallCard, makeDeck, makeDeckCard } from '../__test__/helpers.js'
+import { createMockStorage, mockScryfallCard, makeDeck, makeDeckCard, pushMainboard, pushSideboard, pushAlternates, INTEREST_LIST_ID } from '../__test__/helpers.js'
+import { getMainboard, getSideboard, getAlternates } from '@mtg-deckbuilder/shared'
 import { handleToolCall, getToolDefinitions } from './index.js'
 import type { Storage } from '@mtg-deckbuilder/shared'
 
@@ -180,7 +181,7 @@ describe('Card Management', () => {
       const result = await call('manage_card', { action: 'add', deck_id: deck.id, name: 'Lightning Bolt' }) as any
       expect(result.success).toBe(true)
       expect(result.cards[0].name).toBe('Lightning Bolt')
-      expect(mock._decks.get(deck.id)!.cards).toHaveLength(1)
+      expect(getMainboard(mock._decks.get(deck.id)!)).toHaveLength(1)
     })
 
     it('adds a card by set + collector number', async () => {
@@ -201,8 +202,8 @@ describe('Card Management', () => {
 
       await call('manage_card', { action: 'add', deck_id: deck.id, name: 'Lightning Bolt', to_sideboard: true })
       const saved = mock._decks.get(deck.id)!
-      expect(saved.sideboard).toHaveLength(1)
-      expect(saved.cards).toHaveLength(0)
+      expect(getSideboard(saved)).toHaveLength(1)
+      expect(getMainboard(saved)).toHaveLength(0)
     })
 
     it('redirects to_sideboard to alternates when format has no sideboard', async () => {
@@ -212,8 +213,8 @@ describe('Card Management', () => {
 
       await call('manage_card', { action: 'add', deck_id: deck.id, name: 'Lightning Bolt', to_sideboard: true })
       const saved = mock._decks.get(deck.id)!
-      expect(saved.sideboard).toHaveLength(0)
-      expect(saved.alternates).toHaveLength(1)
+      expect(getSideboard(saved)).toHaveLength(0)
+      expect(getAlternates(saved)).toHaveLength(1)
     })
 
     it('adds to alternates', async () => {
@@ -222,7 +223,7 @@ describe('Card Management', () => {
       mock._decks.set(deck.id, deck)
 
       await call('manage_card', { action: 'add', deck_id: deck.id, name: 'Lightning Bolt', to_alternates: true })
-      expect(mock._decks.get(deck.id)!.alternates).toHaveLength(1)
+      expect(getAlternates(mock._decks.get(deck.id)!)).toHaveLength(1)
     })
 
     it('throws when card not found on Scryfall', async () => {
@@ -246,29 +247,29 @@ describe('Card Management', () => {
 
       await call('manage_card', { action: 'add', deck_id: deck.id, name: 'Lightning Bolt', quantity: 3, roles: ['removal'] })
       const saved = mock._decks.get(deck.id)!
-      expect(saved.cards[0].quantity).toBe(3)
-      expect(saved.cards[0].roles).toEqual(['removal'])
+      expect(getMainboard(saved)[0].quantity).toBe(3)
+      expect(getMainboard(saved)[0].roles).toEqual(['removal'])
     })
   })
 
   describe('manage_card remove', () => {
     it('removes a card entirely', async () => {
       const deck = makeDeck()
-      deck.cards.push(makeDeckCard('Lightning Bolt'))
+      pushMainboard(deck,makeDeckCard('Lightning Bolt'))
       mock._decks.set(deck.id, deck)
 
       const result = await call('manage_card', { action: 'remove', deck_id: deck.id, name: 'Lightning Bolt' }) as any
       expect(result.success).toBe(true)
-      expect(mock._decks.get(deck.id)!.cards).toHaveLength(0)
+      expect(getMainboard(mock._decks.get(deck.id)!)).toHaveLength(0)
     })
 
     it('decreases quantity when partial remove', async () => {
       const deck = makeDeck()
-      deck.cards.push(makeDeckCard('Lightning Bolt', { quantity: 4 }))
+      pushMainboard(deck,makeDeckCard('Lightning Bolt', { quantity: 4 }))
       mock._decks.set(deck.id, deck)
 
       await call('manage_card', { action: 'remove', deck_id: deck.id, name: 'Lightning Bolt', quantity: 2 })
-      expect(mock._decks.get(deck.id)!.cards[0].quantity).toBe(2)
+      expect(getMainboard(mock._decks.get(deck.id)!)[0].quantity).toBe(2)
     })
 
     it('throws when card not in deck', async () => {
@@ -280,63 +281,62 @@ describe('Card Management', () => {
 
     it('removes from sideboard', async () => {
       const deck = makeDeck()
-      deck.sideboard.push(makeDeckCard('Lightning Bolt'))
+      pushSideboard(deck,makeDeckCard('Lightning Bolt'))
       mock._decks.set(deck.id, deck)
 
       await call('manage_card', { action: 'remove', deck_id: deck.id, name: 'Lightning Bolt', from_sideboard: true })
-      expect(mock._decks.get(deck.id)!.sideboard).toHaveLength(0)
+      expect(getSideboard(mock._decks.get(deck.id)!)).toHaveLength(0)
     })
   })
 
   describe('manage_card update', () => {
     it('replaces roles', async () => {
       const deck = makeDeck()
-      deck.cards.push(makeDeckCard('Sol Ring', { roles: ['ramp'] }))
+      pushMainboard(deck,makeDeckCard('Sol Ring', { roles: ['ramp'] }))
       mock._decks.set(deck.id, deck)
 
       await call('manage_card', { action: 'update', deck_id: deck.id, name: 'Sol Ring', roles: ['mana-fixer'] })
-      expect(mock._decks.get(deck.id)!.cards[0].roles).toEqual(['mana-fixer'])
+      expect(getMainboard(mock._decks.get(deck.id)!)[0].roles).toEqual(['mana-fixer'])
     })
 
     it('adds roles', async () => {
       const deck = makeDeck()
-      deck.cards.push(makeDeckCard('Sol Ring', { roles: ['ramp'] }))
+      pushMainboard(deck,makeDeckCard('Sol Ring', { roles: ['ramp'] }))
       mock._decks.set(deck.id, deck)
 
       await call('manage_card', { action: 'update', deck_id: deck.id, name: 'Sol Ring', add_roles: ['engine'] })
-      expect(mock._decks.get(deck.id)!.cards[0].roles).toEqual(['ramp', 'engine'])
+      expect(getMainboard(mock._decks.get(deck.id)!)[0].roles).toEqual(['ramp', 'engine'])
     })
 
     it('removes roles', async () => {
       const deck = makeDeck()
-      deck.cards.push(makeDeckCard('Sol Ring', { roles: ['ramp', 'engine'] }))
+      pushMainboard(deck,makeDeckCard('Sol Ring', { roles: ['ramp', 'engine'] }))
       mock._decks.set(deck.id, deck)
 
       await call('manage_card', { action: 'update', deck_id: deck.id, name: 'Sol Ring', remove_roles: ['ramp'] })
-      expect(mock._decks.get(deck.id)!.cards[0].roles).toEqual(['engine'])
+      expect(getMainboard(mock._decks.get(deck.id)!)[0].roles).toEqual(['engine'])
     })
 
-    it('updates status and ownership', async () => {
+    it('updates ownership', async () => {
       const deck = makeDeck()
-      deck.cards.push(makeDeckCard('Sol Ring'))
+      pushMainboard(deck,makeDeckCard('Sol Ring'))
       mock._decks.set(deck.id, deck)
 
       await call('manage_card', {
-        action: 'update', deck_id: deck.id, name: 'Sol Ring', status: 'considering', ownership: 'need_to_buy'
+        action: 'update', deck_id: deck.id, name: 'Sol Ring', ownership: 'need_to_buy'
       })
       const saved = mock._decks.get(deck.id)!
-      expect(saved.cards[0].inclusion).toBe('considering')
-      expect(saved.cards[0].ownership).toBe('need_to_buy')
+      expect(getMainboard(saved)[0].ownership).toBe('need_to_buy')
     })
 
     it('finds card in alternates', async () => {
       const deck = makeDeck()
-      deck.alternates.push(makeDeckCard('Sol Ring'))
+      pushAlternates(deck,makeDeckCard('Sol Ring', { ownership: 'need_to_buy' }))
       mock._decks.set(deck.id, deck)
 
-      const result = await call('manage_card', { action: 'update', deck_id: deck.id, name: 'Sol Ring', pinned: true }) as any
+      const result = await call('manage_card', { action: 'update', deck_id: deck.id, name: 'Sol Ring', ownership: 'owned' }) as any
       expect(result.success).toBe(true)
-      expect(mock._decks.get(deck.id)!.alternates[0].isPinned).toBe(true)
+      expect(getAlternates(mock._decks.get(deck.id)!)[0].ownership).toBe('owned')
     })
 
     it('throws when card not found', async () => {
@@ -350,7 +350,7 @@ describe('Card Management', () => {
   describe('manage_card move', () => {
     it('moves card from mainboard to sideboard', async () => {
       const deck = makeDeck({ format: { type: 'standard', deckSize: 60, sideboardSize: 15, cardLimit: 4, unlimitedCards: [] } })
-      deck.cards.push(makeDeckCard('Lightning Bolt'))
+      pushMainboard(deck,makeDeckCard('Lightning Bolt'))
       mock._decks.set(deck.id, deck)
 
       const result = await call('manage_card', {
@@ -358,13 +358,13 @@ describe('Card Management', () => {
       }) as any
       expect(result.success).toBe(true)
       const saved = mock._decks.get(deck.id)!
-      expect(saved.cards).toHaveLength(0)
-      expect(saved.sideboard).toHaveLength(1)
+      expect(getMainboard(saved)).toHaveLength(0)
+      expect(getSideboard(saved)).toHaveLength(1)
     })
 
     it('throws when moving to sideboard in format with no sideboard', async () => {
       const deck = makeDeck() // Commander format, sideboardSize: 0
-      deck.cards.push(makeDeckCard('Lightning Bolt'))
+      pushMainboard(deck,makeDeckCard('Lightning Bolt'))
       mock._decks.set(deck.id, deck)
 
       await expect(call('manage_card', {
@@ -474,8 +474,8 @@ describe('Views', () => {
 
     it('accepts filter parameters', async () => {
       const deck = makeDeck({ name: 'Filter Test' })
-      deck.cards.push(makeDeckCard('Elf', { typeLine: 'Creature — Elf', roles: ['ramp'] }))
-      deck.cards.push(makeDeckCard('Bolt', { typeLine: 'Instant', roles: ['removal'] }))
+      pushMainboard(deck,makeDeckCard('Elf', { roles: ['ramp'] }))
+      pushMainboard(deck,makeDeckCard('Bolt', { roles: ['removal'] }))
       mock._decks.set(deck.id, deck)
       mock._setGlobalRoles([])
 
@@ -781,7 +781,8 @@ describe('Interest List', () => {
   describe('get_interest_list', () => {
     it('returns the interest list', async () => {
       const result = await call('get_interest_list') as any
-      expect(result.items).toEqual([])
+      expect(result.cardSets).toBeDefined()
+      expect(result.cardSets[0].entries).toEqual([])
     })
   })
 
@@ -801,11 +802,24 @@ describe('Interest List', () => {
 
   describe('manage_interest_list remove', () => {
     it('removes a card', async () => {
-      mock._setInterestList({
-        version: 1, updatedAt: '', items: [{
-          id: '1', card: { name: 'Rhystic Study', setCode: 'pcy', collectorNumber: '45' },
-          addedAt: '',
-        }]
+      mock._cardLists.set(INTEREST_LIST_ID, {
+        id: INTEREST_LIST_ID,
+        name: 'Interest List',
+        version: 1,
+        createdAt: '',
+        updatedAt: '',
+        cardSets: [{
+          name: 'mainboard',
+          entries: [{
+            id: '1',
+            card: { name: 'Rhystic Study', setCode: 'pcy', collectorNumber: '45' },
+            addedAt: '',
+            source: 'user',
+            quantity: 1,
+            ownership: 'unknown',
+            roles: [],
+          }],
+        }],
       })
       const result = await call('manage_interest_list', { action: 'remove', card_name: 'Rhystic Study' }) as any
       expect(result.success).toBe(true)
@@ -836,14 +850,14 @@ describe('Notes', () => {
 
     it('propagates role to referenced cards', async () => {
       const deck = makeDeck()
-      deck.cards.push(makeDeckCard('Sol Ring'))
+      pushMainboard(deck,makeDeckCard('Sol Ring'))
       mock._decks.set(deck.id, deck)
 
       await call('manage_deck_note', {
         action: 'add', deck_id: deck.id, title: 'Ramp Package', content: 'Mana', note_type: 'strategy',
         card_names: ['Sol Ring'], role_id: 'ramp',
       })
-      expect(deck.cards[0].roles).toContain('ramp')
+      expect(getMainboard(deck)[0].roles).toContain('ramp')
     })
   })
 
@@ -864,7 +878,7 @@ describe('Notes', () => {
 
     it('removes role from cards when remove_role is true', async () => {
       const deck = makeDeck()
-      deck.cards.push(makeDeckCard('Sol Ring', { roles: ['ramp'] }))
+      pushMainboard(deck,makeDeckCard('Sol Ring', { roles: ['ramp'] }))
       deck.notes.push({
         id: 'note-1', title: 'T', content: 'C', noteType: 'strategy',
         cardRefs: [{ cardName: 'Sol Ring', ordinal: 1 }], roleId: 'ramp',
@@ -873,7 +887,7 @@ describe('Notes', () => {
       mock._decks.set(deck.id, deck)
 
       await call('manage_deck_note', { action: 'update', deck_id: deck.id, note_id: 'note-1', remove_role: true, role_id: '' })
-      expect(deck.cards[0].roles).not.toContain('ramp')
+      expect(getMainboard(deck)[0].roles).not.toContain('ramp')
     })
 
     it('throws when note not found', async () => {
@@ -948,7 +962,7 @@ describe('Validation', () => {
 
   it('reports card limit violations', async () => {
     const deck = makeDeck()
-    deck.cards.push(makeDeckCard('Lightning Bolt', { quantity: 2 }))
+    pushMainboard(deck,makeDeckCard('Lightning Bolt', { quantity: 2 }))
     mock._decks.set(deck.id, deck)
 
     const result = await call('get_deck', { identifier: deck.id }) as any
@@ -959,9 +973,8 @@ describe('Validation', () => {
     const deck = makeDeck()
     deck.commanders.push({ name: 'Kenrith', setCode: 'eld', collectorNumber: '303' })
     for (let i = 0; i < 99; i++) {
-      deck.cards.push(makeDeckCard(`Card ${i}`, {
+      pushMainboard(deck,makeDeckCard(`Card ${i}`, {
         card: { name: `Card ${i}`, setCode: 'test', collectorNumber: `${i}` },
-        typeLine: 'Land',
       }))
     }
     mock._decks.set(deck.id, deck)
@@ -978,9 +991,9 @@ describe('Search/Reports', () => {
   describe('search_decks_for_card', () => {
     it('finds card across decks', async () => {
       const deck1 = makeDeck({ name: 'Deck 1' })
-      deck1.cards.push(makeDeckCard('Sol Ring'))
+      pushMainboard(deck1, makeDeckCard('Sol Ring'))
       const deck2 = makeDeck({ name: 'Deck 2' })
-      deck2.cards.push(makeDeckCard('Sol Ring'))
+      pushMainboard(deck2, makeDeckCard('Sol Ring'))
       mock._decks.set(deck1.id, deck1)
       mock._decks.set(deck2.id, deck2)
 
@@ -990,8 +1003,8 @@ describe('Search/Reports', () => {
 
     it('searches in alternates and sideboard', async () => {
       const deck = makeDeck()
-      deck.sideboard.push(makeDeckCard('Lightning Bolt'))
-      deck.alternates.push(makeDeckCard('Lightning Bolt'))
+      pushSideboard(deck,makeDeckCard('Lightning Bolt'))
+      pushAlternates(deck,makeDeckCard('Lightning Bolt'))
       mock._decks.set(deck.id, deck)
 
       const result = await call('search_decks_for_card', { card_name: 'Lightning Bolt' }) as any[]

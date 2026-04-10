@@ -2,7 +2,7 @@ import type { Deck } from '../types/index.js'
 import { FORMAT_TYPE } from '../types/index.js'
 import { PARSER_SECTION } from './utils.js'
 import type { DeckExportFormat, ParsedCard, RenderOptions } from './types.js'
-import { getConfirmedCards, getMaybeboardCards } from './utils.js'
+import { getConfirmedCards, getMaybeboardCards, getSideboardCards } from './utils.js'
 
 export const moxfieldFormat: DeckExportFormat = {
   id: 'moxfield',
@@ -72,8 +72,9 @@ export const moxfieldFormat: DeckExportFormat = {
     })
 
     // Sideboard
-    if (options.includeSideboard && deck.sideboard.length > 0) {
-      deck.sideboard.forEach(c => {
+    const sideboard = getSideboardCards(deck)
+    if (options.includeSideboard && sideboard.length > 0) {
+      sideboard.forEach(c => {
         lines.push(
           `${c.quantity},${c.card.name},${c.card.setCode},${c.card.collectorNumber},,,English,Sideboard`
         )

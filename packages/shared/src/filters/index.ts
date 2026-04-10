@@ -1,4 +1,4 @@
-import type { DeckCard, ScryfallCard } from '../types/index.js'
+import type { CardEntry, ScryfallCard } from '../types/index.js'
 import { getPrimaryType } from '../constants/index.js'
 import type { EnrichedDeckCard, CardFilter, ManaPipCounts } from './types.js'
 
@@ -29,7 +29,7 @@ function getCardColors(enriched: EnrichedDeckCard): string[] {
 
 // Check if a card is a land
 function isLand(enriched: EnrichedDeckCard): boolean {
-  const typeLine = enriched.scryfallCard?.type_line || enriched.deckCard.typeLine || ''
+  const typeLine = enriched.scryfallCard?.type_line || ''
   return typeLine.toLowerCase().includes('land')
 }
 
@@ -47,7 +47,7 @@ function matchesFilter(card: EnrichedDeckCard, filter: CardFilter): boolean {
       return filter.mode === 'include' ? matches : !matches
     }
     case 'card-type': {
-      const typeLine = card.scryfallCard?.type_line || card.deckCard.typeLine || 'Other'
+      const typeLine = card.scryfallCard?.type_line || 'Other'
       const primaryType = getPrimaryType(typeLine)
       const matches = filter.values.includes(primaryType)
       return filter.mode === 'include' ? matches : !matches
@@ -120,7 +120,7 @@ export function getCmcDistribution(cards: EnrichedDeckCard[]): Record<number, nu
 
 // Helper to enrich cards with Scryfall data
 export function enrichCards(
-  cards: DeckCard[],
+  cards: CardEntry[],
   cache: Map<string, ScryfallCard>
 ): EnrichedDeckCard[] {
   return cards.map(deckCard => ({

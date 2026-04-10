@@ -56,7 +56,7 @@ export function getToolDefinitions(): Tool[] {
     // Card Management
     {
       name: 'manage_card',
-      description: 'Add, remove, update, or move cards in a deck.\n\n**Cards array**: Use `cards` for batch operations. For add: "[Nx ]<set_code> <collector_number>" (e.g. "fdn 542", "2x woe 138"). For remove/update/move: card names.\n\n**Action parameters**:\n- add: cards, roles, status, ownership, to_sideboard, to_alternates\n- remove: cards, quantity, from_sideboard, from_alternates\n- update: cards, roles, add_roles, remove_roles, status, ownership, pinned, notes\n- move: cards, from (required), to (required) — list names: mainboard, sideboard, alternates',
+      description: 'Add, remove, update, or move cards in a deck.\n\n**Cards array**: Use `cards` for batch operations. For add: "[Nx ]<set_code> <collector_number>" (e.g. "fdn 542", "2x woe 138"). For remove/update/move: card names.\n\n**Action parameters**:\n- add: cards, roles, ownership, to_sideboard, to_alternates\n- remove: cards, quantity, from_sideboard, from_alternates\n- update: cards, roles, add_roles, remove_roles, ownership, notes\n- move: cards, from (required), to (required), quantity (required when source has >1 copies) — list names: mainboard, sideboard, alternates, cut',
       inputSchema: {
         type: 'object',
         properties: {
@@ -74,15 +74,11 @@ export function getToolDefinitions(): Tool[] {
           // add params
           set_code: { type: 'string', description: 'Set code for single-card add (deprecated, use cards instead)' },
           collector_number: { type: 'string', description: 'Collector number for single-card add (deprecated, use cards instead)' },
-          quantity: { type: 'number', default: 1, description: 'Quantity for single-card add (deprecated, use Nx prefix in cards instead)' },
+          quantity: { type: 'number', description: 'For add: quantity of a single card (deprecated, use Nx prefix in cards instead, defaults to 1). For remove: number of copies to remove (defaults to all). For move: number of copies to move (required when the source entry has >1 copies; defaults to the full stack only for singletons).' },
           roles: {
             type: 'array',
             items: { type: 'string' },
             description: 'Role IDs (replaces all for update, initial for add)',
-          },
-          status: {
-            type: 'string',
-            enum: ['confirmed', 'considering'],
           },
           ownership: {
             type: 'string',
@@ -104,18 +100,17 @@ export function getToolDefinitions(): Tool[] {
             items: { type: 'string' },
             description: 'Remove these roles from existing roles (update only)',
           },
-          pinned: { type: 'boolean', description: 'Pin card to top of list (update only)' },
           notes: { type: 'string', description: 'Card notes (update only)' },
           // move params
           from: {
             type: 'string',
-            enum: ['mainboard', 'alternates', 'sideboard'],
+            enum: ['mainboard', 'alternates', 'sideboard', 'cut'],
             description: 'Source list (move only, required)',
           },
           to: {
             type: 'string',
-            enum: ['mainboard', 'alternates', 'sideboard'],
-            description: 'Destination list (move only, required)',
+            enum: ['mainboard', 'alternates', 'sideboard', 'cut'],
+            description: 'Destination list (move only, required). Use "cut" to remove a card while preserving notes about why it was cut.',
           },
         },
         required: ['action', 'deck_id'],

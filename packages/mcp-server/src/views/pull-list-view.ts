@@ -1,5 +1,5 @@
-import type { Deck, DeckCard, SetCollectionFile, ScryfallCard, CollectionLevel, PullListItem, PullListGroup } from '@mtg-deckbuilder/shared'
-import { getTotalPulledQuantity, getCardDisplayName, COLLECTION_LEVEL_RARITIES, isBasicLand, INCLUSION_STATUS, OWNERSHIP_STATUS, ADDED_BY } from '@mtg-deckbuilder/shared'
+import type { Deck, CardEntry, SetCollectionFile, ScryfallCard, CollectionLevel, PullListItem, PullListGroup } from '@mtg-deckbuilder/shared'
+import { getTotalPulledQuantity, getCardDisplayName, COLLECTION_LEVEL_RARITIES, isBasicLand, OWNERSHIP_STATUS, CARD_SOURCE, getMainboard, getSideboard, getAlternates, getPulledPrintings, getTypeLine } from '@mtg-deckbuilder/shared'
 
 // Rarity order for sorting
 const RARITY_ORDER: Record<string, number> = {
@@ -30,19 +30,19 @@ export function renderPullListView(
   lines.push(`# ${deck.name} - Pull List (${sourceLabel})`)
   lines.push('')
 
-  let confirmedCards: DeckCard[]
+  let confirmedCards: CardEntry[]
 
   if (source === 'maybeboard') {
-    // Maybeboard: only alternates (confirmed), no commanders
-    let alternateCards = deck.alternates.filter(c => c.inclusion === INCLUSION_STATUS.CONFIRMED)
+    // Maybeboard: only the alternates set, no commanders
+    let alternateCards = getAlternates(deck)
     if (hideBasicLands) {
       alternateCards = alternateCards.filter(c => !isBasicLand(c.card.name))
     }
     confirmedCards = alternateCards
   } else {
     // Main Deck: main + sideboard + commanders
-    let mainCards = deck.cards.filter(c => c.inclusion === INCLUSION_STATUS.CONFIRMED)
-    let sideboardCards = deck.sideboard.filter(c => c.inclusion === INCLUSION_STATUS.CONFIRMED)
+    let mainCards = getMainboard(deck)
+    let sideboardCards = getSideboard(deck)
     if (hideBasicLands) {
       mainCards = mainCards.filter(c => !isBasicLand(c.card.name))
       sideboardCards = sideboardCards.filter(c => !isBasicLand(c.card.name))
@@ -55,13 +55,11 @@ export function renderPullListView(
         id: `commander-${cmd.name}`,
         card: cmd,
         quantity: 1,
-        inclusion: INCLUSION_STATUS.CONFIRMED,
         ownership: OWNERSHIP_STATUS.UNKNOWN,
         roles: ['commander'],
         typeLine: '',
-        isPinned: true,
         addedAt: deck.createdAt,
-        addedBy: ADDED_BY.USER
+        source: CARD_SOURCE.USER
       }))
     ]
   }
@@ -93,7 +91,8 @@ export function renderPullListView(
   for (const deckCard of confirmedCards) {
     const cardName = getCardDisplayName(deckCard.card)
     const totalPulled = getTotalPulledQuantity(deckCard)
-    const remainingNeeded = deckCard.quantity - totalPulled
+    const deckCardQty = deckCard.quantity
+    const remainingNeeded = deckCardQty - totalPulled
 
     // Find the card in cache by scryfall ID
     const cachedCard = deckCard.card.scryfallId
@@ -109,10 +108,10 @@ export function renderPullListView(
           setName: setNameMap.get(deckCard.card.setCode.toLowerCase()) || deckCard.card.setCode.toUpperCase(),
           collectorNumber: deckCard.card.collectorNumber,
           rarity: 'unknown',
-          typeLine: deckCard.typeLine || '',
+          typeLine: getTypeLine(deckCard, scryfallCache) || '',
           manaCost: '',
           cmc: 0,
-          quantityNeeded: deckCard.quantity,
+          quantityNeeded: deckCardQty,
           quantityPulledThisPrint: 0,
           quantityPulledTotal: totalPulled,
           remainingNeeded
@@ -141,7 +140,7 @@ export function renderPullListView(
           typeLine: cachedCard.type_line,
           manaCost: cachedCard.mana_cost || '',
           cmc: cachedCard.cmc,
-          quantityNeeded: deckCard.quantity,
+          quantityNeeded: deckCardQty,
           quantityPulledThisPrint: 0,
           quantityPulledTotal: totalPulled,
           remainingNeeded
@@ -152,7 +151,7 @@ export function renderPullListView(
 
     // Create items for each owned printing
     for (const printing of ownedPrintings) {
-      const pulledFromThisPrint = (deckCard.pulledPrintings ?? []).find(
+      const pulledFromThisPrint = getPulledPrintings(deckCard).find(
         p => p.setCode.toLowerCase() === printing.set.toLowerCase() &&
              p.collectorNumber === printing.collector_number
       )?.quantity ?? 0
@@ -166,7 +165,7 @@ export function renderPullListView(
         typeLine: printing.type_line,
         manaCost: printing.mana_cost || '',
         cmc: printing.cmc,
-        quantityNeeded: deckCard.quantity,
+        quantityNeeded: deckCardQty,
         quantityPulledThisPrint: pulledFromThisPrint,
         quantityPulledTotal: totalPulled,
         remainingNeeded

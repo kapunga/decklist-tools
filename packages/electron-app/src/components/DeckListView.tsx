@@ -13,15 +13,15 @@ import { CardFilterBar } from '@/components/CardFilterBar'
 import { useStore, useGlobalRoles } from '@/hooks/useStore'
 import { useScryfallCache } from '@/hooks/useScryfallCache'
 import { getCardById } from '@/lib/scryfall'
-import type { DeckCard, ScryfallCard, Deck, DeckListName } from '@/types'
-import { getCardLimit, isCardFullyPulled, getCardDisplayName, getCanonicalSuffix, INCLUSION_STATUS, OWNERSHIP_STATUS, ADDED_BY } from '@/types'
+import type { CardEntry, ScryfallCard, Deck, CardSetName } from '@/types'
+import { getCardLimit, isCardFullyPulled, getCardDisplayName, getCanonicalSuffix, OWNERSHIP_STATUS, CARD_SOURCE, CARD_SET } from '@/types'
 import { getPrimaryType, CARD_TYPE_SORT_ORDER } from '@/lib/constants'
 import type { CardFilter } from '@mtg-deckbuilder/shared'
-import { enrichCards, applyFilters } from '@mtg-deckbuilder/shared'
+import { enrichCards, applyFilters, getMainboard, getCardSetEntries, getTypeLine } from '@mtg-deckbuilder/shared'
 
 interface DeckListViewProps {
   deck: Deck
-  listType: DeckListName
+  listType: CardSetName
 }
 
 export function DeckListView({ deck, listType }: DeckListViewProps) {
@@ -40,31 +40,28 @@ export function DeckListView({ deck, listType }: DeckListViewProps) {
   const [focusedScryfallCard, setFocusedScryfallCard] = useState<ScryfallCard | null>(null)
   const [loadingCard, setLoadingCard] = useState(false)
 
-  // Convert commanders to virtual DeckCard entries for display
-  const commanderCards = useMemo((): DeckCard[] => {
+  // Convert commanders to virtual CardEntry entries for display
+  const commanderCards = useMemo((): CardEntry[] => {
     if (!deck.commanders || deck.commanders.length === 0) return []
-    return deck.commanders.map((commander): DeckCard => ({
+    return deck.commanders.map((commander): CardEntry => ({
       id: `commander-${commander.name}`,
       card: commander,
       quantity: 1,
-      inclusion: INCLUSION_STATUS.CONFIRMED,
       ownership: OWNERSHIP_STATUS.UNKNOWN,
       roles: [],
-      isPinned: true,
       addedAt: deck.createdAt,
-      addedBy: ADDED_BY.USER
+      source: CARD_SOURCE.USER
     }))
   }, [deck.commanders, deck.createdAt])
 
   // Get cards for current list (memoized to prevent infinite re-renders)
   const cards = useMemo(() => {
-    if (listType === 'cards') {
-      const mainCards = deck.cards.filter(c => c.inclusion !== INCLUSION_STATUS.CUT)
+    if (listType === CARD_SET.MAINBOARD) {
       // Include commanders at the start of the main deck list
-      return [...commanderCards, ...mainCards]
+      return [...commanderCards, ...getMainboard(deck)]
     }
-    return deck[listType]
-  }, [listType, deck.cards, deck.alternates, deck.sideboard, commanderCards])
+    return getCardSetEntries(deck.cardSets, listType)
+  }, [listType, deck.cardSets, commanderCards])
 
   // Scryfall cache for filter enrichment
   const { cache: scryfallCache } = useScryfallCache(cards)
@@ -84,7 +81,7 @@ export function DeckListView({ deck, listType }: DeckListViewProps) {
 
   // Group cards by primary type (Creature, Instant, etc.), with Commander as special group
   const groupedCards = useMemo(() => {
-    const groups: Record<string, DeckCard[]> = {}
+    const groups: Record<string, CardEntry[]> = {}
     for (const card of filteredCards) {
       // Commanders get their own group (identified by ID prefix)
       if (card.id.startsWith('commander-')) {
@@ -92,13 +89,14 @@ export function DeckListView({ deck, listType }: DeckListViewProps) {
         groups['Commander'].push(card)
       } else {
         // Group by card type
-        const primaryType = card.typeLine ? getPrimaryType(card.typeLine) : 'Other'
+        const typeLine = getTypeLine(card, scryfallCache)
+        const primaryType = typeLine ? getPrimaryType(typeLine) : 'Other'
         if (!groups[primaryType]) groups[primaryType] = []
         groups[primaryType].push(card)
       }
     }
     return groups
-  }, [filteredCards])
+  }, [filteredCards, scryfallCache])
 
   // Sort groups by type order, with Commander first
   const sortedGroups = useMemo(() => {
@@ -126,12 +124,12 @@ export function DeckListView({ deck, listType }: DeckListViewProps) {
   }, [deck.id]) // Only run when deck changes, not on every sortedGroups change
 
   // Find the focused deck card's scryfall ID
-  const focusedDeckCard = useMemo(() => {
+  const focusedCardEntry = useMemo(() => {
     if (!focusedCardId) return null
     return cards.find(c => c.id === focusedCardId) || null
   }, [focusedCardId, cards])
 
-  const focusedScryfallId = focusedDeckCard?.card.scryfallId || null
+  const focusedScryfallId = focusedCardEntry?.card.scryfallId || null
 
   // Fetch focused card data
   useEffect(() => {
@@ -174,9 +172,10 @@ export function DeckListView({ deck, listType }: DeckListViewProps) {
     if (!card) return
 
     const maxQty = getCardLimit(card.card.name, deck.format)
-    const newQty = Math.max(1, Math.min(maxQty === Infinity ? 99 : maxQty, card.quantity + delta))
+    const currentQty = card.quantity
+    const newQty = Math.max(1, Math.min(maxQty === Infinity ? 99 : maxQty, currentQty + delta))
 
-    if (newQty !== card.quantity) {
+    if (newQty !== currentQty) {
       await updateCardInDeck(deck.id, cardName, { quantity: newQty })
     }
   }, [cards, deck.id, deck.format, updateCardInDeck])
@@ -202,12 +201,12 @@ export function DeckListView({ deck, listType }: DeckListViewProps) {
   }, [deck.id, updateCardInDeck])
 
   // Check if all cards in a group are selected
-  const isGroupSelected = useCallback((groupCards: DeckCard[]) => {
+  const isGroupSelected = useCallback((groupCards: CardEntry[]) => {
     return groupCards.every(c => selectedCards.has(c.card.name))
   }, [selectedCards])
 
   // Toggle group selection
-  const toggleGroupSelection = useCallback((groupCards: DeckCard[]) => {
+  const toggleGroupSelection = useCallback((groupCards: CardEntry[]) => {
     if (isGroupSelected(groupCards)) {
       groupCards.forEach(c => {
         if (selectedCards.has(c.card.name)) {
@@ -325,13 +324,13 @@ export function DeckListView({ deck, listType }: DeckListViewProps) {
 }
 
 interface CardRowProps {
-  card: DeckCard
+  card: CardEntry
   deck: Deck
   globalRoles: import('@/types').RoleDefinition[]
   isSelected: boolean
   isFocused: boolean
   isCommander?: boolean
-  listType: DeckListName
+  listType: CardSetName
   onToggleSelect: () => void
   onFocus: () => void
   onQuantityChange: (cardName: string, delta: number) => void

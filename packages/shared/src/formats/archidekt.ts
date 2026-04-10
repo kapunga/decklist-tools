@@ -1,8 +1,8 @@
-import type { Deck, DeckCard } from '../types/index.js'
+import type { Deck, CardEntry } from '../types/index.js'
 import { FORMAT_TYPE } from '../types/index.js'
 import { PARSER_SECTION } from './utils.js'
 import type { DeckExportFormat, ParsedCard, RenderOptions } from './types.js'
-import { prepareLines, getConfirmedCards, getMaybeboardCards } from './utils.js'
+import { prepareLines, getConfirmedCards, getMaybeboardCards, getSideboardCards } from './utils.js'
 
 export const archidektFormat: DeckExportFormat = {
   id: 'archidekt',
@@ -55,7 +55,7 @@ export const archidektFormat: DeckExportFormat = {
   render(deck: Deck, options: RenderOptions): string {
     const lines: string[] = []
 
-    const renderCard = (c: DeckCard, category: string) => {
+    const renderCard = (c: CardEntry, category: string) => {
       const roleStr = c.roles.map(r => `^${r}^`).join(' ')
       let line = `${c.quantity}x ${c.card.name} (${(c.card.setCode || '???').toUpperCase()}) ${c.card.collectorNumber || '0'} [${category}]`
       if (roleStr) line += ` ${roleStr}`
@@ -87,8 +87,9 @@ export const archidektFormat: DeckExportFormat = {
         renderCard(c, category)
       })
 
-    if (options.includeSideboard && deck.sideboard.length > 0) {
-      deck.sideboard.forEach(c => renderCard(c, 'Sideboard'))
+    const sideboard = getSideboardCards(deck)
+    if (options.includeSideboard && sideboard.length > 0) {
+      sideboard.forEach(c => renderCard(c, 'Sideboard'))
     }
 
     if (options.includeMaybeboard) {

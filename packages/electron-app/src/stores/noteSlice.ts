@@ -1,5 +1,6 @@
-import type { DeckCard, DeckNote } from '@/types'
+import type { CardEntry, DeckNote } from '@/types'
 import { propagateNoteRole } from '@/types'
+import { mapAllDeckEntries } from '@mtg-deckbuilder/shared'
 import type { NoteSlice, SliceCreator } from './types'
 
 export const createNoteSlice: SliceCreator<NoteSlice> = (_set, get) => ({
@@ -46,18 +47,11 @@ export const createNoteSlice: SliceCreator<NoteSlice> = (_set, get) => ({
 
     if (removeRole && note?.roleId) {
       const refNames = new Set(note.cardRefs.map(r => r.cardName.toLowerCase()))
-      const removeRoleFromList = (cards: DeckCard[]): DeckCard[] =>
-        cards.map(c =>
-          refNames.has(c.card.name.toLowerCase())
-            ? { ...c, roles: c.roles.filter(r => r !== note.roleId) }
-            : c
-        )
-      updatedDeck = {
-        ...updatedDeck,
-        cards: removeRoleFromList(updatedDeck.cards),
-        alternates: removeRoleFromList(updatedDeck.alternates),
-        sideboard: removeRoleFromList(updatedDeck.sideboard),
-      }
+      updatedDeck = mapAllDeckEntries(updatedDeck, (c: CardEntry) =>
+        refNames.has(c.card.name.toLowerCase())
+          ? { ...c, roles: c.roles.filter(r => r !== note.roleId) }
+          : c
+      )
     }
 
     await get().updateDeck(updatedDeck)

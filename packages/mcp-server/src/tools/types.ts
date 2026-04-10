@@ -18,7 +18,6 @@ export interface ManageCardArgs {
   collector_number?: string
   quantity?: number
   roles?: string[]
-  status?: string
   ownership?: string
   to_alternates?: boolean
   to_sideboard?: boolean
@@ -26,7 +25,6 @@ export interface ManageCardArgs {
   from_sideboard?: boolean
   add_roles?: string[]
   remove_roles?: string[]
-  pinned?: boolean
   notes?: string
   from?: string
   to?: string
@@ -138,7 +136,6 @@ export function validateManageCardArgs(args: Record<string, unknown>): ManageCar
     collector_number: args.collector_number as string | undefined,
     quantity: args.quantity as number | undefined,
     roles: args.roles as string[] | undefined,
-    status: args.status as string | undefined,
     ownership: args.ownership as string | undefined,
     to_alternates: args.to_alternates as boolean | undefined,
     to_sideboard: args.to_sideboard as boolean | undefined,
@@ -146,7 +143,6 @@ export function validateManageCardArgs(args: Record<string, unknown>): ManageCar
     from_sideboard: args.from_sideboard as boolean | undefined,
     add_roles: args.add_roles as string[] | undefined,
     remove_roles: args.remove_roles as string[] | undefined,
-    pinned: args.pinned as boolean | undefined,
     notes: args.notes as string | undefined,
     from: args.from as string | undefined,
     to: args.to as string | undefined,

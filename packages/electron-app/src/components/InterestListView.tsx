@@ -6,10 +6,12 @@ import { Card, CardContent } from '@/components/ui/card'
 import { useStore } from '@/hooks/useStore'
 import { autocomplete, searchCardByName, getCardImageUrl } from '@/lib/scryfall'
 import { AUTOCOMPLETE } from '@/lib/constants'
-import type { InterestItem } from '@/types'
+import type { CardEntry } from '@/types'
+import { INTEREST_LIST_ID, getPotentialDecks } from '@/types'
 
 export function InterestListView() {
-  const interestList = useStore(state => state.interestList)
+  const cardLists = useStore(state => state.cardLists)
+  const interestList = cardLists.find(l => l.id === INTEREST_LIST_ID) ?? null
   const decks = useStore(state => state.decks)
   const addToInterestList = useStore(state => state.addToInterestList)
   const removeFromInterestList = useStore(state => state.removeFromInterestList)
@@ -63,7 +65,8 @@ export function InterestListView() {
       return
     }
 
-    const item = interestList?.items.find(i => i.card.name === activeCard)
+    const items = interestList?.cardSets[0]?.entries ?? []
+    const item = items.find(i => i.card.name === activeCard)
     if (!item) return
 
     if (item.card.scryfallId) {
@@ -90,7 +93,7 @@ export function InterestListView() {
           name: card.name,
           setCode: card.set,
           collectorNumber: card.collector_number
-        }, undefined, 'manual')
+        }, undefined, 'user')
       }
     } finally {
       setIsLoading(false)
@@ -109,7 +112,7 @@ export function InterestListView() {
     selectDeck(deckId)
   }, [selectDeck])
 
-  const items = interestList?.items || []
+  const items = interestList?.cardSets[0]?.entries ?? []
 
   return (
     <div className="h-full flex flex-col">
@@ -208,7 +211,7 @@ export function InterestListView() {
 }
 
 interface InterestListItemProps {
-  item: InterestItem
+  item: CardEntry
   decks: { id: string; name: string }[]
   onRemove: (cardName: string) => void
   onNotesChange: (cardName: string, notes: string) => void
@@ -241,7 +244,7 @@ function InterestListItem({
   }
 
   // Get deck names for potential decks
-  const potentialDeckNames = (item.potentialDecks || [])
+  const potentialDeckNames = getPotentialDecks(item)
     .map(id => decks.find(d => d.id === id))
     .filter(Boolean)
 

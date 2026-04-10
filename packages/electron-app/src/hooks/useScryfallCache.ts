@@ -1,9 +1,9 @@
 import { useMemo } from 'react'
 import { useQueries } from '@tanstack/react-query'
 import { getCardById } from '@/lib/scryfall'
-import type { DeckCard, ScryfallCard } from '@/types'
+import type { CardEntry, ScryfallCard } from '@/types'
 
-export function useScryfallCache(cards: DeckCard[]) {
+export function useScryfallCache(cards: CardEntry[]) {
   const scryfallIds = useMemo(() => {
     const ids = new Set<string>()
     for (const card of cards) {

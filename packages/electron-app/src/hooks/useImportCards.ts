@@ -2,15 +2,14 @@ import { useState, useCallback, useRef } from 'react'
 import { formats, detectFormat, type ParsedCard } from '@/lib/formats'
 import { searchCardByName, getCardBySetAndNumber } from '@/lib/scryfall'
 import { SCRYFALL, IMPORT_PREVIEW } from '@/lib/constants'
-import type { DeckCard } from '@/types'
-import { generateDeckCardId, INCLUSION_STATUS, OWNERSHIP_STATUS, ADDED_BY, DECK_LIST } from '@/types'
+import { OWNERSHIP_STATUS, CARD_SOURCE, CARD_SET, makeCardEntry } from '@/types'
 import type { ImportProgress, ResolvedCard, UseImportCardsResult } from './types'
 
 export type { ImportProgress, ResolvedCard, UseImportCardsResult } from './types'
 
 /**
  * Hook to encapsulate shared import logic between ImportDialog and ImportNewDeckDialog.
- * Handles format detection, text parsing, Scryfall lookups, and DeckCard construction.
+ * Handles format detection, text parsing, Scryfall lookups, and CardEntry construction.
  */
 export function useImportCards(sideboardSize?: number): UseImportCardsResult {
   const [text, setText] = useState('')
@@ -50,7 +49,7 @@ export function useImportCards(sideboardSize?: number): UseImportCardsResult {
   }, [text])
 
   /**
-   * Look up all parsed cards on Scryfall and construct DeckCard objects.
+   * Look up all parsed cards on Scryfall and construct CardEntry objects.
    * Returns resolved cards and any errors encountered.
    */
   const lookupCards = useCallback(async (): Promise<{ resolvedCards: ResolvedCard[]; errors: string[] }> => {
@@ -97,8 +96,7 @@ export function useImportCards(sideboardSize?: number): UseImportCardsResult {
         // Use any roles from the parsed data
         const roles = [...(parsed.roles || [])]
 
-        const deckCard: DeckCard = {
-          id: generateDeckCardId(),
+        const deckCard = makeCardEntry({
           card: {
             scryfallId: scryfallCard.id,
             name: scryfallCard.name,
@@ -106,20 +104,16 @@ export function useImportCards(sideboardSize?: number): UseImportCardsResult {
             collectorNumber: parsed.collectorNumber || scryfallCard.collector_number
           },
           quantity: parsed.quantity,
-          inclusion: parsed.isMaybeboard ? INCLUSION_STATUS.CONSIDERING : INCLUSION_STATUS.CONFIRMED,
           ownership: OWNERSHIP_STATUS.OWNED,
           roles,
-          typeLine: scryfallCard.type_line,  // Store type line for grouping
-          isPinned: false,
-          addedAt: new Date().toISOString(),
-          addedBy: ADDED_BY.IMPORT
-        }
+          source: CARD_SOURCE.IMPORT,
+        })
 
         const hasSideboard = sideboardSize !== undefined && sideboardSize > 0
         const listType = parsed.isSideboard
-          ? (hasSideboard ? DECK_LIST.SIDEBOARD : DECK_LIST.ALTERNATES)
-          : parsed.isMaybeboard ? DECK_LIST.ALTERNATES
-          : DECK_LIST.MAINBOARD
+          ? (hasSideboard ? CARD_SET.SIDEBOARD : CARD_SET.ALTERNATES)
+          : parsed.isMaybeboard ? CARD_SET.ALTERNATES
+          : CARD_SET.MAINBOARD
 
         resolvedCards.push({ card: deckCard, listType })
 

@@ -3,19 +3,35 @@ import type { Storage } from '@mtg-deckbuilder/shared'
 import {
   createEmptyDeck,
   generateDeckCardId,
+  CARD_SET,
+  INTEREST_LIST_ID,
   type Deck,
-  type DeckCard,
+  type CardEntry,
+  type CardList,
   type ScryfallCard,
   type FormatType,
   type RoleDefinition,
-  type InterestList,
   type SetCollectionFile,
 } from '@mtg-deckbuilder/shared'
 
+// Test helpers for mutating decks in place (used by existing tests that rely on `.push`)
+export function pushMainboard(deck: Deck, ...cards: CardEntry[]): void {
+  const set = deck.cardSets.find(s => s.name === CARD_SET.MAINBOARD)
+  if (set) set.entries.push(...cards)
+}
+export function pushSideboard(deck: Deck, ...cards: CardEntry[]): void {
+  const set = deck.cardSets.find(s => s.name === CARD_SET.SIDEBOARD)
+  if (set) set.entries.push(...cards)
+}
+export function pushAlternates(deck: Deck, ...cards: CardEntry[]): void {
+  const set = deck.cardSets.find(s => s.name === CARD_SET.ALTERNATES)
+  if (set) set.entries.push(...cards)
+}
+
 export function createMockStorage() {
   const decks = new Map<string, Deck>()
+  const cardLists = new Map<string, CardList>()
   let globalRoles: RoleDefinition[] = []
-  let interestList: InterestList = { version: 1, updatedAt: '', items: [] }
   let setCollection: SetCollectionFile = { version: 1, updatedAt: '', sets: [] }
 
   const storage = {
@@ -41,9 +57,17 @@ export function createMockStorage() {
     saveGlobalRoles: vi.fn((roles: RoleDefinition[]) => {
       globalRoles = roles
     }),
-    getInterestList: vi.fn(() => interestList),
-    saveInterestList: vi.fn((list: InterestList) => {
-      interestList = list
+    listCardLists: vi.fn(() => [...cardLists.values()]),
+    getCardList: vi.fn((id: string) => cardLists.get(id) ?? null),
+    saveCardList: vi.fn((list: CardList) => {
+      cardLists.set(list.id, list)
+    }),
+    deleteCardList: vi.fn((id: string) => {
+      if (cardLists.has(id)) {
+        cardLists.delete(id)
+        return true
+      }
+      return false
     }),
     getTaxonomy: vi.fn(() => ({ version: 1, updatedAt: '', globalRoles })),
     saveTaxonomy: vi.fn(),
@@ -68,11 +92,14 @@ export function createMockStorage() {
   return {
     storage: storage as unknown as Storage,
     _decks: decks,
+    _cardLists: cardLists,
     _setGlobalRoles: (roles: RoleDefinition[]) => { globalRoles = roles },
-    _setInterestList: (list: InterestList) => { interestList = list },
     _setSetCollection: (col: SetCollectionFile) => { setCollection = col },
   }
 }
+
+// Re-export INTEREST_LIST_ID for test convenience
+export { INTEREST_LIST_ID }
 
 export function mockScryfallCard(name: string, overrides?: Partial<ScryfallCard>): ScryfallCard {
   return {
@@ -97,7 +124,7 @@ export function makeDeck(overrides?: Partial<Deck>): Deck {
   return { ...deck, ...overrides, format: overrides?.format ?? deck.format }
 }
 
-export function makeDeckCard(name: string, overrides?: Partial<DeckCard>): DeckCard {
+export function makeDeckCard(name: string, overrides?: Partial<CardEntry>): CardEntry {
   return {
     id: generateDeckCardId(),
     card: {
@@ -107,13 +134,25 @@ export function makeDeckCard(name: string, overrides?: Partial<DeckCard>): DeckC
       collectorNumber: '1',
     },
     quantity: 1,
-    inclusion: 'confirmed',
     ownership: 'owned',
     roles: [],
-    typeLine: 'Creature — Human Wizard',
-    isPinned: false,
     addedAt: new Date().toISOString(),
-    addedBy: 'user',
+    source: 'user',
     ...overrides,
   }
+}
+
+/**
+ * Build a mock Scryfall cache keyed by the same `scryfall-${name}` ids that
+ * `makeDeckCard` uses, so view rendering can resolve type lines without
+ * touching the network. Pass `{ 'Sol Ring': 'Artifact' }` to get a cache that
+ * answers `getTypeLine` for Sol Ring.
+ */
+export function makeMockCache(typeLines: Record<string, string>): Map<string, ScryfallCard> {
+  const cache = new Map<string, ScryfallCard>()
+  for (const [name, typeLine] of Object.entries(typeLines)) {
+    const scryfallId = `scryfall-${name.toLowerCase().replace(/\s+/g, '-')}`
+    cache.set(scryfallId, mockScryfallCard(name, { id: scryfallId, type_line: typeLine }))
+  }
+  return cache
 }

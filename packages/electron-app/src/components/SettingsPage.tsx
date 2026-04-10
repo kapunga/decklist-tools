@@ -33,6 +33,7 @@ import { DataManagementSection } from '@/components/DataManagementSection'
 import { McpIntegrationCard } from '@/components/McpIntegrationCard'
 import { getAllSets, type ScryfallSet } from '@/lib/scryfall'
 import type { RoleDefinition, SetCollectionEntry, CollectionLevel } from '@/types'
+import { getAllDeckEntries } from '@mtg-deckbuilder/shared'
 
 export function SettingsPage() {
   const setView = useStore(state => state.setView)
@@ -212,8 +213,7 @@ export function SettingsPage() {
     let deckCount = 0
 
     decks.forEach(deck => {
-      const allCards = [...deck.cards, ...deck.alternates, ...deck.sideboard]
-      const cardsWithRole = allCards.filter(c => c.roles.includes(roleId))
+      const cardsWithRole = getAllDeckEntries(deck).filter(c => c.roles.includes(roleId))
       if (cardsWithRole.length > 0) {
         deckCount++
         cardCount += cardsWithRole.length

@@ -3,7 +3,8 @@ import fs from 'fs'
 import path from 'path'
 import os from 'os'
 import { Storage } from './index.js'
-import type { Deck, InterestList, Config } from '../types/index.js'
+import type { Deck, CardList, Config } from '../types/index.js'
+import { CARD_SET, INTEREST_LIST_ID } from '../types/index.js'
 
 function makeDeck(overrides: Partial<Deck> = {}): Deck {
   return {
@@ -19,9 +20,11 @@ function makeDeck(overrides: Partial<Deck> = {}): Deck {
     createdAt: '2024-01-01T00:00:00.000Z',
     updatedAt: '2024-01-01T00:00:00.000Z',
     version: 1,
-    cards: [],
-    alternates: [],
-    sideboard: [],
+    cardSets: [
+      { name: CARD_SET.MAINBOARD, entries: [] },
+      { name: CARD_SET.SIDEBOARD, entries: [] },
+      { name: CARD_SET.ALTERNATES, entries: [] },
+    ],
     commanders: [],
     customRoles: [],
     notes: [],
@@ -142,28 +145,153 @@ describe('Storage', () => {
     })
   })
 
-  describe('interest list', () => {
-    it('returns default when no file exists', () => {
-      const list = storage.getInterestList()
-      expect(list.items).toEqual([])
-      expect(list.version).toBe(1)
+  describe('card lists', () => {
+    function makeCardList(overrides: Partial<CardList> = {}): CardList {
+      return {
+        id: '11111111-1111-4111-8111-111111111111',
+        name: 'Test List',
+        version: 1,
+        createdAt: '2024-01-01T00:00:00.000Z',
+        updatedAt: '2024-01-01T00:00:00.000Z',
+        cardSets: [
+          { name: CARD_SET.MAINBOARD, entries: [] },
+        ],
+        ...overrides,
+      }
+    }
+
+    it('creates lists directory on construction', () => {
+      expect(fs.existsSync(path.join(tmpDir, 'lists'))).toBe(true)
     })
 
-    it('save and load round-trip', () => {
-      const list: InterestList = {
-        version: 1,
-        updatedAt: '2024-01-01T00:00:00.000Z',
+    it('saveCardList and getCardList round-trip', () => {
+      const list = makeCardList({
+        cardSets: [{
+          name: CARD_SET.MAINBOARD,
+          entries: [{
+            id: 'e1',
+            card: { name: 'Sol Ring', setCode: 'c21', collectorNumber: '263' },
+            addedAt: '2024-01-01T00:00:00.000Z',
+            source: 'user',
+            quantity: 1,
+            ownership: 'unknown',
+            roles: [],
+          }],
+        }],
+      })
+      storage.saveCardList(list)
+      const loaded = storage.getCardList(list.id)
+      expect(loaded).not.toBeNull()
+      expect(loaded!.cardSets[0].entries).toHaveLength(1)
+      expect(loaded!.cardSets[0].entries[0].card.name).toBe('Sol Ring')
+    })
+
+    it('listCardLists returns all saved lists', () => {
+      storage.saveCardList(makeCardList({ id: '11111111-1111-4111-8111-111111111111', name: 'A' }))
+      storage.saveCardList(makeCardList({ id: '22222222-2222-4222-8222-222222222222', name: 'B' }))
+
+      const lists = storage.listCardLists()
+      expect(lists).toHaveLength(2)
+      expect(lists.map(l => l.name).sort()).toEqual(['A', 'B'])
+    })
+
+    it('deleteCardList removes the file', () => {
+      const list = makeCardList()
+      storage.saveCardList(list)
+      expect(storage.getCardList(list.id)).not.toBeNull()
+
+      const deleted = storage.deleteCardList(list.id)
+      expect(deleted).toBe(true)
+      expect(storage.getCardList(list.id)).toBeNull()
+    })
+
+    it('saveCardList bumps version on each save', () => {
+      const list = makeCardList({ version: 0 })
+      storage.saveCardList(list)
+      expect(list.version).toBe(1)
+
+      storage.saveCardList(list)
+      expect(list.version).toBe(2)
+    })
+
+    it('saveCardList throws on concurrent modification', () => {
+      const list1 = makeCardList({ version: 0 })
+      storage.saveCardList(list1)  // version becomes 1
+      const list2 = makeCardList({ version: 0 })  // stale version
+      expect(() => storage.saveCardList(list2)).toThrow(/Concurrent/)
+    })
+
+    it('rejects invalid UUIDs', () => {
+      expect(() => storage.getCardList('not-a-uuid')).toThrow(/Invalid card list ID/)
+    })
+  })
+
+  describe('interest list migration', () => {
+    it('migrates legacy interest-list.json to lists/{INTEREST_LIST_ID}.json', () => {
+      // Set up a legacy interest-list.json directly
+      const legacyPath = path.join(tmpDir, 'interest-list.json')
+      // Legacy shape — InterestList type no longer exported, use literal JSON
+      const legacy = {
+        version: 3,
+        updatedAt: '2024-06-01T00:00:00.000Z',
         items: [{
           id: 'item-1',
           card: { name: 'Sol Ring', setCode: 'c21', collectorNumber: '263' },
           addedAt: '2024-01-01T00:00:00.000Z',
+          notes: 'important',
+          source: 'user',
         }],
       }
-      storage.saveInterestList(list)
-      const loaded = storage.getInterestList()
-      expect(loaded.items).toHaveLength(1)
-      expect(loaded.items[0].card.name).toBe('Sol Ring')
+      fs.writeFileSync(legacyPath, JSON.stringify(legacy, null, 2))
+
+      // Constructing a new Storage should trigger migration
+      const newStorage = new Storage(tmpDir)
+
+      // New file should exist; legacy should be renamed
+      const newPath = path.join(tmpDir, 'lists', `${INTEREST_LIST_ID}.json`)
+      expect(fs.existsSync(newPath)).toBe(true)
+      expect(fs.existsSync(legacyPath)).toBe(false)
+      expect(fs.existsSync(`${legacyPath}.bak`)).toBe(true)
+
+      // Content should be preserved
+      const migrated = newStorage.getCardList(INTEREST_LIST_ID)
+      expect(migrated).not.toBeNull()
+      expect(migrated!.cardSets[0].entries).toHaveLength(1)
+      expect(migrated!.cardSets[0].entries[0].card.name).toBe('Sol Ring')
+      expect(migrated!.cardSets[0].entries[0].notes).toBe('important')
+      expect(migrated!.cardSets[0].entries[0].source).toBe('user')
     })
+
+    it('does not migrate if new file already exists', () => {
+      // Pre-populate new location
+      const newPath = path.join(tmpDir, 'lists', `${INTEREST_LIST_ID}.json`)
+      fs.mkdirSync(path.dirname(newPath), { recursive: true })
+      const existing: CardList = {
+        id: INTEREST_LIST_ID,
+        name: 'Interest List',
+        version: 1,
+        createdAt: '2024-01-01T00:00:00.000Z',
+        updatedAt: '2024-01-01T00:00:00.000Z',
+        cardSets: [{ name: CARD_SET.MAINBOARD, entries: [] }],
+      }
+      fs.writeFileSync(newPath, JSON.stringify(existing, null, 2))
+
+      // Also create legacy file
+      const legacyPath = path.join(tmpDir, 'interest-list.json')
+      fs.writeFileSync(legacyPath, JSON.stringify({ version: 1, updatedAt: '', items: [] }))
+
+      // Construction should NOT overwrite the existing new file
+      new Storage(tmpDir)
+      expect(fs.existsSync(legacyPath)).toBe(true)  // untouched
+      expect(fs.existsSync(`${legacyPath}.bak`)).toBe(false)
+    })
+
+    it('is a no-op when no legacy file exists', () => {
+      // Fresh tmpdir — storage constructor should not create a lists/INTEREST_LIST_ID.json
+      const newPath = path.join(tmpDir, 'lists', `${INTEREST_LIST_ID}.json`)
+      expect(fs.existsSync(newPath)).toBe(false)
+    })
+
   })
 
   describe('config', () => {

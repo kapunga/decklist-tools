@@ -1,27 +1,40 @@
 import { describe, it, expect } from 'vitest'
 import { addCommander, removeCommander, swapCommander, getDeckColorIdentity } from './commanders.js'
-import type { Deck, CardIdentifier, DeckCard } from '../types/index.js'
-import { FORMAT_TYPE, INCLUSION_STATUS, OWNERSHIP_STATUS, ADDED_BY } from '../types/index.js'
+import type { Deck, CardIdentifier, CardEntry } from '../types/index.js'
+import { CARD_SET, CARD_SOURCE, FORMAT_TYPE, OWNERSHIP_STATUS } from '../types/index.js'
 
 function makeCommander(name: string, colorIdentity: string[] = []): CardIdentifier {
   return { name, setCode: 'test', collectorNumber: '1', colorIdentity }
 }
 
-function makeDeck(overrides: Partial<Deck> = {}): Deck {
+interface MakeDeckOptions {
+  mainboard?: CardEntry[]
+  sideboard?: CardEntry[]
+  alternates?: CardEntry[]
+  cut?: CardEntry[]
+  format?: Deck['format']
+  commanders?: Deck['commanders']
+  colorIdentity?: string[]
+}
+
+function makeDeck(opts: MakeDeckOptions = {}): Deck {
   return {
     id: 'test-deck',
     name: 'Test',
-    format: { type: FORMAT_TYPE.COMMANDER, deckSize: 100, sideboardSize: 0, cardLimit: 1, unlimitedCards: [] },
+    format: opts.format ?? { type: FORMAT_TYPE.COMMANDER, deckSize: 100, sideboardSize: 0, cardLimit: 1, unlimitedCards: [] },
     createdAt: '2024-01-01T00:00:00.000Z',
     updatedAt: '2024-01-01T00:00:00.000Z',
     version: 1,
-    cards: [],
-    alternates: [],
-    sideboard: [],
-    commanders: [],
+    cardSets: [
+      { name: CARD_SET.MAINBOARD, entries: opts.mainboard ?? [] },
+      { name: CARD_SET.SIDEBOARD, entries: opts.sideboard ?? [] },
+      { name: CARD_SET.ALTERNATES, entries: opts.alternates ?? [] },
+      { name: CARD_SET.CUT, entries: opts.cut ?? [] },
+    ],
+    commanders: opts.commanders ?? [],
     customRoles: [],
     notes: [],
-    ...overrides,
+    colorIdentity: opts.colorIdentity,
   }
 }
 
@@ -114,17 +127,15 @@ describe('swapCommander', () => {
 
 // --- getDeckColorIdentity ---
 
-function makeDeckCard(name: string, overrides: Partial<DeckCard> = {}): DeckCard {
+function makeEntry(name: string, overrides: Partial<CardEntry> = {}): CardEntry {
   return {
     id: `card-${name}`,
     card: { name, setCode: 'test', collectorNumber: '1' },
     quantity: 1,
-    inclusion: INCLUSION_STATUS.CONFIRMED,
     ownership: OWNERSHIP_STATUS.UNKNOWN,
     roles: [],
-    isPinned: false,
     addedAt: '2024-01-01T00:00:00.000Z',
-    addedBy: ADDED_BY.USER,
+    source: CARD_SOURCE.USER,
     ...overrides,
   }
 }
@@ -148,9 +159,9 @@ describe('getDeckColorIdentity', () => {
   it('computes union of card colors for non-commander decks', () => {
     const deck = makeDeck({
       format: { type: FORMAT_TYPE.STANDARD, deckSize: 60, sideboardSize: 15, cardLimit: 4, unlimitedCards: [] },
-      cards: [
-        makeDeckCard('Bolt', { card: { name: 'Bolt', setCode: 'test', collectorNumber: '1', colorIdentity: ['R'] } }),
-        makeDeckCard('Counterspell', { card: { name: 'Counterspell', setCode: 'test', collectorNumber: '2', colorIdentity: ['U'] } }),
+      mainboard: [
+        makeEntry('Bolt', { card: { name: 'Bolt', setCode: 'test', collectorNumber: '1', colorIdentity: ['R'] } }),
+        makeEntry('Counterspell', { card: { name: 'Counterspell', setCode: 'test', collectorNumber: '2', colorIdentity: ['U'] } }),
       ],
     })
     expect(getDeckColorIdentity(deck)).toEqual(expect.arrayContaining(['R', 'U']))
@@ -160,24 +171,25 @@ describe('getDeckColorIdentity', () => {
   it('includes sideboard colors for non-commander decks', () => {
     const deck = makeDeck({
       format: { type: FORMAT_TYPE.MODERN, deckSize: 60, sideboardSize: 15, cardLimit: 4, unlimitedCards: [] },
-      cards: [
-        makeDeckCard('Bolt', { card: { name: 'Bolt', setCode: 'test', collectorNumber: '1', colorIdentity: ['R'] } }),
+      mainboard: [
+        makeEntry('Bolt', { card: { name: 'Bolt', setCode: 'test', collectorNumber: '1', colorIdentity: ['R'] } }),
       ],
       sideboard: [
-        makeDeckCard('Path', { card: { name: 'Path', setCode: 'test', collectorNumber: '2', colorIdentity: ['W'] } }),
+        makeEntry('Path', { card: { name: 'Path', setCode: 'test', collectorNumber: '2', colorIdentity: ['W'] } }),
       ],
     })
     expect(getDeckColorIdentity(deck)).toEqual(expect.arrayContaining(['R', 'W']))
   })
 
-  it('skips cut cards for non-commander decks', () => {
+  it('skips cards in the cut set for non-commander decks', () => {
     const deck = makeDeck({
       format: { type: FORMAT_TYPE.STANDARD, deckSize: 60, sideboardSize: 15, cardLimit: 4, unlimitedCards: [] },
-      cards: [
-        makeDeckCard('Bolt', { card: { name: 'Bolt', setCode: 'test', collectorNumber: '1', colorIdentity: ['R'] } }),
-        makeDeckCard('Growth', {
+      mainboard: [
+        makeEntry('Bolt', { card: { name: 'Bolt', setCode: 'test', collectorNumber: '1', colorIdentity: ['R'] } }),
+      ],
+      cut: [
+        makeEntry('Growth', {
           card: { name: 'Growth', setCode: 'test', collectorNumber: '2', colorIdentity: ['G'] },
-          inclusion: INCLUSION_STATUS.CUT,
         }),
       ],
     })

@@ -7,6 +7,8 @@ import {
   getCardCount,
   type ScryfallCard,
   validateDeckStructure,
+  getSideboard,
+  getAllDeckEntries,
 } from '@mtg-deckbuilder/shared'
 import { renderDeckView } from '../views/index.js'
 import type { ManageDeckArgs, ViewDeckArgs } from './types.js'
@@ -45,7 +47,7 @@ export function getDeck(storage: Storage, identifier: string) {
 function validateDeck(deck: Deck) {
   const validationIssues = validateDeckStructure(deck)
   const cardCount = getCardCount(deck)
-  const sideboardCount = deck.sideboard.reduce((sum, c) => sum + c.quantity, 0)
+  const sideboardCount = getSideboard(deck).reduce((sum, c) => sum + c.quantity, 0)
 
   return {
     valid: validationIssues.length === 0,
@@ -103,7 +105,7 @@ export function viewDeck(storage: Storage, args: ViewDeckArgs) {
   const globalRoles = storage.getGlobalRoles()
 
   const scryfallCache = new Map<string, ScryfallCard>()
-  const allCards = [...deck.cards, ...deck.alternates, ...deck.sideboard]
+  const allCards = getAllDeckEntries(deck)
   for (const card of allCards) {
     if (card.card.scryfallId) {
       const cached = storage.getCachedCard(card.card.scryfallId) as ScryfallCard | null
@@ -122,19 +124,13 @@ export function searchDecksForCard(storage: Storage, cardName: string) {
   const results: { deckId: string; deckName: string; location: string; quantity: number }[] = []
 
   for (const deck of decks) {
-    const lists: [string, { card: { name: string }; quantity: number }[]][] = [
-      ['mainboard', deck.cards],
-      ['alternates', deck.alternates],
-      ['sideboard', deck.sideboard],
-    ]
-
-    for (const [location, list] of lists) {
-      for (const card of list) {
+    for (const set of deck.cardSets) {
+      for (const card of set.entries) {
         if (card.card.name.toLowerCase().includes(cardName.toLowerCase())) {
           results.push({
             deckId: deck.id,
             deckName: deck.name,
-            location,
+            location: set.name,
             quantity: card.quantity,
           })
         }

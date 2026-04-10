@@ -1,4 +1,5 @@
-import type { DeckCard } from '@/types'
+import type { CardEntry } from '@/types'
+import { mapAllDeckEntries, getCardSetEntries, withDeckCardSet } from '@mtg-deckbuilder/shared'
 import type { SelectionSlice, SliceCreator } from './types'
 
 export const createSelectionSlice: SliceCreator<SelectionSlice> = (set, get) => ({
@@ -43,19 +44,11 @@ export const createSelectionSlice: SliceCreator<SelectionSlice> = (set, get) => 
     const deck = get().decks.find(d => d.id === deckId)
     if (!deck) return
 
-    const updateList = (list: DeckCard[]): DeckCard[] =>
-      list.map(c =>
-        cardNames.includes(c.card.name)
-          ? { ...c, ownership }
-          : c
-      )
-
-    await get().updateDeck({
-      ...deck,
-      cards: updateList(deck.cards),
-      alternates: updateList(deck.alternates),
-      sideboard: updateList(deck.sideboard)
-    })
+    const nameSet = new Set(cardNames)
+    const updatedDeck = mapAllDeckEntries(deck, (c: CardEntry) =>
+      nameSet.has(c.card.name) ? { ...c, ownership } : c
+    )
+    await get().updateDeck(updatedDeck)
     set({ selectedCards: new Set<string>() })
   },
 
@@ -64,12 +57,10 @@ export const createSelectionSlice: SliceCreator<SelectionSlice> = (set, get) => 
     if (!deck) return
 
     const cardNamesLower = cardNames.map(n => n.toLowerCase())
-    await get().updateDeck({
-      ...deck,
-      [listType]: deck[listType].filter(
-        c => !cardNamesLower.includes(c.card.name.toLowerCase())
-      )
-    })
+    const filtered = getCardSetEntries(deck.cardSets, listType).filter(
+      c => !cardNamesLower.includes(c.card.name.toLowerCase())
+    )
+    await get().updateDeck(withDeckCardSet(deck, listType, filtered))
     set({ selectedCards: new Set<string>() })
   },
 
@@ -78,18 +69,19 @@ export const createSelectionSlice: SliceCreator<SelectionSlice> = (set, get) => 
     if (!deck) return
 
     const cardNamesLower = cardNames.map(n => n.toLowerCase())
-    const cardsToMove = deck[from].filter(
+    const fromEntries = getCardSetEntries(deck.cardSets, from)
+    const cardsToMove = fromEntries.filter(
       c => cardNamesLower.includes(c.card.name.toLowerCase())
     )
-    const remainingCards = deck[from].filter(
+    const remainingCards = fromEntries.filter(
       c => !cardNamesLower.includes(c.card.name.toLowerCase())
     )
+    const toEntries = getCardSetEntries(deck.cardSets, to)
 
-    await get().updateDeck({
-      ...deck,
-      [from]: remainingCards,
-      [to]: [...deck[to], ...cardsToMove]
-    })
+    let updatedDeck = withDeckCardSet(deck, from, remainingCards)
+    updatedDeck = withDeckCardSet(updatedDeck, to, [...toEntries, ...cardsToMove])
+
+    await get().updateDeck(updatedDeck)
     set({ selectedCards: new Set<string>() })
   },
 
@@ -97,19 +89,13 @@ export const createSelectionSlice: SliceCreator<SelectionSlice> = (set, get) => 
     const deck = get().decks.find(d => d.id === deckId)
     if (!deck) return
 
-    const updateList = (list: DeckCard[]): DeckCard[] =>
-      list.map(c =>
-        cardNames.includes(c.card.name)
-          ? { ...c, roles: [...new Set([...c.roles, roleId])] }
-          : c
-      )
-
-    await get().updateDeck({
-      ...deck,
-      cards: updateList(deck.cards),
-      alternates: updateList(deck.alternates),
-      sideboard: updateList(deck.sideboard)
-    })
+    const nameSet = new Set(cardNames)
+    const updatedDeck = mapAllDeckEntries(deck, (c: CardEntry) =>
+      nameSet.has(c.card.name)
+        ? { ...c, roles: [...new Set([...c.roles, roleId])] }
+        : c
+    )
+    await get().updateDeck(updatedDeck)
     set({ selectedCards: new Set<string>() })
   },
 })

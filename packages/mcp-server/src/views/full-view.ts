@@ -1,5 +1,5 @@
-import type { Deck, DeckCard, RoleDefinition, ScryfallCard } from '@mtg-deckbuilder/shared'
-import { getPrimaryType, getCardCount, getCardDisplayName, getCanonicalSuffix, buildRoleLookup, CARD_TYPE_ORDER, isCardFullyPulled, INCLUSION_STATUS } from '@mtg-deckbuilder/shared'
+import type { Deck, CardEntry, RoleDefinition, ScryfallCard } from '@mtg-deckbuilder/shared'
+import { getPrimaryType, getCardCount, getCardDisplayName, getCanonicalSuffix, buildRoleLookup, CARD_TYPE_ORDER, isCardFullyPulled, getMainboard, getSideboard, getAlternates, getTypeLine } from '@mtg-deckbuilder/shared'
 import { formatCardLine, type DetailLevel } from './formatters.js'
 
 export function renderFullView(
@@ -30,53 +30,42 @@ export function renderFullView(
     lines.push('')
   }
 
-  let confirmedCards = deck.cards.filter(c => c.inclusion === INCLUSION_STATUS.CONFIRMED)
+  const mainboard = getMainboard(deck)
+  let mainboardCards = mainboard
   if (filteredCardIds) {
-    confirmedCards = confirmedCards.filter(c => filteredCardIds.has(c.id))
+    mainboardCards = mainboardCards.filter(c => filteredCardIds.has(c.id))
   }
 
-  const consideringCards = filteredCardIds
-    ? deck.cards.filter(c => c.inclusion === INCLUSION_STATUS.CONSIDERING && filteredCardIds.has(c.id))
-    : deck.cards.filter(c => c.inclusion === INCLUSION_STATUS.CONSIDERING)
-
   if (groupBy === 'role') {
-    renderByRole(lines, confirmedCards, roleLookup)
+    renderByRole(lines, mainboardCards, roleLookup)
   } else if (groupBy === 'type') {
-    renderByType(lines, confirmedCards)
+    renderByType(lines, mainboardCards, scryfallCache)
   } else if (sortBy === 'set') {
-    renderChecklist(lines, confirmedCards)
+    renderChecklist(lines, mainboardCards)
   } else {
-    if (confirmedCards.length > 0 || consideringCards.length > 0) {
+    if (mainboardCards.length > 0) {
       lines.push('## Main Deck')
-      if (confirmedCards.length > 0) {
-        lines.push('### Confirmed')
-        for (const c of confirmedCards) {
-          lines.push(formatCardLine(c, globalRoles, deck.customRoles, scryfallCache, detail, roleLookup))
-        }
-        lines.push('')
+      for (const c of mainboardCards) {
+        lines.push(formatCardLine(c, globalRoles, deck.customRoles, scryfallCache, detail, roleLookup))
       }
-      if (consideringCards.length > 0) {
-        lines.push('### Considering')
-        for (const c of consideringCards) {
-          lines.push(formatCardLine(c, globalRoles, deck.customRoles, scryfallCache, detail, roleLookup))
-        }
-        lines.push('')
-      }
+      lines.push('')
     }
   }
 
   if (!groupBy && sortBy !== 'set') {
-    if (deck.alternates.length > 0) {
+    const alternates = getAlternates(deck)
+    if (alternates.length > 0) {
       lines.push('## Alternates')
-      for (const c of deck.alternates) {
+      for (const c of alternates) {
         lines.push(formatCardLine(c, globalRoles, deck.customRoles, scryfallCache, detail, roleLookup))
       }
       lines.push('')
     }
 
-    if (deck.sideboard.length > 0) {
+    const sideboard = getSideboard(deck)
+    if (sideboard.length > 0) {
       lines.push('## Sideboard')
-      for (const c of deck.sideboard) {
+      for (const c of sideboard) {
         lines.push(formatCardLine(c, globalRoles, deck.customRoles, scryfallCache, detail, roleLookup))
       }
       lines.push('')
@@ -88,11 +77,11 @@ export function renderFullView(
 
 function renderByRole(
   lines: string[],
-  cards: DeckCard[],
+  cards: CardEntry[],
   roleLookup: Map<string, RoleDefinition>
 ): void {
-  const byRole = new Map<string, DeckCard[]>()
-  const noRole: DeckCard[] = []
+  const byRole = new Map<string, CardEntry[]>()
+  const noRole: CardEntry[] = []
 
   for (const card of cards) {
     if (card.roles.length === 0) {
@@ -132,11 +121,12 @@ function renderByRole(
   }
 }
 
-function renderByType(lines: string[], cards: DeckCard[]): void {
-  const byType = new Map<string, DeckCard[]>()
+function renderByType(lines: string[], cards: CardEntry[], scryfallCache?: Map<string, ScryfallCard>): void {
+  const cache = scryfallCache || new Map<string, ScryfallCard>()
+  const byType = new Map<string, CardEntry[]>()
 
   for (const card of cards) {
-    const type = getPrimaryType(card.typeLine || 'Other')
+    const type = getPrimaryType(getTypeLine(card, cache) || 'Other')
     if (!byType.has(type)) {
       byType.set(type, [])
     }
@@ -160,7 +150,7 @@ function renderByType(lines: string[], cards: DeckCard[]): void {
   }
 }
 
-function renderChecklist(lines: string[], cards: DeckCard[]): void {
+function renderChecklist(lines: string[], cards: CardEntry[]): void {
   const sortedCards = [...cards].sort((a, b) => {
     const setCompare = a.card.setCode.localeCompare(b.card.setCode)
     if (setCompare !== 0) return setCompare

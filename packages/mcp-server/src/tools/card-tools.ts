@@ -1,26 +1,21 @@
 import {
   Storage,
-  type DeckCard,
-  type InclusionStatus,
   type OwnershipStatus,
   type ScryfallCard,
-  type DeckListName,
-  generateDeckCardId,
+  type CardSetName,
   searchCardByNameExact,
   searchCardByName,
   getCardBySetAndNumber,
   getCardById,
   searchCards,
   getOracleText,
-  INCLUSION_STATUS,
-  OWNERSHIP_STATUS,
-  ADDED_BY,
-  DECK_LIST,
+  CARD_SET,
   addCardToDeck,
   removeCardFromDeck,
   moveCard,
   updateCardInDeck,
   findCardAcrossLists,
+  makeCardEntry,
 } from '@mtg-deckbuilder/shared'
 import { getDeckOrThrow, fetchScryfallCard, createCardIdentifier, parseCardString } from './helpers.js'
 import type { ManageCardArgs, SearchCardsArgs } from './types.js'
@@ -34,26 +29,27 @@ function resolveCards(args: ManageCardArgs): string[] {
   throw new Error('Either "cards" or "name" must be provided')
 }
 
-function resolveTargetList(args: ManageCardArgs, sideboardSize: number): DeckListName {
+function resolveTargetList(args: ManageCardArgs, sideboardSize: number): CardSetName {
   const useSideboard = args.to_sideboard && sideboardSize > 0
-  if (useSideboard) return DECK_LIST.SIDEBOARD
-  if (args.to_alternates || (args.to_sideboard && sideboardSize === 0)) return DECK_LIST.ALTERNATES
-  return DECK_LIST.MAINBOARD
+  if (useSideboard) return CARD_SET.SIDEBOARD
+  if (args.to_alternates || (args.to_sideboard && sideboardSize === 0)) return CARD_SET.ALTERNATES
+  return CARD_SET.MAINBOARD
 }
 
-function resolveSourceList(args: ManageCardArgs): DeckListName {
-  if (args.from_sideboard) return DECK_LIST.SIDEBOARD
-  if (args.from_alternates) return DECK_LIST.ALTERNATES
-  return DECK_LIST.MAINBOARD
+function resolveSourceList(args: ManageCardArgs): CardSetName {
+  if (args.from_sideboard) return CARD_SET.SIDEBOARD
+  if (args.from_alternates) return CARD_SET.ALTERNATES
+  return CARD_SET.MAINBOARD
 }
 
-// Map user-facing list names (from MCP schema) to DeckListName constants
-function toListName(name: string): DeckListName {
+// Map user-facing list names (from MCP schema) to CardSetName constants
+function toListName(name: string): CardSetName {
   switch (name) {
-    case 'mainboard': return DECK_LIST.MAINBOARD
-    case 'alternates': return DECK_LIST.ALTERNATES
-    case 'sideboard': return DECK_LIST.SIDEBOARD
-    default: throw new Error(`Invalid list: "${name}". Valid lists are: mainboard, sideboard, alternates`)
+    case 'mainboard': return CARD_SET.MAINBOARD
+    case 'alternates': return CARD_SET.ALTERNATES
+    case 'sideboard': return CARD_SET.SIDEBOARD
+    case 'cut': return CARD_SET.CUT
+    default: throw new Error(`Invalid list: "${name}". Valid lists are: mainboard, sideboard, alternates, cut`)
   }
 }
 
@@ -85,18 +81,12 @@ export async function manageCard(storage: Storage, args: ManageCardArgs) {
         const cardIdentifier = createCardIdentifier(scryfallCard)
         const target = resolveTargetList(args, deck.format.sideboardSize)
 
-        const deckCard: DeckCard = {
-          id: generateDeckCardId(),
+        const deckCard = makeCardEntry({
           card: cardIdentifier,
           quantity,
-          inclusion: (args.status as InclusionStatus) || INCLUSION_STATUS.CONFIRMED,
-          ownership: (args.ownership as OwnershipStatus) || OWNERSHIP_STATUS.UNKNOWN,
-          roles: args.roles || [],
-          typeLine: scryfallCard.type_line,
-          isPinned: false,
-          addedAt: new Date().toISOString(),
-          addedBy: ADDED_BY.USER,
-        }
+          ownership: args.ownership as OwnershipStatus | undefined,
+          roles: args.roles,
+        })
 
         const result = addCardToDeck(deck, deckCard, target)
         deck = result.deck
@@ -148,9 +138,7 @@ export async function manageCard(storage: Storage, args: ManageCardArgs) {
           roles: args.roles,
           addRoles: args.add_roles,
           removeRoles: args.remove_roles,
-          inclusion: args.status as InclusionStatus | undefined,
           ownership: args.ownership as OwnershipStatus | undefined,
-          isPinned: args.pinned,
           notes: args.notes,
         })
         deck = result.deck
@@ -165,7 +153,7 @@ export async function manageCard(storage: Storage, args: ManageCardArgs) {
       if (!args.from || !args.to) throw new Error('from and to are required for move')
       const fromList = toListName(args.from)
       const toList = toListName(args.to)
-      if (toList === DECK_LIST.SIDEBOARD && deck.format.sideboardSize === 0) {
+      if (toList === CARD_SET.SIDEBOARD && deck.format.sideboardSize === 0) {
         throw new Error(`Cannot move cards to sideboard: ${deck.format.type} format has no sideboard`)
       }
       const cardNames = resolveCards(args)
@@ -173,7 +161,7 @@ export async function manageCard(storage: Storage, args: ManageCardArgs) {
       const allMerged: string[] = []
 
       for (const cardName of cardNames) {
-        const result = moveCard(deck, cardName, fromList, toList)
+        const result = moveCard(deck, cardName, fromList, toList, args.quantity)
         deck = result.deck
         allMoved.push(...result.meta.moved)
         allMerged.push(...result.meta.merged)

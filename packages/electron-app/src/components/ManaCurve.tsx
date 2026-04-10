@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
 import type { Deck, ScryfallCard } from '@/types'
 import type { CardFilter } from '@mtg-deckbuilder/shared'
-import { enrichCards, applyFilters, getCmcDistribution, countManaPips } from '@mtg-deckbuilder/shared'
+import { enrichCards, applyFilters, getCmcDistribution, countManaPips, getMainboard } from '@mtg-deckbuilder/shared'
 import { CardFilterBar } from '@/components/CardFilterBar'
 import { ManaSymbol } from '@/components/ManaCost'
 
@@ -33,8 +33,8 @@ export function ManaCurve({ deck, scryfallCache }: ManaCurveProps) {
   const [filters, setFilters] = useState<CardFilter[]>([])
 
   const confirmedCards = useMemo(
-    () => deck.cards.filter(c => c.inclusion === 'confirmed'),
-    [deck.cards]
+    () => getMainboard(deck),
+    [deck.cardSets]
   )
 
   const enriched = useMemo(

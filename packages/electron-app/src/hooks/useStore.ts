@@ -1,5 +1,6 @@
 import { create } from 'zustand'
-import type { Deck, Taxonomy, InterestList, Config, RoleDefinition, SetCollectionFile, PullListConfig } from '@/types'
+import type { Deck, Taxonomy, CardList, Config, RoleDefinition, SetCollectionFile, PullListConfig } from '@/types'
+import { getMainboard } from '@mtg-deckbuilder/shared'
 import type { AppState } from '@/stores/types'
 import { createDeckSlice } from '@/stores/deckSlice'
 import { createCardSlice } from '@/stores/cardSlice'
@@ -18,7 +19,7 @@ export const useStore = create<AppState>((set, get) => ({
   // Initial state
   decks: [],
   taxonomy: null,
-  interestList: null,
+  cardLists: [],
   config: null,
   globalRoles: [],
   setCollection: null,
@@ -36,10 +37,10 @@ export const useStore = create<AppState>((set, get) => ({
       set({ isLoading: true, error: null })
     }
     try {
-      const [decks, taxonomy, interestList, config, globalRoles, setCollection, pullListConfig] = await Promise.all([
+      const [decks, taxonomy, cardLists, config, globalRoles, setCollection, pullListConfig] = await Promise.all([
         window.electronAPI.listDecks(),
         window.electronAPI.getTaxonomy(),
-        window.electronAPI.getInterestList(),
+        window.electronAPI.listCardLists(),
         window.electronAPI.getConfig(),
         window.electronAPI.getGlobalRoles(),
         window.electronAPI.getSetCollection(),
@@ -48,7 +49,7 @@ export const useStore = create<AppState>((set, get) => ({
       set({
         decks: decks as Deck[],
         taxonomy: taxonomy as Taxonomy,
-        interestList: interestList as InterestList,
+        cardLists: cardLists as CardList[],
         config: config as Config,
         globalRoles: globalRoles as RoleDefinition[],
         setCollection: setCollection as SetCollectionFile,
@@ -120,26 +121,27 @@ export const useBuyList = (): BuyListItem[] => {
   const buyMap = new Map<string, BuyListItem>()
 
   for (const deck of decks) {
-    for (const card of deck.cards) {
+    for (const card of getMainboard(deck)) {
       if (card.ownership === 'need_to_buy') {
         const key = card.card.name.toLowerCase()
         const existing = buyMap.get(key)
+        const qty = card.quantity
 
         if (existing) {
-          existing.totalQuantity += card.quantity
+          existing.totalQuantity += qty
           existing.decks.push({
             deckId: deck.id,
             deckName: deck.name,
-            quantity: card.quantity
+            quantity: qty
           })
         } else {
           buyMap.set(key, {
             cardName: card.card.name,
-            totalQuantity: card.quantity,
+            totalQuantity: qty,
             decks: [{
               deckId: deck.id,
               deckName: deck.name,
-              quantity: card.quantity
+              quantity: qty
             }],
             scryfallId: card.card.scryfallId,
             setCode: card.card.setCode,

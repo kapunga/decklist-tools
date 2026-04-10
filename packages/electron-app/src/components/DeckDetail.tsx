@@ -19,9 +19,9 @@ import { NotesView } from '@/components/NotesView'
 import { RoleEditModal } from '@/components/RoleEditModal'
 import { ColorPips } from '@/components/ColorPips'
 import { PullListView } from '@/components/PullListView'
-import { getDeckColorIdentity, showColorlessPip } from '@mtg-deckbuilder/shared'
-import { getCardCount, getCardDisplayName, FORMAT_TYPE, DECK_LIST } from '@/types'
-import type { RoleDefinition, DeckListName } from '@/types'
+import { getDeckColorIdentity, showColorlessPip, getAlternates, getSideboard } from '@mtg-deckbuilder/shared'
+import { getCardCount, getCardDisplayName, FORMAT_TYPE, CARD_SET } from '@/types'
+import type { RoleDefinition, CardSetName } from '@/types'
 
 export function DeckDetail() {
   const deck = useSelectedDeck()
@@ -31,13 +31,13 @@ export function DeckDetail() {
 
   const [isEditingName, setIsEditingName] = useState(false)
   const [editedName, setEditedName] = useState('')
-  const [activeTab, setActiveTab] = useState<DeckListName>(DECK_LIST.MAINBOARD)
+  const [activeTab, setActiveTab] = useState<CardSetName>(CARD_SET.MAINBOARD)
   const [showRoleModal, setShowRoleModal] = useState(false)
   const [isCaching, setIsCaching] = useState(false)
   const [cacheResult, setCacheResult] = useState<{ success: boolean; cachedCards: number; cachedImages: number; errors: string[] } | null>(null)
 
   const handleTabChange = useCallback((value: string) => {
-    setActiveTab(value as DeckListName)
+    setActiveTab(value as CardSetName)
     clearSelection() // Clear selection when switching tabs
   }, [clearSelection])
 
@@ -244,15 +244,15 @@ export function DeckDetail() {
       <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col overflow-hidden">
         <div className="border-b px-4 flex-shrink-0">
           <TabsList>
-            <TabsTrigger value={DECK_LIST.MAINBOARD}>
+            <TabsTrigger value={CARD_SET.MAINBOARD}>
               Cards ({getCardCount(deck)})
             </TabsTrigger>
-            <TabsTrigger value={DECK_LIST.ALTERNATES}>
-              Alternates ({deck.alternates.length})
+            <TabsTrigger value={CARD_SET.ALTERNATES}>
+              Alternates ({getAlternates(deck).length})
             </TabsTrigger>
             {deck.format.sideboardSize > 0 && (
-              <TabsTrigger value={DECK_LIST.SIDEBOARD}>
-                Sideboard ({deck.sideboard.length})
+              <TabsTrigger value={CARD_SET.SIDEBOARD}>
+                Sideboard ({getSideboard(deck).length})
               </TabsTrigger>
             )}
             <TabsTrigger value="notes">
@@ -264,17 +264,17 @@ export function DeckDetail() {
         </div>
 
         <div className="flex-1 overflow-hidden">
-          <TabsContent value={DECK_LIST.MAINBOARD} className="m-0 h-full">
-            <DeckListView deck={deck} listType="cards" />
+          <TabsContent value={CARD_SET.MAINBOARD} className="m-0 h-full">
+            <DeckListView deck={deck} listType={CARD_SET.MAINBOARD} />
           </TabsContent>
 
-          <TabsContent value={DECK_LIST.ALTERNATES} className="m-0 h-full">
-            <DeckListView deck={deck} listType="alternates" />
+          <TabsContent value={CARD_SET.ALTERNATES} className="m-0 h-full">
+            <DeckListView deck={deck} listType={CARD_SET.ALTERNATES} />
           </TabsContent>
 
           {deck.format.sideboardSize > 0 && (
-            <TabsContent value={DECK_LIST.SIDEBOARD} className="m-0 h-full">
-              <DeckListView deck={deck} listType="sideboard" />
+            <TabsContent value={CARD_SET.SIDEBOARD} className="m-0 h-full">
+              <DeckListView deck={deck} listType={CARD_SET.SIDEBOARD} />
             </TabsContent>
           )}
 

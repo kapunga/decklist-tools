@@ -1,10 +1,10 @@
-import type { DeckCard, RoleDefinition, ScryfallCard } from '@mtg-deckbuilder/shared'
-import { getPrimaryType, getRoleById, isCardFullyPulled, getOracleText, getCardDisplayName, getCanonicalSuffix, OWNERSHIP_STATUS } from '@mtg-deckbuilder/shared'
+import type { CardEntry, RoleDefinition, ScryfallCard } from '@mtg-deckbuilder/shared'
+import { getPrimaryType, getRoleById, isCardFullyPulled, getOracleText, getCardDisplayName, getCanonicalSuffix, OWNERSHIP_STATUS, getTypeLine } from '@mtg-deckbuilder/shared'
 
 export type DetailLevel = 'summary' | 'compact' | 'full'
 
 export function formatCardLine(
-  card: DeckCard,
+  card: CardEntry,
   globalRoles: RoleDefinition[],
   customRoles: RoleDefinition[],
   scryfallCache?: Map<string, ScryfallCard>,
@@ -12,9 +12,9 @@ export function formatCardLine(
   roleLookup?: Map<string, RoleDefinition>
 ): string {
   const level = detail || 'summary'
-  const cached = scryfallCache && card.card.scryfallId
-    ? scryfallCache.get(card.card.scryfallId)
-    : undefined
+  const cache = scryfallCache || new Map<string, ScryfallCard>()
+  const cached = card.card.scryfallId ? cache.get(card.card.scryfallId) : undefined
+  const typeLine = getTypeLine(card, cache)
 
   const displayName = getCardDisplayName(card.card)
   const canonicalSuffix = getCanonicalSuffix(card.card)
@@ -24,11 +24,11 @@ export function formatCardLine(
     const setInfo = `${cached.set.toUpperCase()}#${cached.collector_number}`
     const mana = cached.mana_cost ? `${cached.mana_cost} ` : ''
     const pt = cached.power && cached.toughness ? ` ${cached.power}/${cached.toughness}` : ''
-    headerParts.push(`- ${card.quantity}x ${displayName}${canonicalSuffix} • ${setInfo} • ${cached.rarity} • ${mana}${card.typeLine || cached.type_line}${pt}`)
+    headerParts.push(`- ${card.quantity}x ${displayName}${canonicalSuffix} • ${setInfo} • ${cached.rarity} • ${mana}${typeLine ?? ''}${pt}`)
   } else if (level === 'compact' && cached) {
     const mana = cached.mana_cost ? `${cached.mana_cost} ` : ''
     const pt = cached.power && cached.toughness ? ` ${cached.power}/${cached.toughness}` : ''
-    headerParts.push(`- ${card.quantity}x ${displayName}${canonicalSuffix} • ${mana}${card.typeLine || cached.type_line}${pt}`)
+    headerParts.push(`- ${card.quantity}x ${displayName}${canonicalSuffix} • ${mana}${typeLine ?? ''}${pt}`)
   } else {
     const manaCost = cached?.mana_cost
     if (manaCost) {
@@ -36,8 +36,8 @@ export function formatCardLine(
     } else {
       headerParts.push(`- ${card.quantity}x ${displayName}${canonicalSuffix}`)
     }
-    if (card.typeLine) {
-      headerParts.push(`[${getPrimaryType(card.typeLine)}]`)
+    if (typeLine) {
+      headerParts.push(`[${getPrimaryType(typeLine)}]`)
     }
   }
 
@@ -55,10 +55,6 @@ export function formatCardLine(
     headerParts.push('[NEED TO BUY]')
   } else if (isCardFullyPulled(card)) {
     headerParts.push('[PULLED]')
-  }
-
-  if (card.isPinned) {
-    headerParts.push('[PINNED]')
   }
 
   const header = headerParts.join(' ')

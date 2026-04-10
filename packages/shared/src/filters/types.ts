@@ -1,8 +1,8 @@
-import type { DeckCard, ScryfallCard } from '../types/index.js'
+import type { CardEntry, ScryfallCard } from '../types/index.js'
 
-// Enriched card pairs a DeckCard with optional Scryfall data
+// Enriched card pairs a CardEntry with optional Scryfall data
 export interface EnrichedDeckCard {
-  deckCard: DeckCard
+  deckCard: CardEntry
   scryfallCard?: ScryfallCard
 }
 

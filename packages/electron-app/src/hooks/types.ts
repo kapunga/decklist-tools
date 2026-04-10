@@ -1,5 +1,5 @@
 import type { ParsedCard, DetectedFormat } from '@/lib/formats'
-import type { DeckCard, DeckListName, PullListItem as BasePullListItem, PullListGroup as BasePullListGroup } from '@/types'
+import type { CardEntry, CardSetName, PullListItem as BasePullListItem, PullListGroup as BasePullListGroup } from '@/types'
 
 export interface ImportProgress {
   current: number
@@ -7,8 +7,8 @@ export interface ImportProgress {
 }
 
 export interface ResolvedCard {
-  card: DeckCard
-  listType: DeckListName
+  card: CardEntry
+  listType: CardSetName
 }
 
 export interface UseImportCardsResult {
