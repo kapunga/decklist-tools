@@ -73,6 +73,13 @@ export const ADDED_BY = {
 } as const
 export type AddedBy = typeof ADDED_BY[keyof typeof ADDED_BY]
 
+export const CARD_SOURCE = {
+  USER: 'user',
+  IMPORT: 'import',
+  CLAUDE: 'claude',
+} as const
+export type CardSource = typeof CARD_SOURCE[keyof typeof CARD_SOURCE]
+
 export const FORMAT_TYPE = {
   COMMANDER: 'commander',
   STANDARD: 'standard',
@@ -97,6 +104,14 @@ export const DECK_LIST = {
   ALTERNATES: 'alternates',
 } as const
 export type DeckListName = typeof DECK_LIST[keyof typeof DECK_LIST]
+
+// Card set names — semantic names used as keys in CardSet[]
+export const CARD_SET = {
+  MAINBOARD: 'mainboard',
+  SIDEBOARD: 'sideboard',
+  ALTERNATES: 'alternates',
+} as const
+export type CardSetName = typeof CARD_SET[keyof typeof CARD_SET]
 
 // Role Definition - used for both global and deck-specific custom roles
 export interface RoleDefinition {
@@ -200,6 +215,31 @@ export function generateDeckCardId(): string {
   return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
 }
 
+// Unified Card Entry — a card in any collection (deck, list, etc.)
+export interface CardEntry {
+  id: string
+  card: CardIdentifier
+  typeLine?: string
+  notes?: string
+  addedAt: string
+  source?: CardSource
+  // Deck-context fields
+  quantity?: number
+  inclusion?: InclusionStatus
+  ownership?: OwnershipStatus
+  roles?: string[]
+  isPinned?: boolean
+  pulledPrintings?: PulledPrinting[]
+  // List-context fields
+  potentialDecks?: string[]
+}
+
+// Named group of card entries
+export interface CardSet {
+  name: string
+  entries: CardEntry[]
+}
+
 // Note Card Reference
 export interface NoteCardRef {
   cardName: string   // matches DeckCard.card.name
@@ -290,6 +330,19 @@ export interface InterestList {
   version: number
   updatedAt: string
   items: InterestItem[]
+}
+
+// Card List — generic named collection of cards (replaces InterestList)
+export const INTEREST_LIST_ID = '00000000-0000-4000-8000-000000000001'
+
+export interface CardList {
+  id: string
+  name: string
+  description?: string
+  version: number
+  createdAt: string
+  updatedAt: string
+  cardSets: CardSet[]
 }
 
 // Config
