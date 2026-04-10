@@ -1,9 +1,9 @@
 import fs from 'fs'
 import path from 'path'
 import os from 'os'
-import type { Deck, Taxonomy, InterestList, Config, RoleDefinition, SetCollectionFile, PullListConfig, CacheIndex, CacheEntryMeta, CacheStats, ScryfallCard } from '../types/index.js'
+import type { Deck, Taxonomy, InterestList, InterestItem, CardList, CardEntry, Config, RoleDefinition, SetCollectionFile, PullListConfig, CacheIndex, CacheEntryMeta, CacheStats, ScryfallCard } from '../types/index.js'
 import { DEFAULT_GLOBAL_ROLES } from '../constants/index.js'
-import { DEFAULT_PULL_LIST_CONFIG, isDoubleFacedCard } from '../types/index.js'
+import { DEFAULT_PULL_LIST_CONFIG, isDoubleFacedCard, INTEREST_LIST_ID, CARD_SET } from '../types/index.js'
 import { runMigrations } from '../migrations/index.js'
 import type { MigrationContext } from '../migrations/index.js'
 import type { GlobalRolesFile } from './types.js'
@@ -34,6 +34,7 @@ export function getStorageBasePath(): string {
 export class Storage {
   private baseDir: string
   private decksDir: string
+  private listsDir: string
   private cacheDir: string
   private imageCacheDir: string
   private cacheIndexPath: string
@@ -42,6 +43,7 @@ export class Storage {
   constructor(basePath?: string) {
     this.baseDir = basePath || getStorageBasePath()
     this.decksDir = path.join(this.baseDir, 'decks')
+    this.listsDir = path.join(this.baseDir, 'lists')
     this.cacheDir = path.join(this.baseDir, 'cache', 'scryfall')
     this.imageCacheDir = path.join(this.baseDir, 'cache', 'images')
     this.cacheIndexPath = path.join(this.cacheDir, 'index.json')
@@ -50,11 +52,15 @@ export class Storage {
     // Ensure directories exist
     this.ensureDir(this.baseDir)
     this.ensureDir(this.decksDir)
+    this.ensureDir(this.listsDir)
     this.ensureDir(this.cacheDir)
     this.ensureDir(this.imageCacheDir)
 
     // Initialize global roles file if it doesn't exist
     this.ensureGlobalRolesFile()
+
+    // Migrate legacy interest-list.json to lists/{INTEREST_LIST_ID}.json if needed
+    this.migrateInterestListIfNeeded()
   }
 
   private getMigrationContext(): MigrationContext {
@@ -190,21 +196,162 @@ export class Storage {
     this.writeJson(path.join(this.baseDir, 'taxonomy.json'), taxonomy)
   }
 
-  // Interest List
+  // --- Card Lists (generic named collections) ---
+
+  private cardListPath(id: string): string {
+    return path.join(this.listsDir, `${id}.json`)
+  }
+
+  /** Create an empty CardList for the well-known interest list. */
+  private createEmptyInterestList(): CardList {
+    const now = new Date().toISOString()
+    return {
+      id: INTEREST_LIST_ID,
+      name: 'Interest List',
+      version: 1,
+      createdAt: now,
+      updatedAt: now,
+      cardSets: [{ name: CARD_SET.MAINBOARD, entries: [] }],
+    }
+  }
+
+  /**
+   * Migrate legacy interest-list.json to lists/{INTEREST_LIST_ID}.json.
+   * Runs on Storage construction; safe if either file is already in the new state.
+   */
+  private migrateInterestListIfNeeded(): void {
+    const legacyPath = path.join(this.baseDir, 'interest-list.json')
+    const newPath = this.cardListPath(INTEREST_LIST_ID)
+
+    if (!fs.existsSync(legacyPath)) return
+    if (fs.existsSync(newPath)) return
+
+    try {
+      const legacy = this.readJson<InterestList>(legacyPath)
+      if (!legacy) return
+
+      const now = new Date().toISOString()
+      const entries: CardEntry[] = (legacy.items ?? []).map((item: InterestItem) => ({
+        id: item.id,
+        card: item.card,
+        notes: item.notes,
+        potentialDecks: item.potentialDecks,
+        addedAt: item.addedAt,
+        // Legacy InterestItem.source was free-form string; map to CardSource union where possible.
+        source: (item.source === 'import' || item.source === 'claude') ? item.source : 'user',
+      }))
+
+      const cardList: CardList = {
+        id: INTEREST_LIST_ID,
+        name: 'Interest List',
+        version: legacy.version ?? 1,
+        createdAt: now,
+        updatedAt: legacy.updatedAt ?? now,
+        cardSets: [{ name: CARD_SET.MAINBOARD, entries }],
+      }
+
+      this.writeJson(newPath, cardList)
+      fs.renameSync(legacyPath, `${legacyPath}.bak`)
+    } catch (error) {
+      console.error('Failed to migrate interest-list.json:', error)
+    }
+  }
+
+  listCardLists(): CardList[] {
+    try {
+      const files = fs.readdirSync(this.listsDir).filter(f => f.endsWith('.json'))
+      const lists: CardList[] = []
+      for (const f of files) {
+        const list = this.readJson<CardList>(path.join(this.listsDir, f))
+        if (list) lists.push(list)
+      }
+      return lists
+    } catch {
+      return []
+    }
+  }
+
+  getCardList(id: string): CardList | null {
+    validateUUID(id, 'card list ID')
+    return this.readJson<CardList>(this.cardListPath(id))
+  }
+
+  saveCardList(list: CardList): void {
+    validateUUID(list.id, 'card list ID')
+    // Optimistic locking: verify no concurrent modification
+    const filePath = this.cardListPath(list.id)
+    if (fs.existsSync(filePath)) {
+      const onDisk = this.readJson<{ version?: number }>(filePath)
+      const diskVersion = onDisk?.version ?? 0
+      const listVersion = list.version || 0
+      if (diskVersion !== listVersion) {
+        throw new ConcurrentModificationError(list.id, listVersion, diskVersion)
+      }
+    }
+
+    list.version = (list.version || 0) + 1
+    list.updatedAt = new Date().toISOString()
+    this.writeJson(filePath, list)
+  }
+
+  deleteCardList(id: string): boolean {
+    validateUUID(id, 'card list ID')
+    const filePath = this.cardListPath(id)
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath)
+      return true
+    }
+    return false
+  }
+
+  // --- Legacy Interest List API (shims over CardList) ---
+  // Kept for backwards compatibility during migration. Translates between
+  // the old flat InterestList shape and the new CardList/CardSet structure.
+
   getInterestList(): InterestList {
-    const list = this.readJson<InterestList>(path.join(this.baseDir, 'interest-list.json'))
-    if (list) return list
+    let cardList = this.getCardList(INTEREST_LIST_ID)
+    if (!cardList) {
+      cardList = this.createEmptyInterestList()
+    }
+
+    const entries = cardList.cardSets.flatMap(s => s.entries)
+    const items: InterestItem[] = entries.map(e => ({
+      id: e.id,
+      card: e.card,
+      notes: e.notes,
+      potentialDecks: e.potentialDecks,
+      addedAt: e.addedAt,
+      source: e.source,
+    }))
 
     return {
-      version: 1,
-      updatedAt: new Date().toISOString(),
-      items: []
+      version: cardList.version,
+      updatedAt: cardList.updatedAt,
+      items,
     }
   }
 
   saveInterestList(list: InterestList): void {
-    list.updatedAt = new Date().toISOString()
-    this.writeJson(path.join(this.baseDir, 'interest-list.json'), list)
+    // Read the existing CardList (or create fresh) and rewrite the first set's entries.
+    const existing = this.getCardList(INTEREST_LIST_ID) ?? this.createEmptyInterestList()
+
+    const entries: CardEntry[] = (list.items ?? []).map(item => ({
+      id: item.id,
+      card: item.card,
+      notes: item.notes,
+      potentialDecks: item.potentialDecks,
+      addedAt: item.addedAt,
+      source: (item.source === 'import' || item.source === 'claude') ? item.source : 'user',
+    }))
+
+    const setName = existing.cardSets[0]?.name ?? CARD_SET.MAINBOARD
+    const updated: CardList = {
+      ...existing,
+      cardSets: [{ name: setName, entries }],
+    }
+
+    // Note: saveCardList does its own version check + bump
+    this.saveCardList(updated)
   }
 
   // Config
