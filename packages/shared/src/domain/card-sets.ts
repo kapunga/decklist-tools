@@ -80,19 +80,20 @@ export function getNonCutEntries(deck: Deck): CardEntry[] {
 // scatter `?? defaultValue` coalescing across the codebase.
 
 /**
- * Get the type line for an entry. Prefers the entry's stored `typeLine` (for
- * legacy data still carrying the field), then falls back to the Scryfall cache
- * by scryfallId. Returns `undefined` only when neither source has it.
+ * Get the type line for an entry. Prefers the Scryfall cache (which is the
+ * canonical source for card data), then falls back to the entry's stored
+ * `typeLine` for entries created before the cache was populated. Returns
+ * `undefined` only when neither source has it.
  *
- * Once migration 004 strips the stored `typeLine` field, this accessor's first
- * branch becomes dead and can be removed.
+ * Once migration 004 strips the stored `typeLine` field, the fallback branch
+ * becomes dead and can be removed.
  */
 export function getTypeLine(entry: CardEntry, cache: Map<string, ScryfallCard>): string | undefined {
-  if (entry.typeLine) return entry.typeLine
   if (entry.card.scryfallId) {
-    return cache.get(entry.card.scryfallId)?.type_line
+    const cached = cache.get(entry.card.scryfallId)?.type_line
+    if (cached) return cached
   }
-  return undefined
+  return entry.typeLine
 }
 
 /** Get the pulled printings for an entry, defaulting to an empty array. */

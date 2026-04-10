@@ -17,7 +17,7 @@ import type { CardEntry, ScryfallCard, Deck, CardSetName } from '@/types'
 import { getCardLimit, isCardFullyPulled, getCardDisplayName, getCanonicalSuffix, OWNERSHIP_STATUS, CARD_SOURCE, CARD_SET } from '@/types'
 import { getPrimaryType, CARD_TYPE_SORT_ORDER } from '@/lib/constants'
 import type { CardFilter } from '@mtg-deckbuilder/shared'
-import { enrichCards, applyFilters, getMainboard, getCardSetEntries } from '@mtg-deckbuilder/shared'
+import { enrichCards, applyFilters, getMainboard, getCardSetEntries, getTypeLine } from '@mtg-deckbuilder/shared'
 
 interface DeckListViewProps {
   deck: Deck
@@ -89,13 +89,14 @@ export function DeckListView({ deck, listType }: DeckListViewProps) {
         groups['Commander'].push(card)
       } else {
         // Group by card type
-        const primaryType = card.typeLine ? getPrimaryType(card.typeLine) : 'Other'
+        const typeLine = getTypeLine(card, scryfallCache)
+        const primaryType = typeLine ? getPrimaryType(typeLine) : 'Other'
         if (!groups[primaryType]) groups[primaryType] = []
         groups[primaryType].push(card)
       }
     }
     return groups
-  }, [filteredCards])
+  }, [filteredCards, scryfallCache])
 
   // Sort groups by type order, with Commander first
   const sortedGroups = useMemo(() => {

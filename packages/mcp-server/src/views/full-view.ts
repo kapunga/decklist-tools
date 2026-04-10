@@ -1,5 +1,5 @@
 import type { Deck, CardEntry, RoleDefinition, ScryfallCard } from '@mtg-deckbuilder/shared'
-import { getPrimaryType, getCardCount, getCardDisplayName, getCanonicalSuffix, buildRoleLookup, CARD_TYPE_ORDER, isCardFullyPulled, getMainboard, getSideboard, getAlternates } from '@mtg-deckbuilder/shared'
+import { getPrimaryType, getCardCount, getCardDisplayName, getCanonicalSuffix, buildRoleLookup, CARD_TYPE_ORDER, isCardFullyPulled, getMainboard, getSideboard, getAlternates, getTypeLine } from '@mtg-deckbuilder/shared'
 import { formatCardLine, type DetailLevel } from './formatters.js'
 
 export function renderFullView(
@@ -39,7 +39,7 @@ export function renderFullView(
   if (groupBy === 'role') {
     renderByRole(lines, mainboardCards, roleLookup)
   } else if (groupBy === 'type') {
-    renderByType(lines, mainboardCards)
+    renderByType(lines, mainboardCards, scryfallCache)
   } else if (sortBy === 'set') {
     renderChecklist(lines, mainboardCards)
   } else {
@@ -121,11 +121,12 @@ function renderByRole(
   }
 }
 
-function renderByType(lines: string[], cards: CardEntry[]): void {
+function renderByType(lines: string[], cards: CardEntry[], scryfallCache?: Map<string, ScryfallCard>): void {
+  const cache = scryfallCache || new Map<string, ScryfallCard>()
   const byType = new Map<string, CardEntry[]>()
 
   for (const card of cards) {
-    const type = getPrimaryType(card.typeLine || 'Other')
+    const type = getPrimaryType(getTypeLine(card, cache) || 'Other')
     if (!byType.has(type)) {
       byType.set(type, [])
     }

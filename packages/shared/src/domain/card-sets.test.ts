@@ -141,18 +141,18 @@ describe('mapAllCardSets', () => {
 })
 
 describe('getTypeLine', () => {
-  it('returns the entry-stored typeLine when present', () => {
-    const entry = makeEntry('Sol Ring', { typeLine: 'Artifact' })
-    expect(getTypeLine(entry, new Map())).toBe('Artifact')
-  })
-
-  it('falls back to the Scryfall cache when typeLine is absent', () => {
+  it('returns the cached type line when the cache has it', () => {
     const entry = makeEntry('Sol Ring', {
       card: { name: 'Sol Ring', setCode: 'lea', collectorNumber: '270', scryfallId: 'sf-1' },
     })
     const cache = new Map<string, ScryfallCard>()
     cache.set('sf-1', { id: 'sf-1', name: 'Sol Ring', type_line: 'Artifact' } as ScryfallCard)
     expect(getTypeLine(entry, cache)).toBe('Artifact')
+  })
+
+  it('falls back to the entry-stored typeLine when cache is cold', () => {
+    const entry = makeEntry('Sol Ring', { typeLine: 'Artifact' })
+    expect(getTypeLine(entry, new Map())).toBe('Artifact')
   })
 
   it('returns undefined when neither stored nor cached', () => {
@@ -167,14 +167,14 @@ describe('getTypeLine', () => {
     expect(getTypeLine(entry, new Map())).toBeUndefined()
   })
 
-  it('prefers stored typeLine over cached value (stale data)', () => {
+  it('prefers cached value over stored typeLine (cache is fresher)', () => {
     const entry = makeEntry('Sol Ring', {
-      typeLine: 'Stored Type',
+      typeLine: 'Stale Type',
       card: { name: 'Sol Ring', setCode: 'lea', collectorNumber: '270', scryfallId: 'sf-1' },
     })
     const cache = new Map<string, ScryfallCard>()
-    cache.set('sf-1', { id: 'sf-1', name: 'Sol Ring', type_line: 'Cached Type' } as ScryfallCard)
-    expect(getTypeLine(entry, cache)).toBe('Stored Type')
+    cache.set('sf-1', { id: 'sf-1', name: 'Sol Ring', type_line: 'Fresh Type' } as ScryfallCard)
+    expect(getTypeLine(entry, cache)).toBe('Fresh Type')
   })
 })
 

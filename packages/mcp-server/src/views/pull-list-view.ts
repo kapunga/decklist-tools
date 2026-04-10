@@ -1,5 +1,5 @@
 import type { Deck, CardEntry, SetCollectionFile, ScryfallCard, CollectionLevel, PullListItem, PullListGroup } from '@mtg-deckbuilder/shared'
-import { getTotalPulledQuantity, getCardDisplayName, COLLECTION_LEVEL_RARITIES, isBasicLand, OWNERSHIP_STATUS, CARD_SOURCE, getMainboard, getSideboard, getAlternates, getPulledPrintings } from '@mtg-deckbuilder/shared'
+import { getTotalPulledQuantity, getCardDisplayName, COLLECTION_LEVEL_RARITIES, isBasicLand, OWNERSHIP_STATUS, CARD_SOURCE, getMainboard, getSideboard, getAlternates, getPulledPrintings, getTypeLine } from '@mtg-deckbuilder/shared'
 
 // Rarity order for sorting
 const RARITY_ORDER: Record<string, number> = {
@@ -108,7 +108,7 @@ export function renderPullListView(
           setName: setNameMap.get(deckCard.card.setCode.toLowerCase()) || deckCard.card.setCode.toUpperCase(),
           collectorNumber: deckCard.card.collectorNumber,
           rarity: 'unknown',
-          typeLine: deckCard.typeLine || '',
+          typeLine: getTypeLine(deckCard, scryfallCache) || '',
           manaCost: '',
           cmc: 0,
           quantityNeeded: deckCardQty,

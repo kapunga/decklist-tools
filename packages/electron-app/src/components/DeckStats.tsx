@@ -100,6 +100,7 @@ export function DeckStats({ deck }: DeckStatsProps) {
       <ConsistencyMatrix
         deck={deck}
         confirmedCards={confirmedCards}
+        scryfallCache={scryfallCache}
         byRole={byRole}
         selectedRoles={matrixRoles}
         onToggleRole={role =>
