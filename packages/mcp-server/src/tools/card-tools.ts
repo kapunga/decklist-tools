@@ -173,7 +173,7 @@ export async function manageCard(storage: Storage, args: ManageCardArgs) {
       const allMerged: string[] = []
 
       for (const cardName of cardNames) {
-        const result = moveCard(deck, cardName, fromList, toList)
+        const result = moveCard(deck, cardName, fromList, toList, args.quantity)
         deck = result.deck
         allMoved.push(...result.meta.moved)
         allMerged.push(...result.meta.merged)

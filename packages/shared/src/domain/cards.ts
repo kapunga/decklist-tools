@@ -1,5 +1,5 @@
 import type { CardEntry, CardSetName, Deck, InclusionStatus, OwnershipStatus } from '../types/index.js'
-import { INCLUSION_STATUS } from '../types/index.js'
+import { INCLUSION_STATUS, generateDeckCardId } from '../types/index.js'
 import { findCardByName, findCardIndexByName } from '../utils/card-utils.js'
 import { getCardSetEntries, withDeckCardSet, getAllDeckEntries } from './card-sets.js'
 import type { OpResult, AddCardMeta, RemoveCardMeta, MoveCardMeta, UpdateCardMeta } from './types.js'
@@ -91,14 +91,26 @@ export function removeCardFromDeck(
 }
 
 /**
- * Move a card from one card set to another. If the card already exists in the
- * target set, merges (quantity + roles). Otherwise moves the entry.
+ * Move copies of a card from one card set to another. If the target set already
+ * contains the card, quantities and roles are merged (via `mergeCardIntoList`).
+ *
+ * Quantity rules:
+ * - If `quantity` is omitted, the source entry must have exactly 1 copy; otherwise
+ *   throws. This prevents accidental bulk moves where a caller meant to cut a single
+ *   card but moves an entire stack (e.g. "cut 1 Island" vs. "cut all 15 Islands").
+ * - If `quantity` is specified, it must be a positive integer no larger than the
+ *   source entry's quantity.
+ * - When `quantity` equals the source quantity, the full entry moves and its UUID
+ *   is preserved (conceptually "same entry, different set").
+ * - When `quantity` is less, the source is decremented and a new entry with a
+ *   fresh UUID is created on the target side (a split).
  */
 export function moveCard(
   deck: Deck,
   cardName: string,
   from: CardSetName,
-  to: CardSetName
+  to: CardSetName,
+  quantity?: number
 ): OpResult<MoveCardMeta> {
   const fromList = getCardSetEntries(deck.cardSets, from)
   const index = findCardIndexByName(fromList, cardName)
@@ -108,9 +120,51 @@ export function moveCard(
   }
 
   const card = fromList[index]
-  const newFromList = fromList.filter((_, i) => i !== index)
+  const currentQty = card.quantity ?? 1
+
+  let moveQty: number
+  if (quantity === undefined) {
+    if (currentQty > 1) {
+      throw new Error(
+        `Must specify quantity: ${cardName} has ${currentQty} copies in ${from}`
+      )
+    }
+    moveQty = currentQty
+  } else {
+    if (!Number.isInteger(quantity) || quantity <= 0) {
+      throw new Error(
+        `Quantity must be a positive integer: got ${quantity} for ${cardName}`
+      )
+    }
+    if (quantity > currentQty) {
+      throw new Error(
+        `Cannot move ${quantity} copies of ${cardName}: only ${currentQty} available in ${from}`
+      )
+    }
+    moveQty = quantity
+  }
+
+  const isFullMove = moveQty >= currentQty
+
+  let newFromList: CardEntry[]
+  let movedEntry: CardEntry
+
+  if (isFullMove) {
+    newFromList = fromList.filter((_, i) => i !== index)
+    movedEntry = card
+  } else {
+    const decrementedSource = { ...card, quantity: currentQty - moveQty }
+    newFromList = [...fromList]
+    newFromList[index] = decrementedSource
+    movedEntry = {
+      ...card,
+      id: generateDeckCardId(),
+      quantity: moveQty,
+    }
+  }
+
   const toList = getCardSetEntries(deck.cardSets, to)
-  const { list: newToList, merged } = mergeCardIntoList(toList, card)
+  const { list: newToList, merged } = mergeCardIntoList(toList, movedEntry)
 
   let newDeck = withDeckCardSet(deck, from, newFromList)
   newDeck = withDeckCardSet(newDeck, to, newToList)

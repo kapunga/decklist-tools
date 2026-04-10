@@ -47,7 +47,7 @@ export interface CardSlice {
   addCardToDeck: (deckId: string, card: CardEntry, target?: CardSetName) => Promise<void>
   removeCardFromDeck: (deckId: string, cardName: string, target?: CardSetName) => Promise<void>
   updateCardInDeck: (deckId: string, cardName: string, updates: Partial<CardEntry>) => Promise<void>
-  moveCard: (deckId: string, cardName: string, from: CardSetName, to: CardSetName) => Promise<void>
+  moveCard: (deckId: string, cardName: string, from: CardSetName, to: CardSetName, quantity?: number) => Promise<void>
 }
 
 export interface CommanderSlice {

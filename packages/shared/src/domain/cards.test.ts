@@ -159,7 +159,7 @@ describe('removeCardFromDeck', () => {
 })
 
 describe('moveCard', () => {
-  it('moves card between lists', () => {
+  it('moves a singleton card with no quantity argument', () => {
     const deck = makeDeck({
       mainboard: [makeEntry('Sol Ring')],
       format: { type: FORMAT_TYPE.STANDARD, deckSize: 60, sideboardSize: 15, cardLimit: 4, unlimitedCards: [] },
@@ -169,6 +169,13 @@ describe('moveCard', () => {
     expect(getSideboard(result.deck)).toHaveLength(1)
     expect(result.meta.moved).toEqual(['Sol Ring'])
     expect(result.meta.merged).toEqual([])
+  })
+
+  it('preserves the source entry UUID on a full move', () => {
+    const deck = makeDeck({ mainboard: [makeEntry('Sol Ring')] })
+    const originalId = getMainboard(deck)[0].id
+    const result = moveCard(deck, 'Sol Ring', CARD_SET.MAINBOARD, CARD_SET.SIDEBOARD)
+    expect(getSideboard(result.deck)[0].id).toBe(originalId)
   })
 
   it('merges when target has same card', () => {
@@ -186,6 +193,75 @@ describe('moveCard', () => {
   it('throws when card not in source', () => {
     const deck = makeDeck()
     expect(() => moveCard(deck, 'Nope', CARD_SET.MAINBOARD, CARD_SET.ALTERNATES)).toThrow('Card not found')
+  })
+
+  it('throws when quantity is omitted and source has multiple copies', () => {
+    const deck = makeDeck({ mainboard: [makeEntry('Island', { quantity: 15 })] })
+    expect(() => moveCard(deck, 'Island', CARD_SET.MAINBOARD, CARD_SET.ALTERNATES))
+      .toThrow(/Must specify quantity.*Island.*15 copies/)
+  })
+
+  it('moves the whole stack when explicit quantity matches source quantity', () => {
+    const deck = makeDeck({ mainboard: [makeEntry('Island', { quantity: 15 })] })
+    const originalId = getMainboard(deck)[0].id
+    const result = moveCard(deck, 'Island', CARD_SET.MAINBOARD, CARD_SET.ALTERNATES, 15)
+    expect(getMainboard(result.deck)).toHaveLength(0)
+    expect(getAlternates(result.deck)).toHaveLength(1)
+    expect(getAlternates(result.deck)[0].quantity).toBe(15)
+    expect(getAlternates(result.deck)[0].id).toBe(originalId)
+  })
+
+  it('splits the entry on a partial move, leaving the source decremented', () => {
+    const deck = makeDeck({ mainboard: [makeEntry('Island', { quantity: 15, roles: ['mana-fixer'] })] })
+    const result = moveCard(deck, 'Island', CARD_SET.MAINBOARD, CARD_SET.ALTERNATES, 3)
+    expect(getMainboard(result.deck)).toHaveLength(1)
+    expect(getMainboard(result.deck)[0].quantity).toBe(12)
+    expect(getAlternates(result.deck)).toHaveLength(1)
+    expect(getAlternates(result.deck)[0].quantity).toBe(3)
+    expect(getAlternates(result.deck)[0].roles).toEqual(['mana-fixer'])
+  })
+
+  it('assigns a new UUID to the target entry on a partial move', () => {
+    const deck = makeDeck({ mainboard: [makeEntry('Island', { quantity: 15 })] })
+    const originalId = getMainboard(deck)[0].id
+    const result = moveCard(deck, 'Island', CARD_SET.MAINBOARD, CARD_SET.ALTERNATES, 3)
+    expect(getMainboard(result.deck)[0].id).toBe(originalId)
+    expect(getAlternates(result.deck)[0].id).not.toBe(originalId)
+  })
+
+  it('throws when explicit quantity exceeds source quantity', () => {
+    const deck = makeDeck({ mainboard: [makeEntry('Island', { quantity: 3 })] })
+    expect(() => moveCard(deck, 'Island', CARD_SET.MAINBOARD, CARD_SET.ALTERNATES, 5))
+      .toThrow(/Cannot move 5.*only 3 available/)
+  })
+
+  it('throws on zero or negative quantity', () => {
+    const deck = makeDeck({ mainboard: [makeEntry('Island', { quantity: 3 })] })
+    expect(() => moveCard(deck, 'Island', CARD_SET.MAINBOARD, CARD_SET.ALTERNATES, 0))
+      .toThrow(/positive integer/)
+    expect(() => moveCard(deck, 'Island', CARD_SET.MAINBOARD, CARD_SET.ALTERNATES, -1))
+      .toThrow(/positive integer/)
+  })
+
+  it('merges a partial move into an existing target entry', () => {
+    const deck = makeDeck({
+      mainboard: [makeEntry('Island', { quantity: 10 })],
+      alternates: [makeEntry('Island', { quantity: 2 })],
+    })
+    const result = moveCard(deck, 'Island', CARD_SET.MAINBOARD, CARD_SET.ALTERNATES, 4)
+    expect(getMainboard(result.deck)[0].quantity).toBe(6)
+    expect(getAlternates(result.deck)).toHaveLength(1)
+    expect(getAlternates(result.deck)[0].quantity).toBe(6)
+  })
+
+  it('supports moving a singleton into the new cut set', () => {
+    const deck = makeDeck({ mainboard: [makeEntry('Grave Pact', { notes: 'too slow' })] })
+    const result = moveCard(deck, 'Grave Pact', CARD_SET.MAINBOARD, CARD_SET.CUT)
+    expect(getMainboard(result.deck)).toHaveLength(0)
+    const cut = result.deck.cardSets.find(s => s.name === CARD_SET.CUT)?.entries ?? []
+    expect(cut).toHaveLength(1)
+    expect(cut[0].card.name).toBe('Grave Pact')
+    expect(cut[0].notes).toBe('too slow')
   })
 })
 

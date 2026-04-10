@@ -42,12 +42,12 @@ export const createCardSlice: SliceCreator<CardSlice> = (_set, get) => ({
     await get().updateDeck(updatedDeck)
   },
 
-  moveCard: async (deckId, cardName, from, to) => {
+  moveCard: async (deckId, cardName, from, to, quantity) => {
     const deck = get().decks.find(d => d.id === deckId)
     if (!deck) return
 
     try {
-      const result = domainMoveCard(deck, cardName, from, to)
+      const result = domainMoveCard(deck, cardName, from, to, quantity)
       await get().updateDeck(result.deck)
     } catch {
       // Silently fail in UI (card not found, etc.)

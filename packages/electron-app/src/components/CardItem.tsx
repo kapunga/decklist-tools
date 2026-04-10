@@ -96,7 +96,7 @@ export function CardItem({ card, deckId, listType }: CardItemProps) {
 
   const handleMove = async (to: CardSetName) => {
     if (to !== listType) {
-      await moveCard(deckId, card.card.name, listType, to)
+      await moveCard(deckId, card.card.name, listType, to, card.quantity)
     }
   }
 
