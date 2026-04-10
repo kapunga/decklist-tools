@@ -1,5 +1,6 @@
-import type { Deck, DeckCard } from '../types/index.js'
+import type { Deck, CardEntry } from '../types/index.js'
 import { INCLUSION_STATUS } from '../types/index.js'
+import { getMainboard, getAlternates, getSideboard } from '../domain/card-sets.js'
 import type { ParsedCard, LineParserConfig, ParserSection } from './types.js'
 import { PARSER_SECTION } from './types.js'
 
@@ -55,13 +56,17 @@ export function parseLinesWithSections(text: string, config: LineParserConfig): 
   return cards
 }
 
-export function getConfirmedCards(deck: Deck): DeckCard[] {
-  return deck.cards.filter(c => c.inclusion === INCLUSION_STATUS.CONFIRMED)
+export function getConfirmedCards(deck: Deck): CardEntry[] {
+  return getMainboard(deck).filter(c => c.inclusion === INCLUSION_STATUS.CONFIRMED)
 }
 
-export function getMaybeboardCards(deck: Deck): DeckCard[] {
+export function getMaybeboardCards(deck: Deck): CardEntry[] {
   return [
-    ...deck.cards.filter(c => c.inclusion === INCLUSION_STATUS.CONSIDERING),
-    ...deck.alternates
+    ...getMainboard(deck).filter(c => c.inclusion === INCLUSION_STATUS.CONSIDERING),
+    ...getAlternates(deck),
   ]
+}
+
+export function getSideboardCards(deck: Deck): CardEntry[] {
+  return getSideboard(deck)
 }

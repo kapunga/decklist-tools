@@ -4,6 +4,7 @@ import path from 'path'
 import os from 'os'
 import { Storage } from './index.js'
 import type { Deck, InterestList, Config } from '../types/index.js'
+import { CARD_SET } from '../types/index.js'
 
 function makeDeck(overrides: Partial<Deck> = {}): Deck {
   return {
@@ -19,9 +20,11 @@ function makeDeck(overrides: Partial<Deck> = {}): Deck {
     createdAt: '2024-01-01T00:00:00.000Z',
     updatedAt: '2024-01-01T00:00:00.000Z',
     version: 1,
-    cards: [],
-    alternates: [],
-    sideboard: [],
+    cardSets: [
+      { name: CARD_SET.MAINBOARD, entries: [] },
+      { name: CARD_SET.SIDEBOARD, entries: [] },
+      { name: CARD_SET.ALTERNATES, entries: [] },
+    ],
     commanders: [],
     customRoles: [],
     notes: [],

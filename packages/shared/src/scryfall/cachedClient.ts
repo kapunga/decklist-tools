@@ -1,6 +1,7 @@
 import type { Storage } from '../storage/index.js'
 import type { ScryfallCard, Deck, PreCacheResult } from '../types/index.js'
 import { isDoubleFacedCard } from '../types/index.js'
+import { getAllDeckEntries } from '../domain/card-sets.js'
 import {
   searchCardByName,
   searchCardByNameExact,
@@ -138,11 +139,7 @@ export class CachedScryfallClient {
     }
 
     // Collect all cards from the deck
-    const allCards = [
-      ...deck.cards,
-      ...deck.alternates,
-      ...deck.sideboard
-    ]
+    const allCards = getAllDeckEntries(deck)
 
     // Also include commanders
     const commanderIdentifiers = deck.commanders || []

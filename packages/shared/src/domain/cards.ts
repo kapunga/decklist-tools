@@ -1,28 +1,8 @@
-import type { Deck, DeckCard, DeckListName } from '../types/index.js'
-import { DECK_LIST, INCLUSION_STATUS } from '../types/index.js'
+import type { CardEntry, CardSetName, Deck, InclusionStatus, OwnershipStatus } from '../types/index.js'
+import { INCLUSION_STATUS } from '../types/index.js'
 import { findCardByName, findCardIndexByName } from '../utils/card-utils.js'
-import type { InclusionStatus, OwnershipStatus } from '../types/index.js'
+import { getCardSetEntries, withDeckCardSet, getAllDeckEntries } from './card-sets.js'
 import type { OpResult, AddCardMeta, RemoveCardMeta, MoveCardMeta, UpdateCardMeta } from './types.js'
-
-// --- Helpers ---
-
-/** Get the card array for a given list name from a deck. */
-function getList(deck: Deck, listName: DeckListName): DeckCard[] {
-  switch (listName) {
-    case DECK_LIST.MAINBOARD: return deck.cards
-    case DECK_LIST.SIDEBOARD: return deck.sideboard
-    case DECK_LIST.ALTERNATES: return deck.alternates
-  }
-}
-
-/** Return a new deck with the specified list replaced. */
-function withList(deck: Deck, listName: DeckListName, list: DeckCard[]): Deck {
-  switch (listName) {
-    case DECK_LIST.MAINBOARD: return { ...deck, cards: list }
-    case DECK_LIST.SIDEBOARD: return { ...deck, sideboard: list }
-    case DECK_LIST.ALTERNATES: return { ...deck, alternates: list }
-  }
-}
 
 // --- Core Operations ---
 
@@ -31,7 +11,7 @@ function withList(deck: Deck, listName: DeckListName, list: DeckCard[]): Deck {
  * increments quantity and unions roles. Otherwise appends.
  * Returns a new array — does not mutate the input.
  */
-export function mergeCardIntoList(list: DeckCard[], card: DeckCard): { list: DeckCard[]; merged: boolean } {
+export function mergeCardIntoList(list: CardEntry[], card: CardEntry): { list: CardEntry[]; merged: boolean } {
   const existingIndex = findCardIndexByName(list, card.card.name)
 
   if (existingIndex >= 0) {
@@ -40,12 +20,12 @@ export function mergeCardIntoList(list: DeckCard[], card: DeckCard): { list: Dec
     const inclusion = card.inclusion === INCLUSION_STATUS.CONFIRMED
       ? INCLUSION_STATUS.CONFIRMED
       : existing.inclusion
-    const mergedCard: DeckCard = {
+    const mergedCard: CardEntry = {
       ...existing,
-      quantity: existing.quantity + card.quantity,
+      quantity: (existing.quantity ?? 0) + (card.quantity ?? 0),
       inclusion,
-      roles: [...new Set([...existing.roles, ...card.roles])],
-      isPinned: existing.isPinned || card.isPinned,
+      roles: [...new Set([...(existing.roles ?? []), ...(card.roles ?? [])])],
+      isPinned: (existing.isPinned ?? false) || (card.isPinned ?? false),
       notes: existing.notes && card.notes && existing.notes !== card.notes
         ? `${existing.notes}\n${card.notes}`
         : card.notes || existing.notes,
@@ -55,34 +35,34 @@ export function mergeCardIntoList(list: DeckCard[], card: DeckCard): { list: Dec
     return { list: newList, merged: true }
   }
 
-  return { list: [...list, { ...card, roles: [...card.roles] }], merged: false }
+  return { list: [...list, { ...card, roles: [...(card.roles ?? [])] }], merged: false }
 }
 
 /**
- * Add a card to a deck's target list. Merges if a card with the same name
- * already exists in that list.
+ * Add a card to a deck's target card set. Merges if a card with the same name
+ * already exists in that set.
  */
-export function addCardToDeck(deck: Deck, card: DeckCard, target: DeckListName): OpResult<AddCardMeta> {
-  const currentList = getList(deck, target)
+export function addCardToDeck(deck: Deck, card: CardEntry, target: CardSetName): OpResult<AddCardMeta> {
+  const currentList = getCardSetEntries(deck.cardSets, target)
   const { list: newList, merged } = mergeCardIntoList(currentList, card)
   return {
-    deck: withList(deck, target, newList),
+    deck: withDeckCardSet(deck, target, newList),
     meta: { merged },
   }
 }
 
 /**
- * Remove a card (or reduce its quantity) from a deck's target list.
+ * Remove a card (or reduce its quantity) from a deck's target card set.
  * If quantity is specified and less than the card's current quantity,
  * decrements. Otherwise removes entirely.
  */
 export function removeCardFromDeck(
   deck: Deck,
   cardName: string,
-  target: DeckListName,
+  target: CardSetName,
   quantity?: number
 ): OpResult<RemoveCardMeta> {
-  const currentList = getList(deck, target)
+  const currentList = getCardSetEntries(deck.cardSets, target)
   const index = findCardIndexByName(currentList, cardName)
 
   if (index === -1) {
@@ -90,11 +70,12 @@ export function removeCardFromDeck(
   }
 
   const card = currentList[index]
-  let newList: DeckCard[]
+  const currentQty = card.quantity ?? 0
+  let newList: CardEntry[]
   let remainingQty: number
 
-  if (quantity !== undefined && quantity < card.quantity) {
-    const updated = { ...card, quantity: card.quantity - quantity }
+  if (quantity !== undefined && quantity < currentQty) {
+    const updated = { ...card, quantity: currentQty - quantity }
     newList = [...currentList]
     newList[index] = updated
     remainingQty = updated.quantity
@@ -104,22 +85,22 @@ export function removeCardFromDeck(
   }
 
   return {
-    deck: withList(deck, target, newList),
+    deck: withDeckCardSet(deck, target, newList),
     meta: { removed: true, remainingQty },
   }
 }
 
 /**
- * Move a card from one list to another. If the card already exists in the
- * target list, merges (quantity + roles). Otherwise moves the entry.
+ * Move a card from one card set to another. If the card already exists in the
+ * target set, merges (quantity + roles). Otherwise moves the entry.
  */
 export function moveCard(
   deck: Deck,
   cardName: string,
-  from: DeckListName,
-  to: DeckListName
+  from: CardSetName,
+  to: CardSetName
 ): OpResult<MoveCardMeta> {
-  const fromList = getList(deck, from)
+  const fromList = getCardSetEntries(deck.cardSets, from)
   const index = findCardIndexByName(fromList, cardName)
 
   if (index === -1) {
@@ -128,11 +109,11 @@ export function moveCard(
 
   const card = fromList[index]
   const newFromList = fromList.filter((_, i) => i !== index)
-  const toList = getList(deck, to)
+  const toList = getCardSetEntries(deck.cardSets, to)
   const { list: newToList, merged } = mergeCardIntoList(toList, card)
 
-  let newDeck = withList(deck, from, newFromList)
-  newDeck = withList(newDeck, to, newToList)
+  let newDeck = withDeckCardSet(deck, from, newFromList)
+  newDeck = withDeckCardSet(newDeck, to, newToList)
 
   return {
     deck: newDeck,
@@ -155,7 +136,7 @@ export interface CardFieldUpdates {
 }
 
 /**
- * Update card fields across all lists. Finds the card by name and applies
+ * Update card fields across all card sets. Finds the card by name and applies
  * the specified updates immutably. Returns the new deck.
  */
 export function updateCardInDeck(
@@ -165,7 +146,7 @@ export function updateCardInDeck(
 ): OpResult<UpdateCardMeta> {
   const updatedFields: string[] = []
 
-  const applyUpdates = (card: DeckCard): DeckCard => {
+  const applyUpdates = (card: CardEntry): CardEntry => {
     let updated = { ...card }
 
     if (updates.roles !== undefined) {
@@ -173,11 +154,11 @@ export function updateCardInDeck(
       updatedFields.push('roles')
     }
     if (updates.addRoles) {
-      updated.roles = [...new Set([...updated.roles, ...updates.addRoles])]
+      updated.roles = [...new Set([...(updated.roles ?? []), ...updates.addRoles])]
       updatedFields.push('roles')
     }
     if (updates.removeRoles) {
-      updated.roles = updated.roles.filter(r => !updates.removeRoles!.includes(r))
+      updated.roles = (updated.roles ?? []).filter(r => !updates.removeRoles!.includes(r))
       updatedFields.push('roles')
     }
     if (updates.inclusion !== undefined) {
@@ -200,40 +181,37 @@ export function updateCardInDeck(
     return updated
   }
 
-  const updateList = (list: DeckCard[]): DeckCard[] => {
-    const index = findCardIndexByName(list, cardName)
-    if (index === -1) return list
-    return list.map((c, i) => i === index ? applyUpdates(c) : c)
-  }
-
   // Check card exists somewhere
-  const found = findCardByName([...deck.cards, ...deck.alternates, ...deck.sideboard], cardName)
+  const found = findCardByName(getAllDeckEntries(deck), cardName)
   if (!found) throw new Error(`Card not found in deck: ${cardName}`)
 
+  // Map each card set, updating the matching card if present
+  const newCardSets = deck.cardSets.map(set => {
+    const index = findCardIndexByName(set.entries, cardName)
+    if (index === -1) return set
+    return {
+      name: set.name,
+      entries: set.entries.map((c, i) => i === index ? applyUpdates(c) : c),
+    }
+  })
+
   return {
-    deck: {
-      ...deck,
-      cards: updateList(deck.cards),
-      alternates: updateList(deck.alternates),
-      sideboard: updateList(deck.sideboard),
-    },
+    deck: { ...deck, cardSets: newCardSets },
     meta: { updatedFields: [...new Set(updatedFields)] },
   }
 }
 
 /**
- * Find a card by name across all three lists.
- * Returns the card and which list it's in, or undefined if not found.
+ * Find a card by name across all card sets in a deck.
+ * Returns the card and which set it's in, or undefined if not found.
  */
 export function findCardAcrossLists(
   deck: Deck,
   cardName: string
-): { card: DeckCard; list: DeckListName } | undefined {
-  const lists: DeckListName[] = [DECK_LIST.MAINBOARD, DECK_LIST.SIDEBOARD, DECK_LIST.ALTERNATES]
-
-  for (const listName of lists) {
-    const card = findCardByName(getList(deck, listName), cardName)
-    if (card) return { card, list: listName }
+): { card: CardEntry; list: string } | undefined {
+  for (const set of deck.cardSets) {
+    const card = findCardByName(set.entries, cardName)
+    if (card) return { card, list: set.name }
   }
 
   return undefined

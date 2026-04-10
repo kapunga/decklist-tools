@@ -1,4 +1,5 @@
-import type { CardEntry, CardSet } from '../types/index.js'
+import type { CardEntry, CardSet, Deck } from '../types/index.js'
+import { CARD_SET } from '../types/index.js'
 
 // --- Accessors ---
 
@@ -40,4 +41,41 @@ export function mapCardSet(sets: CardSet[], name: string, fn: (e: CardEntry) => 
 /** Return a new card sets array with all entries in all sets mapped through fn. */
 export function mapAllCardSets(sets: CardSet[], fn: (e: CardEntry) => CardEntry): CardSet[] {
   return sets.map(s => ({ name: s.name, entries: s.entries.map(fn) }))
+}
+
+// --- Deck-level Convenience ---
+
+/** Shorthand: get mainboard entries from a deck. */
+export function getMainboard(deck: Deck): CardEntry[] {
+  return getCardSetEntries(deck.cardSets, CARD_SET.MAINBOARD)
+}
+
+/** Shorthand: get sideboard entries from a deck. */
+export function getSideboard(deck: Deck): CardEntry[] {
+  return getCardSetEntries(deck.cardSets, CARD_SET.SIDEBOARD)
+}
+
+/** Shorthand: get alternates entries from a deck. */
+export function getAlternates(deck: Deck): CardEntry[] {
+  return getCardSetEntries(deck.cardSets, CARD_SET.ALTERNATES)
+}
+
+/** Flat union of all entries across all card sets in a deck. */
+export function getAllDeckEntries(deck: Deck): CardEntry[] {
+  return getAllEntries(deck.cardSets)
+}
+
+/** Return a new deck with the named set's entries replaced. Creates the set if absent. */
+export function withDeckCardSet(deck: Deck, name: string, entries: CardEntry[]): Deck {
+  return { ...deck, cardSets: withCardSet(deck.cardSets, name, entries) }
+}
+
+/** Return a new deck with the named set's entries mapped through fn. No-op if set absent. */
+export function mapDeckCardSet(deck: Deck, name: string, fn: (e: CardEntry) => CardEntry): Deck {
+  return { ...deck, cardSets: mapCardSet(deck.cardSets, name, fn) }
+}
+
+/** Return a new deck with all entries across all card sets mapped through fn. */
+export function mapAllDeckEntries(deck: Deck, fn: (e: CardEntry) => CardEntry): Deck {
+  return { ...deck, cardSets: mapAllCardSets(deck.cardSets, fn) }
 }

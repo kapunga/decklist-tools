@@ -19,7 +19,7 @@ const createDeckCard = (
   roles: [],
   isPinned: false,
   addedAt: new Date().toISOString(),
-  addedBy: 'user',
+  source: 'user',
   ...overrides,
 })
 

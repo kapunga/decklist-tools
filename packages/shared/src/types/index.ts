@@ -97,14 +97,6 @@ export const NOTE_TYPE = {
 } as const
 export type NoteType = typeof NOTE_TYPE[keyof typeof NOTE_TYPE]
 
-// Values match Deck property names for use as property accessors (deck[DECK_LIST.MAINBOARD])
-export const DECK_LIST = {
-  MAINBOARD: 'cards',
-  SIDEBOARD: 'sideboard',
-  ALTERNATES: 'alternates',
-} as const
-export type DeckListName = typeof DECK_LIST[keyof typeof DECK_LIST]
-
 // Card set names — semantic names used as keys in CardSet[]
 export const CARD_SET = {
   MAINBOARD: 'mainboard',
@@ -183,30 +175,20 @@ export interface PulledPrinting {
   quantity: number
 }
 
-// Deck Card - cards can have multiple roles
-export interface DeckCard {
-  id: string  // Unique identifier for this deck entry
-  card: CardIdentifier
-  quantity: number
-  inclusion: InclusionStatus
-  ownership: OwnershipStatus
-  roles: string[]  // List of role IDs
-  typeLine?: string  // Card type line for grouping (e.g., "Creature - Human Wizard")
-  isPinned: boolean
-  notes?: string
-  addedAt: string
-  addedBy: AddedBy
-  pulledPrintings?: PulledPrinting[]  // Which printings were pulled and how many
-}
+/**
+ * @deprecated Use `CardEntry` directly. Kept as a type alias during the
+ * Phase 3 migration for incremental refactoring of consumers.
+ */
+export type DeckCard = CardEntry
 
 // Helper to get total pulled quantity across all printings
-export function getTotalPulledQuantity(card: DeckCard): number {
+export function getTotalPulledQuantity(card: CardEntry): number {
   return (card.pulledPrintings ?? []).reduce((sum, p) => sum + p.quantity, 0)
 }
 
 // Check if a card is fully pulled based on pulledPrintings
-export function isCardFullyPulled(card: DeckCard): boolean {
-  return getTotalPulledQuantity(card) >= card.quantity
+export function isCardFullyPulled(card: CardEntry): boolean {
+  return getTotalPulledQuantity(card) >= (card.quantity ?? 0)
 }
 
 
@@ -275,16 +257,16 @@ export function migrateDeckNote(note: Partial<DeckNote> & { id: string; title: s
 export function propagateNoteRole(deck: Deck, note: DeckNote): void {
   if (!note.roleId) return
   const refNames = new Set(note.cardRefs.map(r => r.cardName.toLowerCase()))
-  const addRole = (cards: DeckCard[]) => {
-    for (const card of cards) {
-      if (refNames.has(card.card.name.toLowerCase()) && !card.roles.includes(note.roleId!)) {
-        card.roles.push(note.roleId!)
+  for (const set of deck.cardSets) {
+    for (const entry of set.entries) {
+      if (refNames.has(entry.card.name.toLowerCase())) {
+        if (!entry.roles) entry.roles = []
+        if (!entry.roles.includes(note.roleId!)) {
+          entry.roles.push(note.roleId!)
+        }
       }
     }
   }
-  addRole(deck.cards)
-  addRole(deck.alternates)
-  addRole(deck.sideboard)
 }
 
 // Deck
@@ -297,9 +279,7 @@ export interface Deck {
   version: number
   description?: string
   archetype?: string
-  cards: DeckCard[]
-  alternates: DeckCard[]
-  sideboard: DeckCard[]
+  cardSets: CardSet[]             // Named card sets: 'mainboard', 'sideboard', 'alternates', or custom
   commanders: CardIdentifier[]    // Commander(s) for Commander format
   commandersPulled?: PulledPrinting[]  // Track pulled status for commanders
   customRoles: RoleDefinition[]   // Deck-specific custom roles
@@ -441,9 +421,11 @@ export function createEmptyDeck(name: string, formatType: FormatType): Deck {
     createdAt: now,
     updatedAt: now,
     version: 1,
-    cards: [],
-    alternates: [],
-    sideboard: [],
+    cardSets: [
+      { name: CARD_SET.MAINBOARD, entries: [] },
+      { name: CARD_SET.SIDEBOARD, entries: [] },
+      { name: CARD_SET.ALTERNATES, entries: [] },
+    ],
     commanders: [],
     customRoles: [],
     notes: []
@@ -465,9 +447,10 @@ export function getCardLimit(cardName: string, format: DeckFormat): number {
 }
 
 export function getCardCount(deck: Deck): number {
-  const mainDeckCount = deck.cards
+  const mainboard = deck.cardSets.find(s => s.name === CARD_SET.MAINBOARD)?.entries ?? []
+  const mainDeckCount = mainboard
     .filter(c => c.inclusion === INCLUSION_STATUS.CONFIRMED)
-    .reduce((sum, c) => sum + c.quantity, 0)
+    .reduce((sum, c) => sum + (c.quantity ?? 0), 0)
 
   // Commanders count towards deck size in Commander format
   const commanderCount = deck.commanders?.length || 0

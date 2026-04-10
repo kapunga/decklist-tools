@@ -1,7 +1,7 @@
 import type { Deck } from '../types/index.js'
 import { FORMAT_TYPE } from '../types/index.js'
 import type { DeckExportFormat, ParsedCard, RenderOptions } from './types.js'
-import { getConfirmedCards, parseLinesWithSections, PARSER_SECTION, consumed, implicit, type LineParserConfig } from './utils.js'
+import { getConfirmedCards, getSideboardCards, parseLinesWithSections, PARSER_SECTION, consumed, implicit, type LineParserConfig } from './utils.js'
 
 const mtgoConfig: LineParserConfig = {
   detectSection(line: string, prevBlank: boolean) {
@@ -44,9 +44,10 @@ export const mtgoFormat: DeckExportFormat = {
         lines.push(`${c.quantity} ${c.card.name}`)
       })
 
-    if (options.includeSideboard && deck.sideboard.length > 0) {
+    const sideboard = getSideboardCards(deck)
+    if (options.includeSideboard && sideboard.length > 0) {
       lines.push('', 'Sideboard')
-      deck.sideboard.forEach(c => {
+      sideboard.forEach(c => {
         lines.push(`${c.quantity} ${c.card.name}`)
       })
     }

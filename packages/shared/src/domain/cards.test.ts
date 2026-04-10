@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest'
 import { mergeCardIntoList, addCardToDeck, removeCardFromDeck, moveCard, findCardAcrossLists } from './cards.js'
-import type { Deck, DeckCard } from '../types/index.js'
-import { DECK_LIST, FORMAT_TYPE, INCLUSION_STATUS, OWNERSHIP_STATUS, ADDED_BY } from '../types/index.js'
+import { getMainboard, getSideboard, getAlternates } from './card-sets.js'
+import type { Deck, CardEntry } from '../types/index.js'
+import { CARD_SET, CARD_SOURCE, FORMAT_TYPE, INCLUSION_STATUS, OWNERSHIP_STATUS } from '../types/index.js'
 
-function makeDeckCard(name: string, overrides: Partial<DeckCard> = {}): DeckCard {
+function makeEntry(name: string, overrides: Partial<CardEntry> = {}): CardEntry {
   return {
     id: `test-${name}`,
     card: { name, setCode: 'test', collectorNumber: '1' },
@@ -13,69 +14,78 @@ function makeDeckCard(name: string, overrides: Partial<DeckCard> = {}): DeckCard
     roles: [],
     isPinned: false,
     addedAt: '2024-01-01T00:00:00.000Z',
-    addedBy: ADDED_BY.USER,
+    source: CARD_SOURCE.USER,
     ...overrides,
   }
 }
 
-function makeDeck(overrides: Partial<Deck> = {}): Deck {
+interface MakeDeckOptions {
+  mainboard?: CardEntry[]
+  sideboard?: CardEntry[]
+  alternates?: CardEntry[]
+  format?: Deck['format']
+  commanders?: Deck['commanders']
+}
+
+function makeDeck(opts: MakeDeckOptions = {}): Deck {
   return {
     id: 'test-deck',
     name: 'Test',
-    format: { type: FORMAT_TYPE.COMMANDER, deckSize: 100, sideboardSize: 0, cardLimit: 1, unlimitedCards: [] },
+    format: opts.format ?? { type: FORMAT_TYPE.COMMANDER, deckSize: 100, sideboardSize: 0, cardLimit: 1, unlimitedCards: [] },
     createdAt: '2024-01-01T00:00:00.000Z',
     updatedAt: '2024-01-01T00:00:00.000Z',
     version: 1,
-    cards: [],
-    alternates: [],
-    sideboard: [],
-    commanders: [],
+    cardSets: [
+      { name: CARD_SET.MAINBOARD, entries: opts.mainboard ?? [] },
+      { name: CARD_SET.SIDEBOARD, entries: opts.sideboard ?? [] },
+      { name: CARD_SET.ALTERNATES, entries: opts.alternates ?? [] },
+    ],
+    commanders: opts.commanders ?? [],
     customRoles: [],
     notes: [],
-    ...overrides,
   }
 }
 
 describe('mergeCardIntoList', () => {
   it('appends when card is new', () => {
-    const card = makeDeckCard('Sol Ring')
+    const card = makeEntry('Sol Ring')
     const { list, merged } = mergeCardIntoList([], card)
     expect(list).toHaveLength(1)
     expect(merged).toBe(false)
   })
 
   it('merges quantity when card exists', () => {
-    const existing = makeDeckCard('Sol Ring', { quantity: 1 })
-    const incoming = makeDeckCard('Sol Ring', { quantity: 2 })
+    const existing = makeEntry('Sol Ring', { quantity: 1 })
+    const incoming = makeEntry('Sol Ring', { quantity: 2 })
     const { list, merged } = mergeCardIntoList([existing], incoming)
     expect(list[0].quantity).toBe(3)
     expect(merged).toBe(true)
   })
 
   it('unions roles on merge', () => {
-    const existing = makeDeckCard('Sol Ring', { roles: ['ramp'] })
-    const incoming = makeDeckCard('Sol Ring', { roles: ['ramp', 'engine'] })
+    const existing = makeEntry('Sol Ring', { roles: ['ramp'] })
+    const incoming = makeEntry('Sol Ring', { roles: ['ramp', 'engine'] })
     const { list } = mergeCardIntoList([existing], incoming)
     expect(list[0].roles).toEqual(['ramp', 'engine'])
   })
 
   it('is case-insensitive on name', () => {
-    const existing = makeDeckCard('Sol Ring')
-    const incoming = makeDeckCard('sol ring', { quantity: 2 })
+    const existing = makeEntry('Sol Ring')
+    const incoming = makeEntry('sol ring', { quantity: 2 })
     const { merged } = mergeCardIntoList([existing], incoming)
     expect(merged).toBe(true)
   })
 
   it('does not mutate the input list', () => {
-    const original = [makeDeckCard('Sol Ring', { quantity: 1 })]
-    const incoming = makeDeckCard('Sol Ring', { quantity: 2 })
+    const original = [makeEntry('Sol Ring', { quantity: 1 })]
+    const incoming = makeEntry('Sol Ring', { quantity: 2 })
     mergeCardIntoList(original, incoming)
     expect(original[0].quantity).toBe(1)
   })
 
   it('merges notes', () => {
-    const existing = makeDeckCard('Sol Ring', { notes: 'note A' })
-    const incoming = makeDeckCard('Sol Ring', { notes: 'note B' })
+    const existing = makeEntry('Sol Ring', { notes: 'note A' })
+    const incoming = makeEntry('Sol Ring', { notes: 'note B' })
     const { list } = mergeCardIntoList([existing], incoming)
     expect(list[0].notes).toBe('note A\nnote B')
   })
@@ -84,119 +94,119 @@ describe('mergeCardIntoList', () => {
 describe('addCardToDeck', () => {
   it('adds to mainboard', () => {
     const deck = makeDeck()
-    const card = makeDeckCard('Sol Ring')
-    const result = addCardToDeck(deck, card, DECK_LIST.MAINBOARD)
-    expect(result.deck.cards).toHaveLength(1)
+    const card = makeEntry('Sol Ring')
+    const result = addCardToDeck(deck, card, CARD_SET.MAINBOARD)
+    expect(getMainboard(result.deck)).toHaveLength(1)
     expect(result.meta.merged).toBe(false)
   })
 
   it('adds to sideboard', () => {
     const deck = makeDeck()
-    const card = makeDeckCard('Sol Ring')
-    const result = addCardToDeck(deck, card, DECK_LIST.SIDEBOARD)
-    expect(result.deck.sideboard).toHaveLength(1)
-    expect(result.deck.cards).toHaveLength(0)
+    const card = makeEntry('Sol Ring')
+    const result = addCardToDeck(deck, card, CARD_SET.SIDEBOARD)
+    expect(getSideboard(result.deck)).toHaveLength(1)
+    expect(getMainboard(result.deck)).toHaveLength(0)
   })
 
   it('adds to alternates', () => {
     const deck = makeDeck()
-    const card = makeDeckCard('Sol Ring')
-    const result = addCardToDeck(deck, card, DECK_LIST.ALTERNATES)
-    expect(result.deck.alternates).toHaveLength(1)
+    const card = makeEntry('Sol Ring')
+    const result = addCardToDeck(deck, card, CARD_SET.ALTERNATES)
+    expect(getAlternates(result.deck)).toHaveLength(1)
   })
 
   it('merges with existing card', () => {
-    const deck = makeDeck({ cards: [makeDeckCard('Sol Ring', { quantity: 1 })] })
-    const card = makeDeckCard('Sol Ring', { quantity: 2 })
-    const result = addCardToDeck(deck, card, DECK_LIST.MAINBOARD)
-    expect(result.deck.cards[0].quantity).toBe(3)
+    const deck = makeDeck({ mainboard: [makeEntry('Sol Ring', { quantity: 1 })] })
+    const card = makeEntry('Sol Ring', { quantity: 2 })
+    const result = addCardToDeck(deck, card, CARD_SET.MAINBOARD)
+    expect(getMainboard(result.deck)[0].quantity).toBe(3)
     expect(result.meta.merged).toBe(true)
   })
 
   it('does not mutate the original deck', () => {
     const deck = makeDeck()
-    const card = makeDeckCard('Sol Ring')
-    addCardToDeck(deck, card, DECK_LIST.MAINBOARD)
-    expect(deck.cards).toHaveLength(0)
+    const card = makeEntry('Sol Ring')
+    addCardToDeck(deck, card, CARD_SET.MAINBOARD)
+    expect(getMainboard(deck)).toHaveLength(0)
   })
 })
 
 describe('removeCardFromDeck', () => {
   it('removes entirely when no quantity specified', () => {
-    const deck = makeDeck({ cards: [makeDeckCard('Sol Ring', { quantity: 4 })] })
-    const result = removeCardFromDeck(deck, 'Sol Ring', DECK_LIST.MAINBOARD)
-    expect(result.deck.cards).toHaveLength(0)
+    const deck = makeDeck({ mainboard: [makeEntry('Sol Ring', { quantity: 4 })] })
+    const result = removeCardFromDeck(deck, 'Sol Ring', CARD_SET.MAINBOARD)
+    expect(getMainboard(result.deck)).toHaveLength(0)
     expect(result.meta.remainingQty).toBe(0)
   })
 
   it('decrements when quantity < current', () => {
-    const deck = makeDeck({ cards: [makeDeckCard('Sol Ring', { quantity: 4 })] })
-    const result = removeCardFromDeck(deck, 'Sol Ring', DECK_LIST.MAINBOARD, 2)
-    expect(result.deck.cards[0].quantity).toBe(2)
+    const deck = makeDeck({ mainboard: [makeEntry('Sol Ring', { quantity: 4 })] })
+    const result = removeCardFromDeck(deck, 'Sol Ring', CARD_SET.MAINBOARD, 2)
+    expect(getMainboard(result.deck)[0].quantity).toBe(2)
     expect(result.meta.remainingQty).toBe(2)
   })
 
   it('throws when card not found', () => {
     const deck = makeDeck()
-    expect(() => removeCardFromDeck(deck, 'Nope', DECK_LIST.MAINBOARD)).toThrow('Card not found')
+    expect(() => removeCardFromDeck(deck, 'Nope', CARD_SET.MAINBOARD)).toThrow('Card not found')
   })
 
   it('does not mutate the original deck', () => {
-    const deck = makeDeck({ cards: [makeDeckCard('Sol Ring')] })
-    removeCardFromDeck(deck, 'Sol Ring', DECK_LIST.MAINBOARD)
-    expect(deck.cards).toHaveLength(1)
+    const deck = makeDeck({ mainboard: [makeEntry('Sol Ring')] })
+    removeCardFromDeck(deck, 'Sol Ring', CARD_SET.MAINBOARD)
+    expect(getMainboard(deck)).toHaveLength(1)
   })
 })
 
 describe('moveCard', () => {
   it('moves card between lists', () => {
     const deck = makeDeck({
-      cards: [makeDeckCard('Sol Ring')],
+      mainboard: [makeEntry('Sol Ring')],
       format: { type: FORMAT_TYPE.STANDARD, deckSize: 60, sideboardSize: 15, cardLimit: 4, unlimitedCards: [] },
     })
-    const result = moveCard(deck, 'Sol Ring', DECK_LIST.MAINBOARD, DECK_LIST.SIDEBOARD)
-    expect(result.deck.cards).toHaveLength(0)
-    expect(result.deck.sideboard).toHaveLength(1)
+    const result = moveCard(deck, 'Sol Ring', CARD_SET.MAINBOARD, CARD_SET.SIDEBOARD)
+    expect(getMainboard(result.deck)).toHaveLength(0)
+    expect(getSideboard(result.deck)).toHaveLength(1)
     expect(result.meta.moved).toEqual(['Sol Ring'])
     expect(result.meta.merged).toEqual([])
   })
 
   it('merges when target has same card', () => {
     const deck = makeDeck({
-      cards: [makeDeckCard('Sol Ring', { quantity: 1, roles: ['ramp'] })],
-      alternates: [makeDeckCard('Sol Ring', { quantity: 2, roles: ['engine'] })],
+      mainboard: [makeEntry('Sol Ring', { quantity: 1, roles: ['ramp'] })],
+      alternates: [makeEntry('Sol Ring', { quantity: 2, roles: ['engine'] })],
     })
-    const result = moveCard(deck, 'Sol Ring', DECK_LIST.MAINBOARD, DECK_LIST.ALTERNATES)
-    expect(result.deck.cards).toHaveLength(0)
-    expect(result.deck.alternates[0].quantity).toBe(3)
-    expect(result.deck.alternates[0].roles).toEqual(expect.arrayContaining(['ramp', 'engine']))
+    const result = moveCard(deck, 'Sol Ring', CARD_SET.MAINBOARD, CARD_SET.ALTERNATES)
+    expect(getMainboard(result.deck)).toHaveLength(0)
+    expect(getAlternates(result.deck)[0].quantity).toBe(3)
+    expect(getAlternates(result.deck)[0].roles).toEqual(expect.arrayContaining(['ramp', 'engine']))
     expect(result.meta.merged).toEqual(['Sol Ring'])
   })
 
   it('throws when card not in source', () => {
     const deck = makeDeck()
-    expect(() => moveCard(deck, 'Nope', DECK_LIST.MAINBOARD, DECK_LIST.ALTERNATES)).toThrow('Card not found')
+    expect(() => moveCard(deck, 'Nope', CARD_SET.MAINBOARD, CARD_SET.ALTERNATES)).toThrow('Card not found')
   })
 })
 
 describe('findCardAcrossLists', () => {
   it('finds card in mainboard', () => {
-    const deck = makeDeck({ cards: [makeDeckCard('Sol Ring')] })
+    const deck = makeDeck({ mainboard: [makeEntry('Sol Ring')] })
     const found = findCardAcrossLists(deck, 'Sol Ring')
     expect(found?.card.card.name).toBe('Sol Ring')
-    expect(found?.list).toBe(DECK_LIST.MAINBOARD)
+    expect(found?.list).toBe(CARD_SET.MAINBOARD)
   })
 
   it('finds card in sideboard', () => {
-    const deck = makeDeck({ sideboard: [makeDeckCard('Negate')] })
+    const deck = makeDeck({ sideboard: [makeEntry('Negate')] })
     const found = findCardAcrossLists(deck, 'Negate')
-    expect(found?.list).toBe(DECK_LIST.SIDEBOARD)
+    expect(found?.list).toBe(CARD_SET.SIDEBOARD)
   })
 
   it('finds card in alternates', () => {
-    const deck = makeDeck({ alternates: [makeDeckCard('Path to Exile')] })
+    const deck = makeDeck({ alternates: [makeEntry('Path to Exile')] })
     const found = findCardAcrossLists(deck, 'Path to Exile')
-    expect(found?.list).toBe(DECK_LIST.ALTERNATES)
+    expect(found?.list).toBe(CARD_SET.ALTERNATES)
   })
 
   it('returns undefined when not found', () => {
@@ -205,7 +215,7 @@ describe('findCardAcrossLists', () => {
   })
 
   it('is case-insensitive', () => {
-    const deck = makeDeck({ cards: [makeDeckCard('Sol Ring')] })
+    const deck = makeDeck({ mainboard: [makeEntry('Sol Ring')] })
     expect(findCardAcrossLists(deck, 'sol ring')).toBeDefined()
   })
 })

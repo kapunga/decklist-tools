@@ -1,5 +1,6 @@
 import type { Deck, CardIdentifier } from '../types/index.js'
 import { FORMAT_TYPE, INCLUSION_STATUS } from '../types/index.js'
+import { getMainboard, getSideboard } from './card-sets.js'
 import type { OpResult, CommanderMeta } from './types.js'
 
 // --- Helpers ---
@@ -122,7 +123,7 @@ export function getDeckColorIdentity(deck: Deck): string[] {
   if (deck.format.type === FORMAT_TYPE.COMMANDER) {
     return deck.colorIdentity ?? []
   }
-  const allCards = [...deck.cards, ...deck.sideboard]
+  const allCards = [...getMainboard(deck), ...getSideboard(deck)]
     .filter(dc => dc.inclusion !== INCLUSION_STATUS.CUT)
     .map(dc => dc.card)
   return deriveColorIdentity(allCards)

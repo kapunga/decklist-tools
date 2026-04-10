@@ -53,11 +53,12 @@ function matchesFilter(card: EnrichedDeckCard, filter: CardFilter): boolean {
       return filter.mode === 'include' ? matches : !matches
     }
     case 'role': {
-      const matches = filter.values.some(v => card.deckCard.roles.includes(v))
+      const roles = card.deckCard.roles ?? []
+      const matches = filter.values.some(v => roles.includes(v))
       return filter.mode === 'include' ? matches : !matches
     }
     case 'ownership': {
-      const matches = filter.values.includes(card.deckCard.ownership)
+      const matches = card.deckCard.ownership !== undefined && filter.values.includes(card.deckCard.ownership)
       return filter.mode === 'include' ? matches : !matches
     }
   }
@@ -80,7 +81,7 @@ export function countManaPips(cards: EnrichedDeckCard[]): ManaPipCounts {
 
     const manaCost = sc.mana_cost || ''
     // Handle DFCs — only count front face
-    const qty = card.deckCard.quantity
+    const qty = card.deckCard.quantity ?? 0
 
     // Count colored pips
     for (const ch of manaCost) {
@@ -112,7 +113,7 @@ export function getCmcDistribution(cards: EnrichedDeckCard[]): Record<number, nu
   for (const card of cards) {
     if (isLand(card)) continue
     const bucket = getCmcBucket(getCardCmc(card))
-    dist[bucket] = (dist[bucket] || 0) + card.deckCard.quantity
+    dist[bucket] = (dist[bucket] || 0) + (card.deckCard.quantity ?? 0)
   }
 
   return dist
