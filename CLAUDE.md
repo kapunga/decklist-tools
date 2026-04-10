@@ -128,13 +128,17 @@ The Electron app includes a "Connect to Claude Desktop" feature in Settings:
 
 ## Specifications
 
-Detailed design docs in `specs/`:
-- `01-storage-format.md` - Complete JSON schema for all data structures
-- `02-mcp-server.md` - All 30+ MCP tools with input/output schemas
-- `03-electron-app.md` - UI/UX specification with keyboard shortcuts
-- `04-project-rename.md` - Procedure for renaming the project
+Design docs in `specs/`:
 
-**Note:** Specs for one-time procedures (like `04-project-rename.md`) should be deleted after implementation. Specs describing ongoing architecture (like storage format, MCP tools) should be kept up to date.
+**Architecture references** (kept up to date as the code changes):
+- `02-mcp-server.md` — every MCP tool's input schema, behavior, and parameters
+
+**One-time procedures** (delete after implementation):
+- `04-project-rename.md` — procedure for renaming the project
+- `05-dynamic-download-button.md` — landing page download button design
+- `06-distribution-prep.md` — distribution / release prep checklist
+
+**Note:** Architecture references should be kept up to date when the code they describe changes. One-time procedure specs should be deleted after the procedure is complete.
 
 ## Bug Fixing Workflow
 
