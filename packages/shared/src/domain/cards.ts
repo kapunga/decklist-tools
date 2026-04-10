@@ -1,5 +1,5 @@
 import type { Deck, DeckCard, DeckListName } from '../types/index.js'
-import { DECK_LIST } from '../types/index.js'
+import { DECK_LIST, INCLUSION_STATUS } from '../types/index.js'
 import { findCardByName, findCardIndexByName } from '../utils/card-utils.js'
 import type { InclusionStatus, OwnershipStatus } from '../types/index.js'
 import type { OpResult, AddCardMeta, RemoveCardMeta, MoveCardMeta, UpdateCardMeta } from './types.js'
@@ -36,9 +36,14 @@ export function mergeCardIntoList(list: DeckCard[], card: DeckCard): { list: Dec
 
   if (existingIndex >= 0) {
     const existing = list[existingIndex]
+    // Upgrade inclusion: confirmed wins over considering (explicit add confirms the card)
+    const inclusion = card.inclusion === INCLUSION_STATUS.CONFIRMED
+      ? INCLUSION_STATUS.CONFIRMED
+      : existing.inclusion
     const mergedCard: DeckCard = {
       ...existing,
       quantity: existing.quantity + card.quantity,
+      inclusion,
       roles: [...new Set([...existing.roles, ...card.roles])],
       isPinned: existing.isPinned || card.isPinned,
       notes: existing.notes && card.notes && existing.notes !== card.notes
