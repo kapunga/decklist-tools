@@ -1,5 +1,5 @@
-import type { Deck, DeckCard, RoleDefinition, ScryfallCard } from '@mtg-deckbuilder/shared'
-import { getPrimaryType, getCardCount, getCardDisplayName, getCanonicalSuffix, buildRoleLookup, CARD_TYPE_ORDER, isCardFullyPulled, INCLUSION_STATUS } from '@mtg-deckbuilder/shared'
+import type { Deck, CardEntry, RoleDefinition, ScryfallCard } from '@mtg-deckbuilder/shared'
+import { getPrimaryType, getCardCount, getCardDisplayName, getCanonicalSuffix, buildRoleLookup, CARD_TYPE_ORDER, isCardFullyPulled, INCLUSION_STATUS, getMainboard, getSideboard, getAlternates } from '@mtg-deckbuilder/shared'
 import { formatCardLine, type DetailLevel } from './formatters.js'
 
 export function renderFullView(
@@ -30,14 +30,15 @@ export function renderFullView(
     lines.push('')
   }
 
-  let confirmedCards = deck.cards.filter(c => c.inclusion === INCLUSION_STATUS.CONFIRMED)
+  const mainboard = getMainboard(deck)
+  let confirmedCards = mainboard.filter(c => c.inclusion === INCLUSION_STATUS.CONFIRMED)
   if (filteredCardIds) {
     confirmedCards = confirmedCards.filter(c => filteredCardIds.has(c.id))
   }
 
   const consideringCards = filteredCardIds
-    ? deck.cards.filter(c => c.inclusion === INCLUSION_STATUS.CONSIDERING && filteredCardIds.has(c.id))
-    : deck.cards.filter(c => c.inclusion === INCLUSION_STATUS.CONSIDERING)
+    ? mainboard.filter(c => c.inclusion === INCLUSION_STATUS.CONSIDERING && filteredCardIds.has(c.id))
+    : mainboard.filter(c => c.inclusion === INCLUSION_STATUS.CONSIDERING)
 
   if (groupBy === 'role') {
     renderByRole(lines, confirmedCards, roleLookup)
@@ -66,17 +67,19 @@ export function renderFullView(
   }
 
   if (!groupBy && sortBy !== 'set') {
-    if (deck.alternates.length > 0) {
+    const alternates = getAlternates(deck)
+    if (alternates.length > 0) {
       lines.push('## Alternates')
-      for (const c of deck.alternates) {
+      for (const c of alternates) {
         lines.push(formatCardLine(c, globalRoles, deck.customRoles, scryfallCache, detail, roleLookup))
       }
       lines.push('')
     }
 
-    if (deck.sideboard.length > 0) {
+    const sideboard = getSideboard(deck)
+    if (sideboard.length > 0) {
       lines.push('## Sideboard')
-      for (const c of deck.sideboard) {
+      for (const c of sideboard) {
         lines.push(formatCardLine(c, globalRoles, deck.customRoles, scryfallCache, detail, roleLookup))
       }
       lines.push('')
@@ -88,17 +91,18 @@ export function renderFullView(
 
 function renderByRole(
   lines: string[],
-  cards: DeckCard[],
+  cards: CardEntry[],
   roleLookup: Map<string, RoleDefinition>
 ): void {
-  const byRole = new Map<string, DeckCard[]>()
-  const noRole: DeckCard[] = []
+  const byRole = new Map<string, CardEntry[]>()
+  const noRole: CardEntry[] = []
 
   for (const card of cards) {
-    if (card.roles.length === 0) {
+    const roles = card.roles ?? []
+    if (roles.length === 0) {
       noRole.push(card)
     } else {
-      for (const roleId of card.roles) {
+      for (const roleId of roles) {
         if (!byRole.has(roleId)) {
           byRole.set(roleId, [])
         }
@@ -112,28 +116,28 @@ function renderByRole(
   for (const [roleId, roleCards] of sortedRoles) {
     const role = roleLookup.get(roleId)
     const roleName = role?.name || roleId
-    const count = roleCards.reduce((sum, c) => sum + c.quantity, 0)
+    const count = roleCards.reduce((sum, c) => sum + (c.quantity ?? 0), 0)
     lines.push(`## ${roleName} (${count})`)
     if (role?.description) {
       lines.push(`*${role.description}*`)
     }
     for (const c of roleCards) {
-      lines.push(`- ${c.quantity}x ${getCardDisplayName(c.card)}${getCanonicalSuffix(c.card)}`)
+      lines.push(`- ${c.quantity ?? 0}x ${getCardDisplayName(c.card)}${getCanonicalSuffix(c.card)}`)
     }
     lines.push('')
   }
 
   if (noRole.length > 0) {
-    const count = noRole.reduce((sum, c) => sum + c.quantity, 0)
+    const count = noRole.reduce((sum, c) => sum + (c.quantity ?? 0), 0)
     lines.push(`## Unassigned (${count})`)
     for (const c of noRole) {
-      lines.push(`- ${c.quantity}x ${getCardDisplayName(c.card)}${getCanonicalSuffix(c.card)}`)
+      lines.push(`- ${c.quantity ?? 0}x ${getCardDisplayName(c.card)}${getCanonicalSuffix(c.card)}`)
     }
   }
 }
 
-function renderByType(lines: string[], cards: DeckCard[]): void {
-  const byType = new Map<string, DeckCard[]>()
+function renderByType(lines: string[], cards: CardEntry[]): void {
+  const byType = new Map<string, CardEntry[]>()
 
   for (const card of cards) {
     const type = getPrimaryType(card.typeLine || 'Other')
@@ -150,17 +154,17 @@ function renderByType(lines: string[], cards: DeckCard[]): void {
   })
 
   for (const [type, typeCards] of sortedTypes) {
-    const count = typeCards.reduce((sum, c) => sum + c.quantity, 0)
+    const count = typeCards.reduce((sum, c) => sum + (c.quantity ?? 0), 0)
     lines.push(`## ${type} (${count})`)
     const sortedCards = [...typeCards].sort((a, b) => a.card.name.localeCompare(b.card.name))
     for (const c of sortedCards) {
-      lines.push(`- ${c.quantity}x ${getCardDisplayName(c.card)}${getCanonicalSuffix(c.card)}`)
+      lines.push(`- ${c.quantity ?? 0}x ${getCardDisplayName(c.card)}${getCanonicalSuffix(c.card)}`)
     }
     lines.push('')
   }
 }
 
-function renderChecklist(lines: string[], cards: DeckCard[]): void {
+function renderChecklist(lines: string[], cards: CardEntry[]): void {
   const sortedCards = [...cards].sort((a, b) => {
     const setCompare = a.card.setCode.localeCompare(b.card.setCode)
     if (setCompare !== 0) return setCompare

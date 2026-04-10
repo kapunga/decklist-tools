@@ -1,10 +1,10 @@
 import {
   Storage,
-  type DeckCard,
+  type CardEntry,
   type InclusionStatus,
   type OwnershipStatus,
   type ScryfallCard,
-  type DeckListName,
+  type CardSetName,
   generateDeckCardId,
   searchCardByNameExact,
   searchCardByName,
@@ -14,8 +14,8 @@ import {
   getOracleText,
   INCLUSION_STATUS,
   OWNERSHIP_STATUS,
-  ADDED_BY,
-  DECK_LIST,
+  CARD_SOURCE,
+  CARD_SET,
   addCardToDeck,
   removeCardFromDeck,
   moveCard,
@@ -34,25 +34,25 @@ function resolveCards(args: ManageCardArgs): string[] {
   throw new Error('Either "cards" or "name" must be provided')
 }
 
-function resolveTargetList(args: ManageCardArgs, sideboardSize: number): DeckListName {
+function resolveTargetList(args: ManageCardArgs, sideboardSize: number): CardSetName {
   const useSideboard = args.to_sideboard && sideboardSize > 0
-  if (useSideboard) return DECK_LIST.SIDEBOARD
-  if (args.to_alternates || (args.to_sideboard && sideboardSize === 0)) return DECK_LIST.ALTERNATES
-  return DECK_LIST.MAINBOARD
+  if (useSideboard) return CARD_SET.SIDEBOARD
+  if (args.to_alternates || (args.to_sideboard && sideboardSize === 0)) return CARD_SET.ALTERNATES
+  return CARD_SET.MAINBOARD
 }
 
-function resolveSourceList(args: ManageCardArgs): DeckListName {
-  if (args.from_sideboard) return DECK_LIST.SIDEBOARD
-  if (args.from_alternates) return DECK_LIST.ALTERNATES
-  return DECK_LIST.MAINBOARD
+function resolveSourceList(args: ManageCardArgs): CardSetName {
+  if (args.from_sideboard) return CARD_SET.SIDEBOARD
+  if (args.from_alternates) return CARD_SET.ALTERNATES
+  return CARD_SET.MAINBOARD
 }
 
-// Map user-facing list names (from MCP schema) to DeckListName constants
-function toListName(name: string): DeckListName {
+// Map user-facing list names (from MCP schema) to CardSetName constants
+function toListName(name: string): CardSetName {
   switch (name) {
-    case 'mainboard': return DECK_LIST.MAINBOARD
-    case 'alternates': return DECK_LIST.ALTERNATES
-    case 'sideboard': return DECK_LIST.SIDEBOARD
+    case 'mainboard': return CARD_SET.MAINBOARD
+    case 'alternates': return CARD_SET.ALTERNATES
+    case 'sideboard': return CARD_SET.SIDEBOARD
     default: throw new Error(`Invalid list: "${name}". Valid lists are: mainboard, sideboard, alternates`)
   }
 }
@@ -85,7 +85,7 @@ export async function manageCard(storage: Storage, args: ManageCardArgs) {
         const cardIdentifier = createCardIdentifier(scryfallCard)
         const target = resolveTargetList(args, deck.format.sideboardSize)
 
-        const deckCard: DeckCard = {
+        const deckCard: CardEntry = {
           id: generateDeckCardId(),
           card: cardIdentifier,
           quantity,
@@ -95,7 +95,7 @@ export async function manageCard(storage: Storage, args: ManageCardArgs) {
           typeLine: scryfallCard.type_line,
           isPinned: false,
           addedAt: new Date().toISOString(),
-          addedBy: ADDED_BY.USER,
+          source: CARD_SOURCE.USER,
         }
 
         const result = addCardToDeck(deck, deckCard, target)
@@ -165,7 +165,7 @@ export async function manageCard(storage: Storage, args: ManageCardArgs) {
       if (!args.from || !args.to) throw new Error('from and to are required for move')
       const fromList = toListName(args.from)
       const toList = toListName(args.to)
-      if (toList === DECK_LIST.SIDEBOARD && deck.format.sideboardSize === 0) {
+      if (toList === CARD_SET.SIDEBOARD && deck.format.sideboardSize === 0) {
         throw new Error(`Cannot move cards to sideboard: ${deck.format.type} format has no sideboard`)
       }
       const cardNames = resolveCards(args)

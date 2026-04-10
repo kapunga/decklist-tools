@@ -1,7 +1,6 @@
 import {
   Storage,
   type Deck,
-  type DeckCard,
   type DeckNote,
   type NoteCardRef,
   generateDeckCardId,
@@ -100,14 +99,11 @@ export function manageDeckNote(storage: Storage, args: ManageDeckNoteArgs) {
 function removeRoleFromNoteCards(deck: Deck, note: DeckNote): void {
   if (!note.roleId) return
   const refNames = new Set(note.cardRefs.map(r => r.cardName.toLowerCase()))
-  const removeRole = (cards: DeckCard[]) => {
-    for (const card of cards) {
+  for (const set of deck.cardSets) {
+    for (const card of set.entries) {
       if (refNames.has(card.card.name.toLowerCase())) {
-        card.roles = card.roles.filter(r => r !== note.roleId)
+        card.roles = (card.roles ?? []).filter(r => r !== note.roleId)
       }
     }
   }
-  removeRole(deck.cards)
-  removeRole(deck.alternates)
-  removeRole(deck.sideboard)
 }

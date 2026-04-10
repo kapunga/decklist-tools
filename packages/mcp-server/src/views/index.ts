@@ -1,5 +1,5 @@
 import type { Deck, RoleDefinition, ScryfallCard, CardFilter, SetCollectionFile } from '@mtg-deckbuilder/shared'
-import { enrichCards, applyFilters, INCLUSION_STATUS } from '@mtg-deckbuilder/shared'
+import { enrichCards, applyFilters, INCLUSION_STATUS, getMainboard } from '@mtg-deckbuilder/shared'
 import { renderFullView } from './full-view.js'
 import { renderCurveView } from './curve-view.js'
 import { renderNotesView } from './notes-view.js'
@@ -38,7 +38,7 @@ export function renderDeckView(
   let filteredCardIds: Set<string> | undefined
   if (filters && filters.length > 0) {
     const cache = scryfallCache || new Map<string, ScryfallCard>()
-    const enriched = enrichCards(deck.cards.filter(c => c.inclusion === INCLUSION_STATUS.CONFIRMED), cache)
+    const enriched = enrichCards(getMainboard(deck).filter(c => c.inclusion === INCLUSION_STATUS.CONFIRMED), cache)
     const filtered = applyFilters(enriched, filters)
     filteredCardIds = new Set(filtered.map(e => e.deckCard.id))
   }

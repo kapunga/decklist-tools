@@ -1,12 +1,12 @@
 import type { Deck, ScryfallCard } from '@mtg-deckbuilder/shared'
-import { getPrimaryType, getCardCount, CARD_TYPE_ORDER, enrichCards, getCmcDistribution, countManaPips, INCLUSION_STATUS } from '@mtg-deckbuilder/shared'
+import { getPrimaryType, getCardCount, CARD_TYPE_ORDER, enrichCards, getCmcDistribution, countManaPips, INCLUSION_STATUS, getMainboard } from '@mtg-deckbuilder/shared'
 
 export function renderCurveView(deck: Deck, scryfallCache?: Map<string, ScryfallCard>, filteredCardIds?: Set<string>): string {
   const lines: string[] = []
   lines.push(`# ${deck.name} (Mana Curve)`)
   lines.push('')
 
-  const confirmedCards = deck.cards.filter((c) => c.inclusion === INCLUSION_STATUS.CONFIRMED)
+  const confirmedCards = getMainboard(deck).filter((c) => c.inclusion === INCLUSION_STATUS.CONFIRMED)
   const activeCards = filteredCardIds
     ? confirmedCards.filter(c => filteredCardIds.has(c.id))
     : confirmedCards
@@ -56,7 +56,7 @@ export function renderCurveView(deck: Deck, scryfallCache?: Map<string, Scryfall
   const byType = new Map<string, number>()
   for (const card of activeCards) {
     const type = getPrimaryType(card.typeLine || 'Unknown')
-    byType.set(type, (byType.get(type) || 0) + card.quantity)
+    byType.set(type, (byType.get(type) || 0) + (card.quantity ?? 0))
   }
 
   lines.push('## Type Distribution')
@@ -73,7 +73,7 @@ export function renderCurveView(deck: Deck, scryfallCache?: Map<string, Scryfall
   let landCount = 0
   for (const card of activeCards) {
     if ((card.typeLine || '').toLowerCase().includes('land')) {
-      landCount += card.quantity
+      landCount += card.quantity ?? 0
     }
   }
 

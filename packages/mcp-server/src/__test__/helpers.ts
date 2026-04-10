@@ -3,14 +3,29 @@ import type { Storage } from '@mtg-deckbuilder/shared'
 import {
   createEmptyDeck,
   generateDeckCardId,
+  CARD_SET,
   type Deck,
-  type DeckCard,
+  type CardEntry,
   type ScryfallCard,
   type FormatType,
   type RoleDefinition,
   type InterestList,
   type SetCollectionFile,
 } from '@mtg-deckbuilder/shared'
+
+// Test helpers for mutating decks in place (used by existing tests that rely on `.push`)
+export function pushMainboard(deck: Deck, ...cards: CardEntry[]): void {
+  const set = deck.cardSets.find(s => s.name === CARD_SET.MAINBOARD)
+  if (set) set.entries.push(...cards)
+}
+export function pushSideboard(deck: Deck, ...cards: CardEntry[]): void {
+  const set = deck.cardSets.find(s => s.name === CARD_SET.SIDEBOARD)
+  if (set) set.entries.push(...cards)
+}
+export function pushAlternates(deck: Deck, ...cards: CardEntry[]): void {
+  const set = deck.cardSets.find(s => s.name === CARD_SET.ALTERNATES)
+  if (set) set.entries.push(...cards)
+}
 
 export function createMockStorage() {
   const decks = new Map<string, Deck>()
@@ -97,7 +112,7 @@ export function makeDeck(overrides?: Partial<Deck>): Deck {
   return { ...deck, ...overrides, format: overrides?.format ?? deck.format }
 }
 
-export function makeDeckCard(name: string, overrides?: Partial<DeckCard>): DeckCard {
+export function makeDeckCard(name: string, overrides?: Partial<CardEntry>): CardEntry {
   return {
     id: generateDeckCardId(),
     card: {
@@ -113,7 +128,7 @@ export function makeDeckCard(name: string, overrides?: Partial<DeckCard>): DeckC
     typeLine: 'Creature — Human Wizard',
     isPinned: false,
     addedAt: new Date().toISOString(),
-    addedBy: 'user',
+    source: 'user',
     ...overrides,
   }
 }
