@@ -6,8 +6,11 @@ import {
   withCardSet,
   mapCardSet,
   mapAllCardSets,
+  getTypeLine,
+  getPulledPrintings,
+  getPotentialDecks,
 } from './card-sets.js'
-import type { CardEntry, CardSet } from '../types/index.js'
+import type { CardEntry, CardSet, ScryfallCard } from '../types/index.js'
 import { CARD_SET } from '../types/index.js'
 
 function makeEntry(name: string, overrides: Partial<CardEntry> = {}): CardEntry {
@@ -134,5 +137,69 @@ describe('mapAllCardSets', () => {
     const sets = makeSets()
     mapAllCardSets(sets, e => ({ ...e, notes: 'mutated' }))
     expect(sets[0].entries[0].notes).toBeUndefined()
+  })
+})
+
+describe('getTypeLine', () => {
+  it('returns the entry-stored typeLine when present', () => {
+    const entry = makeEntry('Sol Ring', { typeLine: 'Artifact' })
+    expect(getTypeLine(entry, new Map())).toBe('Artifact')
+  })
+
+  it('falls back to the Scryfall cache when typeLine is absent', () => {
+    const entry = makeEntry('Sol Ring', {
+      card: { name: 'Sol Ring', setCode: 'lea', collectorNumber: '270', scryfallId: 'sf-1' },
+    })
+    const cache = new Map<string, ScryfallCard>()
+    cache.set('sf-1', { id: 'sf-1', name: 'Sol Ring', type_line: 'Artifact' } as ScryfallCard)
+    expect(getTypeLine(entry, cache)).toBe('Artifact')
+  })
+
+  it('returns undefined when neither stored nor cached', () => {
+    const entry = makeEntry('Sol Ring', {
+      card: { name: 'Sol Ring', setCode: 'lea', collectorNumber: '270', scryfallId: 'sf-1' },
+    })
+    expect(getTypeLine(entry, new Map())).toBeUndefined()
+  })
+
+  it('returns undefined when no scryfallId and no stored typeLine', () => {
+    const entry = makeEntry('Sol Ring')
+    expect(getTypeLine(entry, new Map())).toBeUndefined()
+  })
+
+  it('prefers stored typeLine over cached value (stale data)', () => {
+    const entry = makeEntry('Sol Ring', {
+      typeLine: 'Stored Type',
+      card: { name: 'Sol Ring', setCode: 'lea', collectorNumber: '270', scryfallId: 'sf-1' },
+    })
+    const cache = new Map<string, ScryfallCard>()
+    cache.set('sf-1', { id: 'sf-1', name: 'Sol Ring', type_line: 'Cached Type' } as ScryfallCard)
+    expect(getTypeLine(entry, cache)).toBe('Stored Type')
+  })
+})
+
+describe('getPulledPrintings', () => {
+  it('returns the array when present', () => {
+    const entry = makeEntry('Island', {
+      pulledPrintings: [{ setCode: 'lea', collectorNumber: '1', quantity: 2 }],
+    })
+    expect(getPulledPrintings(entry)).toEqual([{ setCode: 'lea', collectorNumber: '1', quantity: 2 }])
+  })
+
+  it('returns empty array when undefined', () => {
+    const entry = makeEntry('Island')
+    expect(getPulledPrintings(entry)).toEqual([])
+  })
+})
+
+describe('getPotentialDecks', () => {
+  it('returns the array when present', () => {
+    const entry = makeEntry('Sol Ring', { potentialDecks: ['deck-1', 'deck-2'] })
+    expect(getPotentialDecks(entry)).toEqual(['deck-1', 'deck-2'])
+  })
+
+  it('returns empty array when undefined', () => {
+    const entry = makeEntry('Sol Ring')
+    expect(getPotentialDecks(entry)).toEqual([])
   })
 })

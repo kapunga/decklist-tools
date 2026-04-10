@@ -1,4 +1,4 @@
-import type { CardEntry, CardSet, Deck } from '../types/index.js'
+import type { CardEntry, CardSet, Deck, ScryfallCard, PulledPrinting } from '../types/index.js'
 import { CARD_SET } from '../types/index.js'
 
 // --- Accessors ---
@@ -73,6 +73,36 @@ export function getAllDeckEntries(deck: Deck): CardEntry[] {
 /** Flat union of all entries except those in the cut set. The cards the deck is "still about". */
 export function getNonCutEntries(deck: Deck): CardEntry[] {
   return deck.cardSets.filter(s => s.name !== CARD_SET.CUT).flatMap(s => s.entries)
+}
+
+// --- Entry Field Accessors ---
+// These wrap optional/derived fields on CardEntry so readers don't need to
+// scatter `?? defaultValue` coalescing across the codebase.
+
+/**
+ * Get the type line for an entry. Prefers the entry's stored `typeLine` (for
+ * legacy data still carrying the field), then falls back to the Scryfall cache
+ * by scryfallId. Returns `undefined` only when neither source has it.
+ *
+ * Once migration 004 strips the stored `typeLine` field, this accessor's first
+ * branch becomes dead and can be removed.
+ */
+export function getTypeLine(entry: CardEntry, cache: Map<string, ScryfallCard>): string | undefined {
+  if (entry.typeLine) return entry.typeLine
+  if (entry.card.scryfallId) {
+    return cache.get(entry.card.scryfallId)?.type_line
+  }
+  return undefined
+}
+
+/** Get the pulled printings for an entry, defaulting to an empty array. */
+export function getPulledPrintings(entry: CardEntry): PulledPrinting[] {
+  return entry.pulledPrintings ?? []
+}
+
+/** Get the potential decks for an entry (interest-list candidacy), defaulting to an empty array. */
+export function getPotentialDecks(entry: CardEntry): string[] {
+  return entry.potentialDecks ?? []
 }
 
 /** Return a new deck with the named set's entries replaced. Creates the set if absent. */
