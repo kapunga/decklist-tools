@@ -405,6 +405,15 @@ function setupIpcHandlers() {
     return storage!.getCachedImagePath(scryfallId, face as 'front' | 'back' | undefined)
   })
 
+  ipcMain.handle('cache:get-cards', async (_, scryfallIds: string[]) => {
+    const result: Record<string, unknown> = {}
+    for (const id of scryfallIds) {
+      const cached = storage!.getCachedCard(id)
+      if (cached) result[id] = cached
+    }
+    return result
+  })
+
   ipcMain.handle('cache:load-all', async (_, includeImages: boolean) => {
     if (!mainWindow) return
     await loadAllCardsToCache(storage!, includeImages, (progress) => {

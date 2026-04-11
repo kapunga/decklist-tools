@@ -56,6 +56,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   rebuildCacheIndex: () => ipcRenderer.invoke('cache:rebuild-index'),
   preCacheDeck: (deckId: string, includeImages: boolean) => ipcRenderer.invoke('cache:pre-cache-deck', deckId, includeImages),
   getCachedImagePath: (scryfallId: string, face?: string) => ipcRenderer.invoke('cache:get-image-path', scryfallId, face),
+  getCachedCards: (scryfallIds: string[]) => ipcRenderer.invoke('cache:get-cards', scryfallIds),
   loadAllCardsToCache: (includeImages: boolean) => ipcRenderer.invoke('cache:load-all', includeImages),
   onCacheProgress: (callback: (progress: CacheLoadProgress) => void) => {
     const handler = (_: unknown, progress: CacheLoadProgress) => callback(progress)
@@ -155,6 +156,7 @@ export interface ElectronAPI {
   rebuildCacheIndex: () => Promise<CacheIndex>
   preCacheDeck: (deckId: string, includeImages: boolean) => Promise<PreCacheResult>
   getCachedImagePath: (scryfallId: string, face?: string) => Promise<string | null>
+  getCachedCards: (scryfallIds: string[]) => Promise<Record<string, unknown>>
   loadAllCardsToCache: (includeImages: boolean) => Promise<void>
   onCacheProgress: (callback: (progress: CacheLoadProgress) => void) => () => void
   cancelCacheLoad: () => Promise<void>
