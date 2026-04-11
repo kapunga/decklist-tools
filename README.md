@@ -11,7 +11,7 @@ All packages share the same JSON-based storage, allowing you to use Claude for d
 ## Prerequisites
 
 - Node.js 20 or later
-- pnpm 9
+- pnpm 10
 
 ## Quick Start
 
