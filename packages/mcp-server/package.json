@@ -19,7 +19,7 @@
     "pkg": "pkg . --targets node18-macos-arm64,node18-macos-x64 --output bin/mtg-deckbuilder-mcp"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@mtg-deckbuilder/shared": "workspace:*"
   },
   "devDependencies": {
