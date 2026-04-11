@@ -117,7 +117,7 @@ export function ManaCurve({ deck, scryfallCache }: ManaCurveProps) {
                   cy="50%"
                   outerRadius={70}
                   label={({ value, percent }) =>
-                    `${value} (${(percent * 100).toFixed(0)}%)`
+                    `${value} (${((percent ?? 0) * 100).toFixed(0)}%)`
                   }
                   labelLine={false}
                 >
