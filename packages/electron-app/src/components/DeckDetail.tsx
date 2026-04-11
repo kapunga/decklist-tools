@@ -19,7 +19,7 @@ import { NotesView } from '@/components/NotesView'
 import { RoleEditModal } from '@/components/RoleEditModal'
 import { ColorPips } from '@/components/ColorPips'
 import { PullListView } from '@/components/PullListView'
-import { getDeckColorIdentity, showColorlessPip, getAlternates, getSideboard } from '@mtg-deckbuilder/shared'
+import { getDeckColorIdentity, showColorlessPip, getAlternates, getSideboard, getCutList } from '@mtg-deckbuilder/shared'
 import { getCardCount, getCardDisplayName, FORMAT_TYPE, CARD_SET } from '@/types'
 import type { RoleDefinition, CardSetName } from '@/types'
 
@@ -255,6 +255,9 @@ export function DeckDetail() {
                 Sideboard ({getSideboard(deck).length})
               </TabsTrigger>
             )}
+            <TabsTrigger value={CARD_SET.CUT}>
+              Cut ({getCutList(deck).length})
+            </TabsTrigger>
             <TabsTrigger value="notes">
               Notes ({deck.notes.length})
             </TabsTrigger>
@@ -277,6 +280,10 @@ export function DeckDetail() {
               <DeckListView deck={deck} listType={CARD_SET.SIDEBOARD} />
             </TabsContent>
           )}
+
+          <TabsContent value={CARD_SET.CUT} className="m-0 h-full">
+            <DeckListView deck={deck} listType={CARD_SET.CUT} />
+          </TabsContent>
 
           <TabsContent value="notes" className="m-0 h-full">
             <NotesView deck={deck} />

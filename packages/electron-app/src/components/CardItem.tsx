@@ -254,6 +254,11 @@ export function CardItem({ card, deckId, listType }: CardItemProps) {
                     Sideboard
                   </DropdownMenuItem>
                 )}
+                {listType !== CARD_SET.CUT && (
+                  <DropdownMenuItem onClick={() => handleMove(CARD_SET.CUT)}>
+                    Cut
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuSubContent>
             </DropdownMenuSub>
 

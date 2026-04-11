@@ -62,6 +62,7 @@ export function BatchOperationsToolbar({
   if (currentListType !== CARD_SET.MAINBOARD) moveTargets.push({ value: CARD_SET.MAINBOARD, label: 'Main Deck' })
   if (currentListType !== CARD_SET.ALTERNATES) moveTargets.push({ value: CARD_SET.ALTERNATES, label: 'Alternates' })
   if (currentListType !== CARD_SET.SIDEBOARD && hasSideboard) moveTargets.push({ value: CARD_SET.SIDEBOARD, label: 'Sideboard' })
+  if (currentListType !== CARD_SET.CUT) moveTargets.push({ value: CARD_SET.CUT, label: 'Cut' })
 
   return (
     <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50">
