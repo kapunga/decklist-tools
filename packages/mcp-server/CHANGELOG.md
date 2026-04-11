@@ -1,5 +1,38 @@
 # @mtg-deckbuilder/mcp-server
 
+## 0.9.0
+
+### Minor Changes
+
+- aa0789f: CI now runs the full workspace test suite on every pull request (`pnpm -r test`) instead of only the MCP server's tests. This brings shared (290 tests) and electron-app (25 tests) under CI coverage alongside mcp-server (146 tests) — 461 tests total per PR.
+- 8130b41: Fix three MCP server issues surfaced by smoke testing:
+
+  - `get_deck` now accepts a deck name again (case-insensitive) in addition to a UUID. The handler branches on UUID format instead of speculatively calling `Storage.getDeck`, which throws `Invalid deck ID format` on non-UUID input. Exposes a new `isValidUUID` helper from `@mtg-deckbuilder/shared`.
+  - `manage_interest_list`, `manage_card`, and `manage_commander` now error out on a `name` / `set_code` + `collector_number` mismatch instead of silently adding the wrong printing. Matching is case-insensitive and accepts canonical name, flavor name (e.g. Final Fantasy crossover flavor names), and any face name for DFCs/MDFCs. Pass `force: true` to override.
+  - `get_deck` payloads are substantially smaller. All MCP tool responses are now minified JSON (previously pretty-printed with 2-space indent) — this alone cuts `get_deck` for a 100-card commander deck from ~71 KB to ~41 KB with no shape change. `get_deck` also gains a `detail: "summary" | "full"` parameter defaulting to `summary`, which strips per-entry `id`, `addedAt`, `source`, and `pulledPrintings` — fields only useful for surgical edits or collection-pull tracking. A summary-minified commander deck is ~20 KB; `detail: "full"` preserves the previous shape.
+
+  Also tightens the MCP test suite's mock `Storage` to mirror the real class's UUID-validation contract, so future regressions in this area are visible in CI.
+
+- 8130b41: Split the `view_deck` MCP tool into four per-view tools: `deck_list`, `deck_curve`, `deck_notes`, and `deck_pull_list`. Each tool takes only the parameters relevant to its view — no more string `view` multiplexing.
+
+  **Breaking change for MCP clients**: `view_deck` has been removed. Callers should migrate:
+
+  - `view_deck(deck_id, view: "full", ...)` → `deck_list(deck_id, ...)`
+  - `view_deck(deck_id, view: "curve", filters)` → `deck_curve(deck_id, filters)`
+  - `view_deck(deck_id, view: "notes")` → `deck_notes(deck_id)`
+  - `view_deck(deck_id, view: "pull-list")` → `deck_pull_list(deck_id)`
+
+  **Key behavior change**: `deck_list` defaults `detail` to `compact` (was effectively `summary` via the formatter fallback). The new default includes oracle text on every card — the content LLMs actually want for deck analysis. Pass `detail: "summary"` for the old terse one-line form, or `detail: "full"` to additionally include set and rarity.
+
+  `deck_notes` no longer loads the Scryfall cache (notes rendering doesn't need oracle text), saving N per-card cache lookups per call.
+
+### Patch Changes
+
+- Updated dependencies [aa0789f]
+- Updated dependencies [8130b41]
+- Updated dependencies [8130b41]
+  - @mtg-deckbuilder/shared@0.9.0
+
 ## 0.8.0
 
 ### Minor Changes
