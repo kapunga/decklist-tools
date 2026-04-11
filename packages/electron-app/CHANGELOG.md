@@ -1,5 +1,13 @@
 # @mtg-deckbuilder/electron-app
 
+## 0.9.2
+
+### Patch Changes
+
+- e4765d0: Bump CI Node.js to 22 for pnpm 10.33 compatibility. The 0.9.1 release did not produce binaries because the build workflows were pinned to Node 20 while pnpm 10.33 requires Node 22.13+ (it imports `node:sqlite`, which was added in Node 22.5).
+- Updated dependencies [e4765d0]
+  - @mtg-deckbuilder/shared@0.9.2
+
 ## 0.9.1
 
 ### Patch Changes
