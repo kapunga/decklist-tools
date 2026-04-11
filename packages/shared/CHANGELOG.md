@@ -1,5 +1,88 @@
 # @mtg-deckbuilder/shared
 
+## 0.8.0
+
+### Minor Changes
+
+- 0201fce: CardEntry cleanup: tighten the type, replace `inclusion` with set membership, and fix the "cut all my Islands" bug
+
+  **The bug fix.** The MCP `manage_card` move action no longer silently moves an entire stack when the agent meant a single card. When the source entry has more than one copy, an explicit `quantity` is now required — agents that say "cut Lightning Bolt" in commander still work (singletons), but "cut Island" fails loudly until the agent commits to a number.
+
+  **`cut` is a real CardSet now.** Replaces the per-card `inclusion === 'cut'` flag with `cardSets[].name === 'cut'`. Cut cards live in their own holding pen, can carry notes explaining why they were cut, and are excluded from deck-size validation, color identity, and pull lists. The `manage_card` move action's `from`/`to` enums now accept `cut` as a value. Same for `considering` cards, which now live in `alternates` (the existing structural equivalent).
+
+  **`CardEntry` is tighter.** `quantity`, `roles`, `source`, and `ownership` are now required (with sensible defaults via the new `makeCardEntry` factory). `inclusion`, `isPinned`, and the denormalized `typeLine` are gone. Type lines are now read on-demand from the Scryfall cache via the new `getTypeLine(entry, cache)` accessor — no more drift between stored and cached values.
+
+  **MCP tool surface changes:**
+
+  - `manage_card` lost the `status` argument (replaced by set membership via `move`).
+  - `manage_card`'s `move` action gained `cut` as a valid `from`/`to` value, and now requires explicit `quantity` for multi-copy sources.
+  - `manage_card` lost the `pinned` argument.
+  - New tool reference doc at `specs/02-mcp-server.md`.
+
+  **On-disk migrations** (run automatically on next deck load):
+
+  - Migration 003 backfills `roles`/`source`/`quantity`/`ownership` defaults, strips `isPinned`, converts `inclusion === 'cut'` entries into the new `cut` set, and converts `inclusion === 'considering'` entries into `alternates`.
+  - Migration 004 strips the denormalized `typeLine` field.
+  - Both are idempotent and merge duplicate entries when set membership changes produce them.
+
+  **Internal cleanup** (no user-visible behavior change):
+
+  - Added `getCutList`, `getNonCutEntries`, `getTypeLine`, `getPulledPrintings`, `getPotentialDecks` accessors in shared.
+  - Added `makeCardEntry` factory for centralized default handling.
+  - Removed scattered `?? defaultValue` coalescing now that the type system enforces required fields.
+  - Removed the `INCLUSION_STATUS` constant and `InclusionStatus` type (orphaned).
+  - Rewrote validators, filters, format parsers, and views to read fields directly or via accessors instead of defending against undefined.
+  - Collapsed the `### Confirmed` / `### Considering` subheadings in the full-view output (the structural separation of mainboard / alternates conveys the same intent).
+
+- d18c9bd: Show color pips for all deck formats and fix colorless commander pip display
+- a07d20c: Add a Cut tab to the deck detail UI so cut cards are visible and movable
+
+  The card list refactor introduced a `cut` card set as a soft-delete area for cards the user removed from a deck but wanted to keep for recall, but no UI was added to view or populate it. Cards in the cut set were invisible to the Electron app — only the MCP `manage_card` tool could put cards there, and once placed they were unreachable from the UI. This fixes that.
+
+  **New "Cut" tab in `DeckDetail.tsx`.** Slots between Sideboard (or Alternates, for decks with no sideboard) and Notes. Always visible regardless of cut count, mirroring how Alternates is always visible. The tab label shows the current cut count, e.g. `Cut (3)`. The tab content reuses the existing `DeckListView` component without modification — `DeckListView` was already generic over `CardSetName`, so it renders cut cards correctly without any branching.
+
+  **"Move to Cut" in the per-card dropdown** (`CardItem.tsx`). Adds one more conditional `DropdownMenuItem` to the existing "Move to" submenu, gated by `listType !== CARD_SET.CUT`. From any non-cut tab, users can now cut individual cards; from inside the Cut tab, users can move cards back to Mainboard / Alternates / Sideboard via the existing menu items.
+
+  **"Move to Cut" in the batch toolbar** (`BatchOperationsToolbar.tsx`). Adds Cut to the multi-select `moveTargets` array under the same guard. No `hasSideboard`-style format gate — Cut is format-independent.
+
+  **No changes outside the three component files.** The store layer (`moveCard`, `batchMoveCards`), the domain layer (`getCutList`, `getNonCutEntries`), and the shared `CARD_SET` constant were already cut-aware from the prior refactor. `getCardCount` already excluded cut entries (it counts mainboard + commanders only), so cutting a card visibly drops the mainboard count and restores format validation headroom — matching the mental model that a cut card is no longer in the deck.
+
+- 7aa43ab: Split dev and prod storage so development of the app no longer risks production deck data
+
+  **Dev storage isolation.** In dev mode (`!app.isPackaged`), the Electron app now reads and writes to `<repo>/dev-storage/` instead of `~/Library/Application Support/mtg-deckbuilder/`. The prod app is unchanged. The dev storage directory is gitignored and created on first launch by the existing `Storage` constructor's `ensureDir` calls.
+
+  **Dev MCP server registration.** When the dev Electron app registers its MCP server via the "Connect" buttons in Settings, it now writes to `<repo>/.mcp.json` under the server name `mtg-deckbuilder-dev`, and passes `--storage-dir <repo>/dev-storage` as a CLI arg. This lets Claude Code running inside the repo pick up the dev MCP server automatically without touching the user's global Claude Desktop / Claude Code / Gemini CLI configs, and lets a dev and prod MCP server coexist in the same `.mcp.json` under different server names. The prod registration path is byte-identical to before.
+
+  **MCP server `--storage-dir` flag.** The MCP server now accepts a `--storage-dir <path>` CLI argument and passes it to `new Storage(...)`. Invocations without the flag fall back to the default prod path, so existing prod installs are unaffected.
+
+  **Bug fix: `loadAllCardsToCache` crash on imported decks.** The "System → Scryfall Cache → Load All Cards" command crashed with `TypeError: deck.cards is not iterable` because two call sites in `packages/electron-app/electron/storage-extensions.ts` still referenced the pre-refactor `deck.cards` / `deck.alternates` / `deck.sideboard` fields. Both now use the `getAllDeckEntries(deck)` accessor from `@mtg-deckbuilder/shared`. This was a latent residue from the card list refactor that only surfaced on the rarely-exercised bulk-cache path.
+
+- 5a5c779: Display flavor names as primary card names for special printings (e.g., Final Fantasy crossover)
+- 0df4c87: Bridge the on-disk Scryfall cache to the Electron renderer so card type lines resolve instantly without network fetches
+
+  **The bug.** The Electron renderer's `useScryfallCache` hook used React Query's `useQueries` with `queryFn: () => getCardById(id)`, which is a straight `fetch()` against `https://api.scryfall.com/cards/{id}`. It never read from the local on-disk Scryfall cache that `Storage.getCachedCard()` maintains. Every deck open kicked off ~100 parallel network fetches, and while in flight (or after silent failures), cards had no resolved type line and fell into the `Other` group in `DeckListView`. The "System → Scryfall Cache → Load All Cards" command populated the on-disk cache (good for the MCP server) but did nothing for the Electron UI because the UI ignored that directory entirely. Most visible on decks with many recent printings — the Final Fantasy commander deck made it impossible to miss.
+
+  **The fix.** Added a new `cache:get-cards` IPC handler in the Electron main process that takes a batch of `scryfallId`s and returns the cached subset as a plain record (misses are silently dropped). Wired it through `preload.ts` and the renderer-side ambient type in `vite-env.d.ts`. Rewrote `useScryfallCache` to call the IPC bridge via plain `useState` + `useEffect` (with a cancellation flag for deck switches) instead of React Query. The hook's return shape (`{ cache, isLoading }`) is unchanged, so neither `DeckListView` nor `DeckStats` (the two consumers) needed any modifications.
+
+  **Net result.** Cached cards now resolve instantly with one batched IPC round-trip per deck render and zero network calls. `Load All Cards` actually benefits the UI now. Two consumers, one new file path, zero behavior change for cache hits.
+
+  **Out of scope (deferred to follow-ups).**
+
+  - No network fallback on cache miss yet — missing cards still fall into the `Other` group, same as the existing transient state, just permanent until the user re-runs `Load All Cards`. A proper fallback would need a write-back IPC and race-condition handling.
+  - `usePullList.ts` still uses React Query to fetch printings by name via `getCardPrintings(name)` — same architectural smell, different IPC shape needed, separate branch.
+  - The renderer doesn't yet subscribe to file-watcher events for cache writes, so cards cached by the MCP server while the Electron app is open won't appear until the user re-opens the deck.
+
+- 01183fc: Split types into dedicated files and unify PullListItem/PullListGroup into shared package
+
+### Patch Changes
+
+- a93877b: Fix pull list and card merge bugs
+
+  - Fix commander pull not reflecting in UI by removing over-restrictive printing filter
+  - Fix pull list hiding "considering" cards by aligning filter with main deck list (exclude only "cut")
+  - Remove collection level rarity filtering from pull list (collection level is advisory, not a hard gate)
+  - Fix card merge not upgrading inclusion status when re-adding an existing card
+
 ## 0.7.0
 
 ### Minor Changes

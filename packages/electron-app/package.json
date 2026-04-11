@@ -1,6 +1,6 @@
 {
   "name": "@mtg-deckbuilder/electron-app",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "MTG Deckbuilder - Desktop app for managing Magic: The Gathering decks",
   "main": "dist-electron/main.js",
   "scripts": {
@@ -81,7 +81,13 @@
       "category": "public.app-category.games",
       "icon": "build/icon.icns",
       "target": [
-        { "target": "dmg", "arch": ["x64", "arm64"] }
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
       ]
     },
     "dmg": {
@@ -101,7 +107,12 @@
     "win": {
       "icon": "build/icon.ico",
       "target": [
-        { "target": "nsis", "arch": ["x64"] }
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
       ]
     },
     "nsis": {
@@ -114,7 +125,13 @@
       "icon": "build/icon.png",
       "category": "Game",
       "target": [
-        { "target": "AppImage", "arch": ["x64", "arm64"] }
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
       ]
     }
   }
