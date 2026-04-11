@@ -1,0 +1,43 @@
+version: 2
+
+updates:
+  # JavaScript / TypeScript dependencies across the pnpm workspace.
+  # Dependabot detects pnpm-workspace.yaml + pnpm-lock.yaml at the root and
+  # handles all three workspace packages automatically. `workspace:*` refs
+  # between our own packages are skipped.
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    groups:
+      # Batch minor + patch updates into two PRs per week so the inbox stays
+      # quiet. Major bumps still come through as individual PRs so they get
+      # the review attention they deserve.
+      dev-dependencies:
+        dependency-type: "development"
+        update-types:
+          - "minor"
+          - "patch"
+      prod-dependencies:
+        dependency-type: "production"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # GitHub Actions used in .github/workflows/*.yml. Dependabot scans every
+  # workflow file at this directory.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    groups:
+      actions-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
