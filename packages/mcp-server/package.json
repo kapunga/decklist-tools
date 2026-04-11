@@ -23,7 +23,7 @@
     "@mtg-deckbuilder/shared": "workspace:*"
   },
   "devDependencies": {
-    "@types/node": "^20.10.0",
+    "@types/node": "^25.6.0",
     "esbuild": "^0.28.0",
     "pkg": "^5.8.1",
     "tsx": "^4.7.0",
