@@ -4,6 +4,10 @@ import { getMainboard, getSideboard, getAlternates } from '@mtg-deckbuilder/shar
 import { handleToolCall, getToolDefinitions } from './index.js'
 import type { Storage } from '@mtg-deckbuilder/shared'
 
+// Well-formed UUID that never matches a real deck — use for "not found" tests
+// that pass through Storage.getDeck, which throws on non-UUID input.
+const MISSING_UUID = '00000000-0000-4000-8000-000000000999'
+
 // Mock Scryfall functions and CachedScryfallClient.
 // CachedScryfallClient uses relative imports internally, so the mocked
 // module-level functions wouldn't be reached. We replace the class with
@@ -58,8 +62,17 @@ function call(name: string, args: Record<string, unknown> = {}) {
 // ─── Tool Definitions ──────────────────────────────────────────
 
 describe('getToolDefinitions', () => {
-  it('returns 15 tools', () => {
-    expect(getToolDefinitions()).toHaveLength(15)
+  it('returns 18 tools', () => {
+    expect(getToolDefinitions()).toHaveLength(18)
+  })
+
+  it('exposes the four split deck views, not view_deck', () => {
+    const names = new Set(getToolDefinitions().map(t => t.name))
+    expect(names.has('view_deck')).toBe(false)
+    expect(names.has('deck_list')).toBe(true)
+    expect(names.has('deck_curve')).toBe(true)
+    expect(names.has('deck_notes')).toBe(true)
+    expect(names.has('deck_pull_list')).toBe(true)
   })
 })
 
@@ -131,8 +144,69 @@ describe('Deck CRUD', () => {
       expect(result.name).toBe('Found By Name')
     })
 
-    it('throws when not found', async () => {
-      await expect(call('get_deck', { identifier: 'nope' })).rejects.toThrow('Deck not found')
+    it('gets deck by name case-insensitively', async () => {
+      const deck = makeDeck({ name: 'Niv-Mizzet, Spellslinger' })
+      mock._decks.set(deck.id, deck)
+      const result = await call('get_deck', { identifier: 'NIV-MIZZET, SPELLSLINGER' }) as any
+      expect(result.name).toBe('Niv-Mizzet, Spellslinger')
+      // Regression guard: must not touch storage.getDeck with a non-UUID,
+      // otherwise the real Storage would throw "Invalid deck ID format".
+      expect(storage.getDeck).not.toHaveBeenCalled()
+    })
+
+    it('throws a clean "Deck not found" error for an unknown name', async () => {
+      await expect(call('get_deck', { identifier: 'nope' }))
+        .rejects.toThrow('Deck not found: nope')
+    })
+
+    it('throws a clean "Deck not found" error for an unknown UUID', async () => {
+      await expect(call('get_deck', { identifier: MISSING_UUID }))
+        .rejects.toThrow(`Deck not found: ${MISSING_UUID}`)
+    })
+
+    it('summary mode (default) strips per-entry audit fields and pulledPrintings', async () => {
+      const deck = makeDeck({ name: 'Summary Check' })
+      pushMainboard(deck, makeDeckCard('Lightning Bolt', {
+        pulledPrintings: [{ setCode: 'lea', collectorNumber: '161', quantity: 1 }],
+      }))
+      mock._decks.set(deck.id, deck)
+
+      const result = await call('get_deck', { identifier: deck.id }) as any
+      const entry = result.cardSets.find((s: any) => s.name === 'mainboard').entries[0]
+
+      expect(entry.card.name).toBe('Lightning Bolt')
+      expect(entry.quantity).toBeDefined()
+      expect(entry.roles).toBeDefined()
+      expect(entry.ownership).toBeDefined()
+
+      // Stripped fields
+      expect(entry.id).toBeUndefined()
+      expect(entry.addedAt).toBeUndefined()
+      expect(entry.source).toBeUndefined()
+      expect(entry.pulledPrintings).toBeUndefined()
+    })
+
+    it('full mode preserves every entry field', async () => {
+      const deck = makeDeck({ name: 'Full Check' })
+      pushMainboard(deck, makeDeckCard('Lightning Bolt', {
+        pulledPrintings: [{ setCode: 'lea', collectorNumber: '161', quantity: 1 }],
+      }))
+      mock._decks.set(deck.id, deck)
+
+      const result = await call('get_deck', { identifier: deck.id, detail: 'full' }) as any
+      const entry = result.cardSets.find((s: any) => s.name === 'mainboard').entries[0]
+
+      expect(entry.id).toBeDefined()
+      expect(entry.addedAt).toBeDefined()
+      expect(entry.source).toBeDefined()
+      expect(entry.pulledPrintings).toEqual([{ setCode: 'lea', collectorNumber: '161', quantity: 1 }])
+    })
+
+    it('rejects an invalid detail value', async () => {
+      const deck = makeDeck()
+      mock._decks.set(deck.id, deck)
+      await expect(call('get_deck', { identifier: deck.id, detail: 'compact' }))
+        .rejects.toThrow(/detail.*must be/)
     })
   })
 
@@ -145,7 +219,7 @@ describe('Deck CRUD', () => {
     })
 
     it('throws when deck not found', async () => {
-      await expect(call('manage_deck', { action: 'update', deck_id: 'nope' })).rejects.toThrow('Deck not found')
+      await expect(call('manage_deck', { action: 'update', deck_id: MISSING_UUID })).rejects.toThrow('Deck not found')
     })
   })
 
@@ -158,7 +232,7 @@ describe('Deck CRUD', () => {
     })
 
     it('throws when not found', async () => {
-      await expect(call('manage_deck', { action: 'delete', deck_id: 'nope' })).rejects.toThrow('Deck not found')
+      await expect(call('manage_deck', { action: 'delete', deck_id: MISSING_UUID })).rejects.toThrow('Deck not found')
     })
   })
 })
@@ -236,7 +310,7 @@ describe('Card Management', () => {
     })
 
     it('throws when deck not found', async () => {
-      await expect(call('manage_card', { action: 'add', deck_id: 'nope', name: 'X' }))
+      await expect(call('manage_card', { action: 'add', deck_id: MISSING_UUID, name: 'X' }))
         .rejects.toThrow('Deck not found')
     })
 
@@ -458,33 +532,123 @@ describe('Card Search', () => {
 // ─── Views ─────────────────────────────────────────────────────
 
 describe('Views', () => {
-  describe('view_deck', () => {
-    it('renders full view by default', async () => {
-      const deck = makeDeck({ name: 'View Test' })
+  describe('deck_list', () => {
+    it('renders the deck by name and format', async () => {
+      const deck = makeDeck({ name: 'List Test' })
       mock._decks.set(deck.id, deck)
-      mock._setGlobalRoles([])
+      const result = await call('deck_list', { deck_id: deck.id }) as string
+      expect(result).toContain('List Test')
+      expect(result).toContain('commander')
+    })
 
-      const result = await call('view_deck', { deck_id: deck.id }) as string
-      expect(result).toContain('View Test')
+    it('returns oracle text by default (the whole point of the split)', async () => {
+      const deck = makeDeck({ name: 'Oracle Default' })
+      pushMainboard(deck, makeDeckCard('Lightning Bolt'))
+      mock._decks.set(deck.id, deck)
+      // Seed the mock Scryfall cache with a distinctive oracle text the
+      // render function will interpolate into its output when `detail: compact`
+      // (the new default) is applied.
+      mock._cachedCards.set('scryfall-lightning-bolt', mockScryfallCard('Lightning Bolt', {
+        id: 'scryfall-lightning-bolt',
+        oracle_text: 'ZAP-TO-THE-FACE',
+      }))
+
+      const result = await call('deck_list', { deck_id: deck.id }) as string
+      expect(result).toContain('ZAP-TO-THE-FACE')
+    })
+
+    it('drops oracle text when detail: summary is passed explicitly', async () => {
+      const deck = makeDeck({ name: 'Summary Override' })
+      pushMainboard(deck, makeDeckCard('Lightning Bolt'))
+      mock._decks.set(deck.id, deck)
+      mock._cachedCards.set('scryfall-lightning-bolt', mockScryfallCard('Lightning Bolt', {
+        id: 'scryfall-lightning-bolt',
+        oracle_text: 'ZAP-TO-THE-FACE',
+      }))
+
+      const result = await call('deck_list', { deck_id: deck.id, detail: 'summary' }) as string
+      expect(result).not.toContain('ZAP-TO-THE-FACE')
+      expect(result).toContain('Lightning Bolt')
+    })
+
+    it('rejects an invalid detail value', async () => {
+      const deck = makeDeck()
+      mock._decks.set(deck.id, deck)
+      await expect(call('deck_list', { deck_id: deck.id, detail: 'unknown' }))
+        .rejects.toThrow(/detail.*must be/)
     })
 
     it('throws when deck not found', async () => {
-      await expect(call('view_deck', { deck_id: 'nope' })).rejects.toThrow('Deck not found')
+      await expect(call('deck_list', { deck_id: MISSING_UUID })).rejects.toThrow('Deck not found')
+    })
+  })
+
+  describe('deck_curve', () => {
+    it('renders curve analysis', async () => {
+      const deck = makeDeck({ name: 'Curve Test' })
+      pushMainboard(deck, makeDeckCard('Bolt'))
+      mock._decks.set(deck.id, deck)
+      const result = await call('deck_curve', { deck_id: deck.id }) as string
+      expect(result).toContain('Curve Test')
     })
 
     it('accepts filter parameters', async () => {
-      const deck = makeDeck({ name: 'Filter Test' })
-      pushMainboard(deck,makeDeckCard('Elf', { roles: ['ramp'] }))
-      pushMainboard(deck,makeDeckCard('Bolt', { roles: ['removal'] }))
+      const deck = makeDeck({ name: 'Curve Filter Test' })
+      pushMainboard(deck, makeDeckCard('Elf', { roles: ['ramp'] }))
       mock._decks.set(deck.id, deck)
-      mock._setGlobalRoles([])
-
-      const result = await call('view_deck', {
+      const result = await call('deck_curve', {
         deck_id: deck.id,
-        view: 'curve',
         filters: [{ type: 'card-type', mode: 'include', values: ['Creature'] }],
       }) as string
-      expect(result).toContain('Filter Test')
+      expect(result).toContain('Curve Filter Test')
+    })
+
+    it('throws when deck not found', async () => {
+      await expect(call('deck_curve', { deck_id: MISSING_UUID })).rejects.toThrow('Deck not found')
+    })
+  })
+
+  describe('deck_notes', () => {
+    it('renders notes', async () => {
+      const deck = makeDeck({ name: 'Notes Test' })
+      mock._decks.set(deck.id, deck)
+      const result = await call('deck_notes', { deck_id: deck.id }) as string
+      expect(result).toContain('Notes Test')
+    })
+
+    it('does not load the Scryfall cache (notes view is cache-free)', async () => {
+      const deck = makeDeck()
+      pushMainboard(deck, makeDeckCard('Lightning Bolt'))
+      mock._decks.set(deck.id, deck)
+      await call('deck_notes', { deck_id: deck.id })
+      // Regression guardrail: notes rendering doesn't need Scryfall data,
+      // and the handler should not do per-card cache lookups.
+      expect(storage.getCachedCard).not.toHaveBeenCalled()
+    })
+
+    it('throws when deck not found', async () => {
+      await expect(call('deck_notes', { deck_id: MISSING_UUID })).rejects.toThrow('Deck not found')
+    })
+  })
+
+  describe('deck_pull_list', () => {
+    it('renders pull list', async () => {
+      const deck = makeDeck({ name: 'Pull Test' })
+      mock._decks.set(deck.id, deck)
+      const result = await call('deck_pull_list', { deck_id: deck.id }) as string
+      expect(result).toContain('Pull Test')
+    })
+
+    it('throws when deck not found', async () => {
+      await expect(call('deck_pull_list', { deck_id: MISSING_UUID })).rejects.toThrow('Deck not found')
+    })
+  })
+
+  describe('view_deck removal', () => {
+    it('rejects view_deck as an unknown tool', async () => {
+      const deck = makeDeck()
+      mock._decks.set(deck.id, deck)
+      await expect(call('view_deck', { deck_id: deck.id })).rejects.toThrow('Unknown tool: view_deck')
     })
   })
 })
@@ -798,6 +962,87 @@ describe('Interest List', () => {
       mockSearchCardByName.mockResolvedValue(null as any)
       await expect(call('manage_interest_list', { action: 'add', name: 'Fake' })).rejects.toThrow('Card not found')
     })
+
+    it('rejects when name disagrees with set+collector', async () => {
+      // FCA #28 is a Brainstorm reprint with flavor name "Endwalker".
+      // Supplying name="Counterspell" should error rather than silently
+      // resolve to Brainstorm.
+      mockGetCardBySetAndNumber.mockResolvedValue(
+        mockScryfallCard('Brainstorm', { flavor_name: 'Endwalker', set: 'fca', collector_number: '28' })
+      )
+      await expect(
+        call('manage_interest_list', {
+          action: 'add',
+          name: 'Counterspell',
+          set_code: 'fca',
+          collector_number: '28',
+        })
+      ).rejects.toThrow(/Name mismatch.*Brainstorm.*Endwalker.*Counterspell/)
+    })
+
+    it('accepts a mismatched name when force: true is passed', async () => {
+      mockGetCardBySetAndNumber.mockResolvedValue(
+        mockScryfallCard('Brainstorm', { flavor_name: 'Endwalker', set: 'fca', collector_number: '28' })
+      )
+      const result = await call('manage_interest_list', {
+        action: 'add',
+        name: 'Counterspell',
+        set_code: 'fca',
+        collector_number: '28',
+        force: true,
+      }) as any
+      expect(result.success).toBe(true)
+      expect(result.item.card.name).toBe('Brainstorm')
+      expect(result.item.card.flavorName).toBe('Endwalker')
+    })
+
+    it('matches on canonical card name (no flavor)', async () => {
+      mockGetCardBySetAndNumber.mockResolvedValue(
+        mockScryfallCard('Lightning Bolt', { set: 'lea', collector_number: '161' })
+      )
+      const result = await call('manage_interest_list', {
+        action: 'add',
+        name: 'Lightning Bolt',
+        set_code: 'lea',
+        collector_number: '161',
+      }) as any
+      expect(result.success).toBe(true)
+      expect(result.item.card.name).toBe('Lightning Bolt')
+    })
+
+    it('matches on flavor name', async () => {
+      mockGetCardBySetAndNumber.mockResolvedValue(
+        mockScryfallCard('Brainstorm', { flavor_name: 'Endwalker', set: 'fca', collector_number: '28' })
+      )
+      const result = await call('manage_interest_list', {
+        action: 'add',
+        name: 'Endwalker',
+        set_code: 'fca',
+        collector_number: '28',
+      }) as any
+      expect(result.success).toBe(true)
+      expect(result.item.card.name).toBe('Brainstorm')
+    })
+
+    it('matches on a DFC face name', async () => {
+      mockGetCardBySetAndNumber.mockResolvedValue(
+        mockScryfallCard('Delver of Secrets // Insectile Aberration', {
+          set: 'isd',
+          collector_number: '51',
+          card_faces: [
+            { name: 'Delver of Secrets' },
+            { name: 'Insectile Aberration' },
+          ],
+        })
+      )
+      const result = await call('manage_interest_list', {
+        action: 'add',
+        name: 'Insectile Aberration',
+        set_code: 'isd',
+        collector_number: '51',
+      }) as any
+      expect(result.success).toBe(true)
+    })
   })
 
   describe('manage_interest_list remove', () => {
@@ -935,7 +1180,7 @@ describe('Notes', () => {
     })
 
     it('throws when deck not found', async () => {
-      await expect(call('list_deck_notes', { deck_id: 'nope' })).rejects.toThrow('Deck not found')
+      await expect(call('list_deck_notes', { deck_id: MISSING_UUID })).rejects.toThrow('Deck not found')
     })
   })
 })

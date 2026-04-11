@@ -12,7 +12,13 @@ export async function manageCommander(storage: Storage, args: ManageCommanderArg
 
   switch (args.action) {
     case 'add': {
-      const scryfallCard = await fetchScryfallCard(storage, args.commander_name, args.set_code, args.collector_number)
+      const scryfallCard = await fetchScryfallCard(
+        storage,
+        args.commander_name,
+        args.set_code,
+        args.collector_number,
+        { force: args.force },
+      )
       const commander = createCardIdentifier(scryfallCard)
 
       const result = addCommander(deck, commander)
@@ -42,7 +48,11 @@ export async function manageCommander(storage: Storage, args: ManageCommanderArg
       }
 
       const newScryfallCard = await fetchScryfallCard(
-        storage, args.new_commander_name, args.new_set_code, args.new_collector_number
+        storage,
+        args.new_commander_name,
+        args.new_set_code,
+        args.new_collector_number,
+        { force: args.force },
       )
       const newCommander = createCardIdentifier(newScryfallCard)
 

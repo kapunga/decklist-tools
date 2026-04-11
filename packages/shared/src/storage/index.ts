@@ -14,6 +14,10 @@ export { ConcurrentModificationError } from './types.js'
 // UUID v4 format used by Scryfall and deck IDs
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
+export function isValidUUID(id: string): boolean {
+  return UUID_REGEX.test(id)
+}
+
 function validateUUID(id: string, label: string): void {
   if (!UUID_REGEX.test(id)) {
     throw new Error(`Invalid ${label} format: ${id}`)
@@ -27,7 +31,11 @@ export function getStorageBasePath(): string {
   } else if (process.platform === 'win32') {
     return path.join(process.env.APPDATA || os.homedir(), 'mtg-deckbuilder')
   } else {
-    return path.join(os.homedir(), '.config', 'mtg-deckbuilder')
+    const xdgConfigHome = process.env.XDG_CONFIG_HOME
+    const base = xdgConfigHome && xdgConfigHome.length > 0
+      ? xdgConfigHome
+      : path.join(os.homedir(), '.config')
+    return path.join(base, 'mtg-deckbuilder')
   }
 }
 

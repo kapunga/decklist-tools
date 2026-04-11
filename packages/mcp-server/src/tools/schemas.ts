@@ -1,10 +1,22 @@
 import type { Tool } from '@modelcontextprotocol/sdk/types.js'
-import { getViewDescriptions } from '../views/index.js'
+
+// Reused by deck_list and deck_curve — a CardFilter JSON shape for trimming
+// the card list shown in a rendered view.
+const CARD_FILTER_SCHEMA = {
+  type: 'array',
+  description: 'Optional card filters to apply',
+  items: {
+    type: 'object',
+    properties: {
+      type: { type: 'string', enum: ['cmc', 'color', 'card-type', 'role', 'ownership'] },
+      mode: { type: 'string', enum: ['include', 'exclude'] },
+      values: { type: 'array', items: {} },
+    },
+    required: ['type', 'mode', 'values'],
+  },
+} as const
 
 export function getToolDefinitions(): Tool[] {
-  const viewDescs = getViewDescriptions()
-  const viewList = viewDescs.map(v => `\`${v.id}\`: ${v.description}`).join('; ')
-
   return [
     // Deck Management
     {
@@ -24,6 +36,11 @@ export function getToolDefinitions(): Tool[] {
           identifier: {
             type: 'string',
             description: 'Deck UUID or name (case-insensitive)',
+          },
+          detail: {
+            type: 'string',
+            enum: ['summary', 'full'],
+            description: 'Response detail level. `summary` (default) omits per-entry audit fields (id, addedAt, source) and collection-pull tracking (pulledPrintings) — suitable for deck analysis. `full` preserves every field, needed for surgical edit operations that reference entry IDs.',
           },
         },
         required: ['identifier'],
@@ -112,6 +129,10 @@ export function getToolDefinitions(): Tool[] {
             enum: ['mainboard', 'alternates', 'sideboard', 'cut'],
             description: 'Destination list (move only, required). Use "cut" to remove a card while preserving notes about why it was cut.',
           },
+          force: {
+            type: 'boolean',
+            description: 'Skip the name/set+collector_number mismatch check. By default, supplying all three will error if the resolved printing does not match the supplied name. Set true to override.',
+          },
         },
         required: ['action', 'deck_id'],
       },
@@ -135,31 +156,56 @@ export function getToolDefinitions(): Tool[] {
       },
     },
 
-    // Views
+    // Views — one tool per view type. Start with deck_list for any deck analysis task.
     {
-      name: 'view_deck',
-      description: `Returns human-readable deck views with Oracle text. **Start here when reviewing or analyzing a deck.** Use \`detail: "compact"\` for card analysis (includes Oracle text). Available views: ${viewList}`,
+      name: 'deck_list',
+      description: '**Primary deck-analysis view.** Returns the full card list as markdown, with Oracle text on every card by default. Supports grouping (`group_by`), sorting (`sort_by`), and filtering (`filters`). This is the right tool for almost any question about what a deck does or contains.',
       inputSchema: {
         type: 'object',
         properties: {
           deck_id: { type: 'string' },
-          view: { type: 'string', default: 'full' },
-          detail: { type: 'string', enum: ['summary', 'compact', 'full'], description: 'Card detail level: summary (default, one-line), compact (adds oracle text), full (adds set/rarity)' },
-          sort_by: { type: 'string' },
-          group_by: { type: 'string' },
-          filters: {
-            type: 'array',
-            description: 'Optional card filters to apply',
-            items: {
-              type: 'object',
-              properties: {
-                type: { type: 'string', enum: ['cmc', 'color', 'card-type', 'role', 'ownership'] },
-                mode: { type: 'string', enum: ['include', 'exclude'] },
-                values: { type: 'array', items: {} },
-              },
-              required: ['type', 'mode', 'values'],
-            },
+          detail: {
+            type: 'string',
+            enum: ['summary', 'compact', 'full'],
+            description: 'Card detail level. **Defaults to `compact`** — each card is listed with its Oracle text, which is what you want for deck analysis. Use `summary` for a terser one-line-per-card form when you only need names and quantities. Use `full` to additionally include set code and rarity.',
           },
+          sort_by: { type: 'string', description: 'Sort key within each section. Supported values: `name`, `set`.' },
+          group_by: { type: 'string', description: 'Group cards into sections. Supported values: `none` (default), `role`, `type`.' },
+          filters: CARD_FILTER_SCHEMA,
+        },
+        required: ['deck_id'],
+      },
+    },
+    {
+      name: 'deck_curve',
+      description: 'Mana curve analysis for a deck: CMC distribution, color pip counts, and type breakdown. Use for mana-base and cost-curve questions.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          deck_id: { type: 'string' },
+          filters: CARD_FILTER_SCHEMA,
+        },
+        required: ['deck_id'],
+      },
+    },
+    {
+      name: 'deck_notes',
+      description: 'Deck strategy notes: combos, synergies, themes, and game-plan commentary attached to a deck. Use when a user asks how a deck is *meant* to play.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          deck_id: { type: 'string' },
+        },
+        required: ['deck_id'],
+      },
+    },
+    {
+      name: 'deck_pull_list',
+      description: 'Cards grouped by set for physical collection pulling, with pulled-status checkboxes. Use when preparing to physically assemble a deck from the user\'s collection.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          deck_id: { type: 'string' },
         },
         required: ['deck_id'],
       },
@@ -220,6 +266,10 @@ export function getToolDefinitions(): Tool[] {
           },
           new_set_code: { type: 'string', description: 'Set code for new commander (swap only)' },
           new_collector_number: { type: 'string', description: 'Collector number for new commander (swap only)' },
+          force: {
+            type: 'boolean',
+            description: 'Skip the name/set+collector_number mismatch check. By default, supplying all three will error if the resolved printing does not match the supplied name. Set true to override.',
+          },
         },
         required: ['action', 'deck_id', 'commander_name'],
       },
@@ -254,6 +304,10 @@ export function getToolDefinitions(): Tool[] {
             items: { type: 'string' },
           },
           source: { type: 'string' },
+          force: {
+            type: 'boolean',
+            description: 'Skip the name/set+collector_number mismatch check. By default, supplying all three will error if the resolved printing does not match the supplied name. Set true to override.',
+          },
         },
         required: ['action'],
       },

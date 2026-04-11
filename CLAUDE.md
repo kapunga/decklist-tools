@@ -12,7 +12,11 @@ MTG Deckbuilder Tools is a monorepo with three integrated packages for Magic: Th
 2. **MCP Server** (`packages/mcp-server`) - TypeScript MCP server enabling Claude to help build and manage decks
 3. **Electron App** (`packages/electron-app`) - Desktop application for visual deck management
 
-All packages share the same JSON-based storage at `~/Library/Application Support/mtg-deckbuilder/` and can be used simultaneously.
+All packages share the same JSON-based storage and can be used simultaneously. The base directory is platform-specific:
+
+- **macOS**: `~/Library/Application Support/mtg-deckbuilder/`
+- **Windows**: `%APPDATA%\mtg-deckbuilder\` (i.e. `C:\Users\<user>\AppData\Roaming\mtg-deckbuilder\`)
+- **Linux**: `$XDG_CONFIG_HOME/mtg-deckbuilder/` (falls back to `~/.config/mtg-deckbuilder/`)
 
 ## Build Commands
 

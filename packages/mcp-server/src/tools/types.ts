@@ -28,6 +28,7 @@ export interface ManageCardArgs {
   notes?: string
   from?: string
   to?: string
+  force?: boolean
 }
 
 export interface SearchCardsArgs {
@@ -41,13 +42,27 @@ export interface SearchCardsArgs {
 
 export type DetailLevel = 'summary' | 'compact' | 'full'
 
-export interface ViewDeckArgs {
+export type GetDeckDetail = 'summary' | 'full'
+
+export interface DeckListArgs {
   deck_id: string
-  view?: string
   detail?: DetailLevel
   sort_by?: string
   group_by?: string
   filters?: import('@mtg-deckbuilder/shared').CardFilter[]
+}
+
+export interface DeckCurveArgs {
+  deck_id: string
+  filters?: import('@mtg-deckbuilder/shared').CardFilter[]
+}
+
+export interface DeckNotesArgs {
+  deck_id: string
+}
+
+export interface DeckPullListArgs {
+  deck_id: string
 }
 
 export interface ManageRoleArgs {
@@ -68,6 +83,7 @@ export interface ManageCommanderArgs {
   new_commander_name?: string
   new_set_code?: string
   new_collector_number?: string
+  force?: boolean
 }
 
 export interface ManageInterestListArgs {
@@ -79,6 +95,7 @@ export interface ManageInterestListArgs {
   notes?: string
   potential_decks?: string[]
   source?: string
+  force?: boolean
 }
 
 export interface ManageDeckNoteArgs {
@@ -146,6 +163,7 @@ export function validateManageCardArgs(args: Record<string, unknown>): ManageCar
     notes: args.notes as string | undefined,
     from: args.from as string | undefined,
     to: args.to as string | undefined,
+    force: args.force as boolean | undefined,
   }
 }
 
@@ -160,15 +178,33 @@ export function validateSearchCardsArgs(args: Record<string, unknown>): SearchCa
   }
 }
 
-export function validateViewDeckArgs(args: Record<string, unknown>): ViewDeckArgs {
+export function validateDeckListArgs(args: Record<string, unknown>): DeckListArgs {
+  const detail = args.detail
+  if (detail !== undefined && detail !== 'summary' && detail !== 'compact' && detail !== 'full') {
+    throw new Error(`'detail' must be 'summary', 'compact', or 'full' (got '${String(detail)}')`)
+  }
   return {
     deck_id: requireString(args, 'deck_id'),
-    view: args.view as string | undefined,
-    detail: args.detail as DetailLevel | undefined,
+    detail: detail as DetailLevel | undefined,
     sort_by: args.sort_by as string | undefined,
     group_by: args.group_by as string | undefined,
     filters: args.filters as import('@mtg-deckbuilder/shared').CardFilter[] | undefined,
   }
+}
+
+export function validateDeckCurveArgs(args: Record<string, unknown>): DeckCurveArgs {
+  return {
+    deck_id: requireString(args, 'deck_id'),
+    filters: args.filters as import('@mtg-deckbuilder/shared').CardFilter[] | undefined,
+  }
+}
+
+export function validateDeckNotesArgs(args: Record<string, unknown>): DeckNotesArgs {
+  return { deck_id: requireString(args, 'deck_id') }
+}
+
+export function validateDeckPullListArgs(args: Record<string, unknown>): DeckPullListArgs {
+  return { deck_id: requireString(args, 'deck_id') }
 }
 
 export function validateManageRoleArgs(args: Record<string, unknown>): ManageRoleArgs {
@@ -192,6 +228,7 @@ export function validateManageCommanderArgs(args: Record<string, unknown>): Mana
     new_commander_name: args.new_commander_name as string | undefined,
     new_set_code: args.new_set_code as string | undefined,
     new_collector_number: args.new_collector_number as string | undefined,
+    force: args.force as boolean | undefined,
   }
 }
 
@@ -205,6 +242,7 @@ export function validateManageInterestListArgs(args: Record<string, unknown>): M
     notes: args.notes as string | undefined,
     potential_decks: args.potential_decks as string[] | undefined,
     source: args.source as string | undefined,
+    force: args.force as boolean | undefined,
   }
 }
 

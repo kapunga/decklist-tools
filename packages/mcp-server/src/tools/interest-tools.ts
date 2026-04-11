@@ -41,7 +41,13 @@ export async function manageInterestList(storage: Storage, args: ManageInterestL
       if (!args.name) throw new Error('name is required for add')
       const list = getOrCreateInterestList(storage)
 
-      const scryfallCard = await fetchScryfallCard(storage, args.name, args.set_code, args.collector_number)
+      const scryfallCard = await fetchScryfallCard(
+        storage,
+        args.name,
+        args.set_code,
+        args.collector_number,
+        { force: args.force },
+      )
 
       // Normalise source to the CardSource union
       const source: CardSource = (args.source === 'import' || args.source === 'claude') ? args.source : CARD_SOURCE.USER

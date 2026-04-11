@@ -3,6 +3,7 @@ import type { Storage } from '@mtg-deckbuilder/shared'
 import {
   createEmptyDeck,
   generateDeckCardId,
+  isValidUUID,
   CARD_SET,
   INTEREST_LIST_ID,
   type Deck,
@@ -31,12 +32,19 @@ export function pushAlternates(deck: Deck, ...cards: CardEntry[]): void {
 export function createMockStorage() {
   const decks = new Map<string, Deck>()
   const cardLists = new Map<string, CardList>()
+  const cachedCards = new Map<string, ScryfallCard>()
   let globalRoles: RoleDefinition[] = []
   let setCollection: SetCollectionFile = { version: 1, updatedAt: '', sets: [] }
 
   const storage = {
     listDecks: vi.fn(() => [...decks.values()]),
-    getDeck: vi.fn((id: string) => decks.get(id) ?? null),
+    // Mirror the real Storage.getDeck contract: throw on non-UUID input.
+    // Without this, UUID-validation regressions in the shared layer are
+    // invisible to the MCP test suite.
+    getDeck: vi.fn((id: string) => {
+      if (!isValidUUID(id)) throw new Error(`Invalid deck ID format: ${id}`)
+      return decks.get(id) ?? null
+    }),
     getDeckByName: vi.fn((name: string) => {
       for (const d of decks.values()) {
         if (d.name.toLowerCase() === name.toLowerCase()) return d
@@ -47,6 +55,7 @@ export function createMockStorage() {
       decks.set(deck.id, deck)
     }),
     deleteDeck: vi.fn((id: string) => {
+      if (!isValidUUID(id)) throw new Error(`Invalid deck ID format: ${id}`)
       if (decks.has(id)) {
         decks.delete(id)
         return true
@@ -78,11 +87,21 @@ export function createMockStorage() {
       imageCacheMaxSize: 500,
     })),
     saveConfig: vi.fn(),
-    getCachedCard: vi.fn(() => null),
-    getCachedCardByName: vi.fn(() => null),
-    getCachedCardBySetCollector: vi.fn(() => null),
+    getCachedCard: vi.fn((scryfallId: string) => cachedCards.get(scryfallId) ?? null),
+    getCachedCardByName: vi.fn((name: string) => {
+      for (const card of cachedCards.values()) {
+        if (card.name.toLowerCase() === name.toLowerCase()) return card
+      }
+      return null
+    }),
+    getCachedCardBySetCollector: vi.fn((setCode: string, collectorNumber: string) => {
+      for (const card of cachedCards.values()) {
+        if (card.set === setCode && card.collector_number === collectorNumber) return card
+      }
+      return null
+    }),
     cacheCard: vi.fn(),
-    cacheCardWithIndex: vi.fn(),
+    cacheCardWithIndex: vi.fn((card: ScryfallCard) => { cachedCards.set(card.id, card) }),
     getSetCollection: vi.fn(() => setCollection),
     saveSetCollection: vi.fn(),
     getBasePath: vi.fn(() => '/tmp/test'),
@@ -93,6 +112,7 @@ export function createMockStorage() {
     storage: storage as unknown as Storage,
     _decks: decks,
     _cardLists: cardLists,
+    _cachedCards: cachedCards,
     _setGlobalRoles: (roles: RoleDefinition[]) => { globalRoles = roles },
     _setSetCollection: (col: SetCollectionFile) => { setCollection = col },
   }

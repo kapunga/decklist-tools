@@ -29,6 +29,7 @@ Returns the raw deck JSON (with Scryfall IDs, metadata, and a structural validat
 
 **Input:**
 - `identifier` *(string, required)* — deck UUID or name (case-insensitive).
+- `detail` *(string, optional)* — `summary` (default) | `full`. Summary mode strips per-entry `id`, `addedAt`, `source`, and `pulledPrintings` from each `CardEntry` — these are only needed for surgical edit operations or collection-pull tracking. Full mode preserves every field.
 
 ### `manage_deck`
 
@@ -58,7 +59,7 @@ Add, remove, update, or move cards in a deck. This is the workhorse tool for car
 
 **Action-specific parameters:**
 
-- **`add`** — `cards` (or `name` + `set_code` + `collector_number`), `roles`, `ownership`, `to_sideboard`, `to_alternates`. New entries default to `quantity: 1`, `ownership: 'unknown'`, `roles: []`, `source: 'user'`.
+- **`add`** — `cards` (or `name` + `set_code` + `collector_number`), `roles`, `ownership`, `to_sideboard`, `to_alternates`, `force`. New entries default to `quantity: 1`, `ownership: 'unknown'`, `roles: []`, `source: 'user'`. When `name`, `set_code`, and `collector_number` are all supplied, the resolved printing's name is cross-checked against the supplied `name` — a mismatch errors out. Pass `force: true` to override. The `cards` array path never triggers this check (each array entry is parsed as `set_code collector_number`, so there is no user-supplied name to validate).
 - **`remove`** — `cards`, `quantity` (number to remove; defaults to all), `from_sideboard`, `from_alternates`.
 - **`update`** — `cards`, `roles` (replaces all), `add_roles`, `remove_roles`, `ownership`, `notes`.
 - **`move`** — `cards`, `from` *(required)*, `to` *(required)*, `quantity` *(required when source has >1 copies)*. Both `from` and `to` accept `mainboard`, `sideboard`, `alternates`, and `cut`. Use `to: "cut"` to remove a card while preserving notes about why it was cut.
@@ -104,26 +105,43 @@ Generate a Scryfall filter string based on the user's set collection. The filter
 
 ## Views
 
-### `view_deck`
+Deck rendering is split across four per-view tools rather than one multiplexed `view_deck`. **Start with `deck_list` for any deck-analysis task** — it returns the full card list with oracle text by default.
 
-Returns a human-readable rendering of a deck. **Start here when reviewing or analyzing a deck.**
+### `deck_list`
+
+**Primary deck-analysis view.** Returns the deck's card list as markdown, with oracle text on every card by default. Renders separate sections for `## Commander(s)`, `## Main Deck`, `## Alternates`, and `## Sideboard`.
 
 **Input:**
 - `deck_id` *(string, required)*.
-- `view` *(string, default `'full'`)* — see "Available views" below.
-- `detail` *(string)* — `summary` (default, one-line) | `compact` (adds oracle text) | `full` (adds set/rarity).
-- `sort_by` *(string)* — view-specific sort key. The `full` view supports `name` and `set`.
-- `group_by` *(string)* — view-specific group key. The `full` view supports `none`, `role`, and `type`.
+- `detail` *(string)* — `summary` | `compact` | `full`. **Defaults to `compact`** (includes oracle text — the first-look content for deck analysis). `summary` drops oracle text for a terser one-line-per-card form. `full` adds set code and rarity on top of compact.
+- `sort_by` *(string)* — sort key within each section. Supported values: `name`, `set`.
+- `group_by` *(string)* — group cards into sections. Supported values: `none` (default), `role`, `type`.
 - `filters` *(array)* — optional card filters. Each filter has `type`, `mode`, and `values`.
   - `type`: `cmc` | `color` | `card-type` | `role` | `ownership`.
   - `mode`: `include` | `exclude`.
   - `values`: array of permitted values (depends on `type`).
 
-**Available views:**
-- **`full`** — deck card list. Supports `group_by`, `sort_by`, and `filters`. Renders separate sections for `## Main Deck`, `## Alternates`, and `## Sideboard`.
-- **`curve`** — mana curve analysis: CMC distribution, mana pip counts, type breakdown, and card counts.
-- **`notes`** — deck notes documenting combos, synergies, and strategy.
-- **`pull-list`** — cards grouped by set for physical collection pulling, with pulled-status checkboxes.
+### `deck_curve`
+
+Mana curve analysis: CMC distribution, color pip counts, type breakdown, and card counts.
+
+**Input:**
+- `deck_id` *(string, required)*.
+- `filters` *(array, optional)* — same shape as `deck_list.filters`. Limits the curve analysis to cards that match the filter set.
+
+### `deck_notes`
+
+Returns the deck's strategy notes — combos, synergies, themes, and game-plan commentary. Use when a user asks *how* a deck is meant to play. This view does not require Scryfall data and skips the per-card cache load.
+
+**Input:**
+- `deck_id` *(string, required)*.
+
+### `deck_pull_list`
+
+Cards grouped by set for physical collection pulling, with pulled-status checkboxes. Use when preparing to physically assemble a deck.
+
+**Input:**
+- `deck_id` *(string, required)*.
 
 ---
 
@@ -163,6 +181,7 @@ Add, remove, or swap commanders for a Commander format deck. The deck's `colorId
 - `set_code`, `collector_number` *(string)* — for `add`/`remove`, the specific printing.
 - `new_commander_name` *(string)* — required for `swap`. The replacement commander.
 - `new_set_code`, `new_collector_number` *(string)* — for `swap`, the replacement printing.
+- `force` *(boolean, optional)* — when all three of `commander_name`, `set_code`, and `collector_number` are supplied, the resolved printing's name is cross-checked against `commander_name` (matches against canonical name, flavor name, or any face name). On mismatch the call errors. Pass `force: true` to override. Same behavior for the `swap` action against `new_commander_name` + `new_set_code` + `new_collector_number`.
 
 ---
 
@@ -188,6 +207,7 @@ Add or remove cards from the interest list.
 - `notes` *(string, optional)* — free-text notes attached to the entry.
 - `potential_decks` *(string[])* — deck IDs the user is considering this card for.
 - `source` *(string, optional)* — `user` | `import` | `claude`. Defaults to `user`.
+- `force` *(boolean, optional)* — when `name`, `set_code`, and `collector_number` are all supplied on `add`, the resolved printing's name is cross-checked against the supplied `name` (matches against canonical name, flavor name, or any face name). On mismatch the call errors. Pass `force: true` to override — useful for deliberately adding a card by a flavor/face name the validation doesn't recognize.
 
 ---
 
@@ -226,6 +246,7 @@ This document reflects the post-refactor MCP tool surface as of the `list-refact
 - **`typeLine` is no longer denormalized on entries.** Type information is read from the Scryfall cache via the `getTypeLine(entry, cache)` accessor in shared. The `search_cards` tool still returns `typeLine` in its response (as Scryfall card data), but `CardEntry` no longer carries it.
 - **`quantity`, `roles`, `ownership`, and `source` are now required on every `CardEntry`.** Defaults are applied at the factory layer (`makeCardEntry` in shared) rather than scattered across reader sites.
 - **`manage_card.move` enforces explicit `quantity` for multi-copy sources.** This is the bug-fix that motivated the refactor: agents could previously cut all 15 Islands when meaning to cut 1.
+- **`view_deck` was split into `deck_list`, `deck_curve`, `deck_notes`, and `deck_pull_list`.** Each view is now a dedicated tool with only the parameters it actually uses. `deck_list` defaults `detail` to `compact` so that oracle text is included on the first call — previously, reaching oracle text required `view: "full", detail: "compact"`, which LLMs often missed.
 
 The on-disk migration history is in `packages/shared/src/migrations/`:
 - `001-migrate-notes` — note format upgrade.
