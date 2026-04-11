@@ -1,6 +1,4 @@
-import { useMemo } from 'react'
-import { useQueries } from '@tanstack/react-query'
-import { getCardById } from '@/lib/scryfall'
+import { useEffect, useMemo, useState } from 'react'
 import type { CardEntry, ScryfallCard } from '@/types'
 
 export function useScryfallCache(cards: CardEntry[]) {
@@ -12,24 +10,37 @@ export function useScryfallCache(cards: CardEntry[]) {
     return [...ids]
   }, [cards])
 
-  const queries = useQueries({
-    queries: scryfallIds.map(id => ({
-      queryKey: ['scryfall', id],
-      queryFn: () => getCardById(id),
-      staleTime: 1000 * 60 * 60, // 1 hour
-    })),
-  })
+  const [cache, setCache] = useState<Map<string, ScryfallCard>>(() => new Map())
+  const [isLoading, setIsLoading] = useState(false)
 
-  const cache = useMemo(() => {
-    const map = new Map<string, ScryfallCard>()
-    for (let i = 0; i < scryfallIds.length; i++) {
-      const data = queries[i]?.data
-      if (data) map.set(scryfallIds[i], data)
+  useEffect(() => {
+    if (scryfallIds.length === 0) {
+      setCache(new Map())
+      setIsLoading(false)
+      return
     }
-    return map
-  }, [scryfallIds, queries])
 
-  const isLoading = queries.some(q => q.isLoading)
+    let cancelled = false
+    setIsLoading(true)
+
+    window.electronAPI.getCachedCards(scryfallIds)
+      .then((result) => {
+        if (cancelled) return
+        const map = new Map<string, ScryfallCard>()
+        for (const [id, data] of Object.entries(result)) {
+          map.set(id, data as ScryfallCard)
+        }
+        setCache(map)
+        setIsLoading(false)
+      })
+      .catch(() => {
+        if (cancelled) return
+        setCache(new Map())
+        setIsLoading(false)
+      })
+
+    return () => { cancelled = true }
+  }, [scryfallIds])
 
   return { cache, isLoading }
 }
