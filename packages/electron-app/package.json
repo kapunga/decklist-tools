@@ -32,7 +32,7 @@
     "clsx": "^2.0.0",
     "cmdk": "^0.2.0",
     "lucide-react": "^0.294.0",
-    "react": "^18.2.0",
+    "react": "^19.2.5",
     "react-dom": "^18.2.0",
     "react-router-dom": "^7.14.0",
     "recharts": "^3.8.1",
@@ -42,7 +42,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.59.1",
-    "@types/react": "^18.2.37",
+    "@types/react": "^19.2.14",
     "@types/react-dom": "^18.2.15",
     "@types/uuid": "^9.0.6",
     "@vitejs/plugin-react": "^4.2.0",
