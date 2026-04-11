@@ -61,12 +61,14 @@ export async function manageCard(storage: Storage, args: ManageCardArgs) {
       const cardStrings = resolveCards(args)
       const results: Array<{ name: string; set: string; collectorNumber: string; quantity: number; merged?: boolean }> = []
 
+      const useCardsArray = Boolean(args.cards && args.cards.length > 0)
+
       for (const cardStr of cardStrings) {
         let setCode: string | undefined
         let collectorNumber: string | undefined
         let quantity = 1
 
-        if (args.cards && args.cards.length > 0) {
+        if (useCardsArray) {
           const parsed = parseCardString(cardStr)
           setCode = parsed.setCode
           collectorNumber = parsed.collectorNumber
@@ -77,7 +79,16 @@ export async function manageCard(storage: Storage, args: ManageCardArgs) {
           quantity = args.quantity || 1
         }
 
-        const scryfallCard = await fetchScryfallCard(storage, cardStr, setCode, collectorNumber)
+        // For the `cards` array path, `cardStr` is a parsed "Nx set collector"
+        // label, not a real card name — skip name validation. For the single
+        // `name` path, respect the user's `force` flag.
+        const scryfallCard = await fetchScryfallCard(
+          storage,
+          cardStr,
+          setCode,
+          collectorNumber,
+          { force: useCardsArray || args.force },
+        )
         const cardIdentifier = createCardIdentifier(scryfallCard)
         const target = resolveTargetList(args, deck.format.sideboardSize)
 

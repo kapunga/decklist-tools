@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import fs from 'fs'
 import path from 'path'
 import os from 'os'
-import { Storage } from '@mtg-deckbuilder/shared'
+import { Storage, INTEREST_LIST_ID, CARD_SET } from '@mtg-deckbuilder/shared'
 import { exportCollection, importCollection } from './storage-extensions'
 
 // Helpers
@@ -72,12 +72,24 @@ describe('Storage collection export/import', () => {
       expect(Array.isArray(roles.roles)).toBe(true)
     })
 
-    it('exports interestList when present', () => {
-      const interestList = { version: 1, updatedAt: '2024-01-01', items: [{ name: 'Sol Ring' }] }
-      writeJsonFile(path.join(baseDir, 'interest-list.json'), interestList)
+    it('exports cardLists (including the interest list) when present', () => {
+      const interestList = {
+        id: INTEREST_LIST_ID,
+        name: 'Interest List',
+        version: 1,
+        createdAt: '2024-01-01T00:00:00.000Z',
+        updatedAt: '2024-01-01T00:00:00.000Z',
+        cardSets: [{ name: CARD_SET.MAINBOARD, entries: [] }],
+      }
+      const listsDir = path.join(baseDir, 'lists')
+      fs.mkdirSync(listsDir, { recursive: true })
+      writeJsonFile(path.join(listsDir, `${INTEREST_LIST_ID}.json`), interestList)
 
       const result = exportCollection(storage)
-      expect(result.interestList).toEqual(interestList)
+      const cardLists = result.cardLists as Array<{ id: string }>
+      expect(Array.isArray(cardLists)).toBe(true)
+      expect(cardLists).toHaveLength(1)
+      expect(cardLists[0]).toEqual(interestList)
     })
 
     it('exports setCollection when present', () => {

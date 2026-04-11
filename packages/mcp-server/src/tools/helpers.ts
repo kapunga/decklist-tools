@@ -87,11 +87,37 @@ export function resetCachedScryfallClient(): void {
   cachedClient = null
 }
 
+/**
+ * Collect every name variant the supplied `name` is allowed to match against
+ * a resolved Scryfall card: canonical name, flavor name, and any face name or
+ * face flavor name (DFCs, MDFCs, adventures, sagas).
+ */
+function collectCardNameVariants(card: ScryfallCard): string[] {
+  const variants: string[] = [card.name]
+  if (card.flavor_name) variants.push(card.flavor_name)
+  if (card.card_faces) {
+    for (const face of card.card_faces) {
+      if (face.name) variants.push(face.name)
+      // `flavor_name` isn't on the face type today but some Scryfall payloads
+      // do include it — read defensively in case the type evolves.
+      const faceFlavor = (face as { flavor_name?: string }).flavor_name
+      if (faceFlavor) variants.push(faceFlavor)
+    }
+  }
+  return variants
+}
+
+function cardMatchesName(card: ScryfallCard, name: string): boolean {
+  const target = name.trim().toLowerCase()
+  return collectCardNameVariants(card).some(v => v.toLowerCase() === target)
+}
+
 export async function fetchScryfallCard(
   storage: Storage,
   name: string,
   setCode?: string,
   collectorNumber?: string,
+  options: { force?: boolean } = {},
 ): Promise<ScryfallCard> {
   const client = getCachedScryfallClient(storage)
   const scryfallCard = setCode && collectorNumber
@@ -99,6 +125,20 @@ export async function fetchScryfallCard(
     : await client.getCardByName(name)
 
   if (!scryfallCard) throw new Error(`Card not found: ${name}`)
+
+  // Cross-check name against the resolved printing when all three identifiers
+  // were supplied. Set+collector takes precedence for lookup, but a mismatched
+  // `name` is a footgun — it's easy for LLM callers to hallucinate a set+collector
+  // that resolves to a different card. Skip when `force` is set, either because
+  // the user explicitly overrode the check or because the caller knows `name`
+  // isn't a real card name (e.g. a parsed "Nx set collector" string).
+  if (!options.force && setCode && collectorNumber && name && !cardMatchesName(scryfallCard, name)) {
+    const flavor = scryfallCard.flavor_name ? ` ("${scryfallCard.flavor_name}")` : ''
+    throw new Error(
+      `Name mismatch: resolved "${scryfallCard.name}"${flavor} from ${scryfallCard.set.toUpperCase()} #${scryfallCard.collector_number}, but the supplied name was "${name}". Pass force: true to override.`
+    )
+  }
+
   return scryfallCard
 }
 

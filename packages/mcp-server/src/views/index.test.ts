@@ -1,25 +1,58 @@
 import { describe, it, expect } from 'vitest'
-import { renderDeckView, getViewDescriptions } from './index.js'
+import { renderFullView, renderCurveView, renderNotesView, renderPullListView } from './index.js'
 import { makeDeck, makeDeckCard, makeMockCache, pushMainboard, pushSideboard, pushAlternates } from '../__test__/helpers.js'
-import type { RoleDefinition } from '@mtg-deckbuilder/shared'
+import type { Deck, RoleDefinition, ScryfallCard, CardFilter, SetCollectionFile } from '@mtg-deckbuilder/shared'
+import { enrichCards, applyFilters, getMainboard } from '@mtg-deckbuilder/shared'
 
 const globalRoles: RoleDefinition[] = [
   { id: 'ramp', name: 'Ramp', description: 'Accelerates mana production', color: '#22c55e' },
   { id: 'removal', name: 'Removal', description: 'Removes permanents', color: '#ef4444' },
 ]
 
+// Test-local shim mirroring the old production `renderDeckView` dispatcher.
+// The production dispatcher was deleted when the `view_deck` MCP tool was
+// split into per-view tools (`deck_list`/`deck_curve`/`deck_notes`/`deck_pull_list`).
+// Kept here so the per-view rendering tests — which predate the split — can
+// stay callsite-stable. New view tests should call the render functions directly.
+function renderDeckView(
+  deck: Deck,
+  viewType: string,
+  roles: RoleDefinition[],
+  sortBy?: string,
+  groupBy?: string,
+  filters?: CardFilter[],
+  scryfallCache?: Map<string, ScryfallCard>,
+  detail?: 'summary' | 'compact' | 'full',
+  setCollection?: SetCollectionFile,
+): string {
+  let filteredCardIds: Set<string> | undefined
+  if (filters && filters.length > 0) {
+    const cache = scryfallCache ?? new Map<string, ScryfallCard>()
+    const enriched = enrichCards(getMainboard(deck), cache)
+    filteredCardIds = new Set(applyFilters(enriched, filters).map(e => e.deckCard.id))
+  }
+  switch (viewType) {
+    case 'curve':
+      return renderCurveView(deck, scryfallCache, filteredCardIds)
+    case 'notes':
+      return renderNotesView(deck, roles)
+    case 'pull-list':
+      return renderPullListView(
+        deck,
+        setCollection ?? { version: 1, updatedAt: '', sets: [] },
+        scryfallCache ?? new Map<string, ScryfallCard>(),
+        { showPulled: true },
+      )
+    case 'full':
+    default:
+      return renderFullView(deck, roles, sortBy, groupBy, filteredCardIds, scryfallCache, detail)
+  }
+}
+
 function render(viewType: string, deckOverrides?: Parameters<typeof makeDeck>[0], roles = globalRoles, sortBy?: string, groupBy?: string) {
   const deck = makeDeck(deckOverrides)
   return renderDeckView(deck, viewType, roles, sortBy, groupBy)
 }
-
-describe('getViewDescriptions', () => {
-  it('returns 4 views', () => {
-    const views = getViewDescriptions()
-    expect(views).toHaveLength(4)
-    expect(views.map(v => v.id)).toEqual(['full', 'curve', 'notes', 'pull-list'])
-  })
-})
 
 describe('full view', () => {
   it('shows deck name and format', () => {

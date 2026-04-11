@@ -27,4 +27,4 @@ export { runMigrations, CURRENT_SCHEMA_VERSION } from './migrations/index.js'
 export type { Migration, MigrationContext } from './migrations/index.js'
 
 // Storage
-export { Storage, getStorageBasePath, ConcurrentModificationError } from './storage/index.js'
+export { Storage, getStorageBasePath, isValidUUID, ConcurrentModificationError } from './storage/index.js'

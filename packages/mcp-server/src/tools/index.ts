@@ -1,6 +1,15 @@
 import { Storage } from '@mtg-deckbuilder/shared'
 import { getToolDefinitions } from './schemas.js'
-import { listDecks, getDeck, manageDeck, viewDeck, searchDecksForCard } from './deck-tools.js'
+import {
+  listDecks,
+  getDeck,
+  manageDeck,
+  deckList,
+  deckCurve,
+  deckNotes,
+  deckPullList,
+  searchDecksForCard,
+} from './deck-tools.js'
 import { manageCard, searchCardsHandler } from './card-tools.js'
 import { listRoles, manageRole } from './role-tools.js'
 import { manageCommander } from './commander-tools.js'
@@ -12,7 +21,10 @@ import {
   validateManageDeckArgs,
   validateManageCardArgs,
   validateSearchCardsArgs,
-  validateViewDeckArgs,
+  validateDeckListArgs,
+  validateDeckCurveArgs,
+  validateDeckNotesArgs,
+  validateDeckPullListArgs,
   validateManageRoleArgs,
   validateManageCommanderArgs,
   validateManageInterestListArgs,
@@ -31,16 +43,27 @@ export async function handleToolCall(
   switch (name) {
     case 'list_decks':
       return listDecks(storage)
-    case 'get_deck':
-      return getDeck(storage, args.identifier as string)
+    case 'get_deck': {
+      const detail = args.detail
+      if (detail !== undefined && detail !== 'summary' && detail !== 'full') {
+        throw new Error(`'detail' must be 'summary' or 'full' (got '${String(detail)}')`)
+      }
+      return getDeck(storage, args.identifier as string, detail)
+    }
     case 'manage_deck':
       return manageDeck(storage, validateManageDeckArgs(args))
     case 'manage_card':
       return manageCard(storage, validateManageCardArgs(args))
     case 'search_cards':
       return searchCardsHandler(validateSearchCardsArgs(args))
-    case 'view_deck':
-      return viewDeck(storage, validateViewDeckArgs(args))
+    case 'deck_list':
+      return deckList(storage, validateDeckListArgs(args))
+    case 'deck_curve':
+      return deckCurve(storage, validateDeckCurveArgs(args))
+    case 'deck_notes':
+      return deckNotes(storage, validateDeckNotesArgs(args))
+    case 'deck_pull_list':
+      return deckPullList(storage, validateDeckPullListArgs(args))
     case 'list_roles':
       return listRoles(storage, args.deck_id as string | undefined)
     case 'manage_role':

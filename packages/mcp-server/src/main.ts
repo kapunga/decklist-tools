@@ -44,7 +44,7 @@ async function main() {
         content: [
           {
             type: 'text',
-            text: typeof result === 'string' ? result : JSON.stringify(result, null, 2),
+            text: typeof result === 'string' ? result : JSON.stringify(result),
           },
         ],
       }
