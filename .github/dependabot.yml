@@ -11,6 +11,10 @@ updates:
       interval: "weekly"
       day: "monday"
     open-pull-requests-limit: 5
+    # Auto-rebase PRs when main moves so the lockfile diff stays coherent.
+    # Without this, concurrent Dependabot PRs can land against stale bases and
+    # produce duplicate lockfile entries on merge.
+    rebase-strategy: "auto"
     groups:
       # Batch minor + patch updates into two PRs per week so the inbox stays
       # quiet. Major bumps still come through as individual PRs so they get
@@ -34,6 +38,7 @@ updates:
       interval: "weekly"
       day: "monday"
     open-pull-requests-limit: 5
+    rebase-strategy: "auto"
     groups:
       actions-minor-patch:
         patterns:
