@@ -1,4 +1,4 @@
-import { Settings, RotateCcw, Eye, EyeOff, Mountain } from 'lucide-react'
+import { Settings, RotateCcw, Eye, EyeOff, Mountain, ScanSearch } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -18,6 +18,8 @@ interface PullListToolbarProps {
   showPulledSection: boolean
   hideBasicLands: boolean
   source: PullListSource
+  identifyMode: boolean
+  onToggleIdentifyMode: () => void
 }
 
 const SORT_OPTIONS: { key: PullListSortKey; label: string }[] = [
@@ -33,7 +35,9 @@ export function PullListToolbar({
   sortColumns,
   showPulledSection,
   hideBasicLands,
-  source
+  source,
+  identifyMode,
+  onToggleIdentifyMode,
 }: PullListToolbarProps) {
   const updatePullListConfig = useStore(state => state.updatePullListConfig)
   const resetPulledStatus = useStore(state => state.resetPulledStatus)
@@ -83,59 +87,72 @@ export function PullListToolbar({
           </TabsList>
         </Tabs>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm">
-              <Settings className="h-4 w-4 mr-2" />
-              Sort Options
+        <Button
+          variant={identifyMode ? "secondary" : "outline"}
+          size="sm"
+          onClick={onToggleIdentifyMode}
+        >
+          <ScanSearch className="h-4 w-4 mr-2" />
+          {identifyMode ? 'Exit Identify' : 'Identify Prints'}
+        </Button>
+
+        {!identifyMode && (
+          <>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Settings className="h-4 w-4 mr-2" />
+                  Sort Options
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuLabel>Sort by (in order)</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {SORT_OPTIONS.map(option => {
+                  const index = sortColumns.indexOf(option.key)
+                  const isActive = index >= 0
+                  return (
+                    <DropdownMenuCheckboxItem
+                      key={option.key}
+                      checked={isActive}
+                      onCheckedChange={() => handleToggleSortColumn(option.key)}
+                    >
+                      {isActive && <span className="text-xs text-muted-foreground mr-1">({index + 1})</span>}
+                      {option.label}
+                    </DropdownMenuCheckboxItem>
+                  )
+                })}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleTogglePulledSection}
+            >
+              {showPulledSection ? (
+                <>
+                  <EyeOff className="h-4 w-4 mr-2" />
+                  Hide Pulled
+                </>
+              ) : (
+                <>
+                  <Eye className="h-4 w-4 mr-2" />
+                  Show Pulled
+                </>
+              )}
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            <DropdownMenuLabel>Sort by (in order)</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            {SORT_OPTIONS.map(option => {
-              const index = sortColumns.indexOf(option.key)
-              const isActive = index >= 0
-              return (
-                <DropdownMenuCheckboxItem
-                  key={option.key}
-                  checked={isActive}
-                  onCheckedChange={() => handleToggleSortColumn(option.key)}
-                >
-                  {isActive && <span className="text-xs text-muted-foreground mr-1">({index + 1})</span>}
-                  {option.label}
-                </DropdownMenuCheckboxItem>
-              )
-            })}
-          </DropdownMenuContent>
-        </DropdownMenu>
 
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleTogglePulledSection}
-        >
-          {showPulledSection ? (
-            <>
-              <EyeOff className="h-4 w-4 mr-2" />
-              Hide Pulled
-            </>
-          ) : (
-            <>
-              <Eye className="h-4 w-4 mr-2" />
-              Show Pulled
-            </>
-          )}
-        </Button>
-
-        <Button
-          variant={hideBasicLands ? "outline" : "secondary"}
-          size="sm"
-          onClick={handleToggleBasicLands}
-        >
-          <Mountain className="h-4 w-4 mr-2" />
-          {hideBasicLands ? 'Show Basics' : 'Hide Basics'}
-        </Button>
+            <Button
+              variant={hideBasicLands ? "outline" : "secondary"}
+              size="sm"
+              onClick={handleToggleBasicLands}
+            >
+              <Mountain className="h-4 w-4 mr-2" />
+              {hideBasicLands ? 'Show Basics' : 'Hide Basics'}
+            </Button>
+          </>
+        )}
       </div>
 
       <Button

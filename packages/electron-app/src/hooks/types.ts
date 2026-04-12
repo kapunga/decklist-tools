@@ -1,5 +1,5 @@
 import type { ParsedCard, DetectedFormat } from '@/lib/formats'
-import type { CardEntry, CardSetName, PullListItem as BasePullListItem, PullListGroup as BasePullListGroup } from '@/types'
+import type { CardEntry, CardSetName, PulledPrinting, PullListItem as BasePullListItem, PullListGroup as BasePullListGroup } from '@/types'
 
 export interface ImportProgress {
   current: number
@@ -45,4 +45,14 @@ export interface PullListItem extends BasePullListItem {
 
 export interface PullListGroup extends Omit<BasePullListGroup, 'items'> {
   items: PullListItem[]
+}
+
+// Identify mode — flat per-card view for marking specific printings
+export interface IdentifyItem {
+  deckCardId: string
+  cardName: string
+  quantityNeeded: number
+  quantityPulledTotal: number
+  remainingNeeded: number
+  currentPrintings: PulledPrinting[]
 }

@@ -3,6 +3,7 @@ import { ChevronDown, ChevronRight, Loader2, Package, Check } from 'lucide-react
 import { Badge } from '@/components/ui/badge'
 import { PullListToolbar } from '@/components/PullListToolbar'
 import { PullListTable } from '@/components/PullListTable'
+import { IdentifyModeList } from '@/components/IdentifyModeList'
 import { CardImage } from '@/components/CardImage'
 import { usePullList, type PullListGroup, type PullListItem } from '@/hooks/usePullList'
 import { getCardById } from '@/lib/scryfall'
@@ -78,23 +79,26 @@ export function PullListView({ deck }: PullListViewProps) {
     showPulledSection,
     hideBasicLands,
     sortColumns,
-    source
+    source,
+    identifyItems,
+    printingsMap,
   } = usePullList(deck)
+
+  const [identifyMode, setIdentifyMode] = useState(false)
 
   // Focus state for card preview
   const [focusedItem, setFocusedItem] = useState<PullListItem | null>(null)
+  const [focusedScryfallId, setFocusedScryfallId] = useState<string | null>(null)
   const [focusedScryfallCard, setFocusedScryfallCard] = useState<ScryfallCard | null>(null)
   const [loadingCard, setLoadingCard] = useState(false)
 
-  // Fetch the focused card when it changes
   useEffect(() => {
-    if (!focusedItem?.scryfallId) {
+    if (!focusedScryfallId) {
       setFocusedScryfallCard(null)
       return
     }
 
-    // Don't refetch if we already have this card
-    if (focusedScryfallCard?.id === focusedItem.scryfallId) {
+    if (focusedScryfallCard?.id === focusedScryfallId) {
       return
     }
 
@@ -103,7 +107,7 @@ export function PullListView({ deck }: PullListViewProps) {
     const fetchCard = async () => {
       setLoadingCard(true)
       try {
-        const scryfallCard = await getCardById(focusedItem.scryfallId)
+        const scryfallCard = await getCardById(focusedScryfallId)
         if (!cancelled) {
           setFocusedScryfallCard(scryfallCard)
         }
@@ -119,10 +123,16 @@ export function PullListView({ deck }: PullListViewProps) {
     return () => {
       cancelled = true
     }
-  }, [focusedItem?.scryfallId])
+  }, [focusedScryfallId])
 
   const handleFocusItem = (item: PullListItem) => {
     setFocusedItem(item)
+    setFocusedScryfallId(item.scryfallId)
+  }
+
+  const handleHoverPrintingById = (scryfallId: string) => {
+    if (focusedScryfallCard?.id === scryfallId) return
+    setFocusedScryfallId(scryfallId)
   }
 
   const focusedItemKey = focusedItem ? getItemKey(focusedItem) : null
@@ -145,6 +155,8 @@ export function PullListView({ deck }: PullListViewProps) {
         showPulledSection={showPulledSection}
         hideBasicLands={hideBasicLands}
         source={source}
+        identifyMode={identifyMode}
+        onToggleIdentifyMode={() => setIdentifyMode(prev => !prev)}
       />
 
       <div className="flex-1 flex overflow-hidden">
@@ -172,84 +184,95 @@ export function PullListView({ deck }: PullListViewProps) {
 
         {/* Right column - Pull list */}
         <div className="flex-1 overflow-auto p-4 space-y-6">
-        {/* Unpulled Section */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Package className="h-5 w-5 text-primary" />
-              <h2 className="text-lg font-semibold">Cards to Pull</h2>
-            </div>
-            {!allPulled && (
-              <Badge variant="secondary">
-                {uniqueUnpulledCards} unique cards remaining
-              </Badge>
-            )}
-          </div>
-
-          {allPulled ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <Check className="h-12 w-12 text-green-500 mb-4" />
-              <p className="text-lg font-medium text-green-500">All cards pulled!</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                {source === 'maybeboard'
-                  ? 'All maybeboard cards have been pulled'
-                  : 'Your deck is ready to play'}
-              </p>
-            </div>
-          ) : (
+        {identifyMode ? (
+          <IdentifyModeList
+            items={identifyItems}
+            printingsMap={printingsMap}
+            deckId={deck.id}
+            onHoverPrinting={handleHoverPrintingById}
+          />
+        ) : (
+          <>
+            {/* Unpulled Section */}
             <div className="space-y-3">
-              {unpulledGroups.map(group => (
-                <CollapsibleSetSection
-                  key={group.setCode}
-                  group={group}
-                  deckId={deck.id}
-                  defaultOpen={true}
-                  focusedItemKey={focusedItemKey}
-                  onFocusItem={handleFocusItem}
-                />
-              ))}
-            </div>
-          )}
-        </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Package className="h-5 w-5 text-primary" />
+                  <h2 className="text-lg font-semibold">Cards to Pull</h2>
+                </div>
+                {!allPulled && (
+                  <Badge variant="secondary">
+                    {uniqueUnpulledCards} unique cards remaining
+                  </Badge>
+                )}
+              </div>
 
-        {/* Pulled Section */}
-        {showPulledSection && pulledGroups.length > 0 && (
-          <div className="space-y-3 pt-4 border-t">
-            <div className="flex items-center gap-2">
-              <Check className="h-5 w-5 text-green-500" />
-              <h2 className="text-lg font-semibold text-muted-foreground">Already Pulled</h2>
+              {allPulled ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <Check className="h-12 w-12 text-green-500 mb-4" />
+                  <p className="text-lg font-medium text-green-500">All cards pulled!</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {source === 'maybeboard'
+                      ? 'All maybeboard cards have been pulled'
+                      : 'Your deck is ready to play'}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {unpulledGroups.map(group => (
+                    <CollapsibleSetSection
+                      key={group.setCode}
+                      group={group}
+                      deckId={deck.id}
+                      defaultOpen={true}
+                      focusedItemKey={focusedItemKey}
+                      onFocusItem={handleFocusItem}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
 
-            <div className="space-y-3 opacity-75">
-              {pulledGroups.map(group => (
-                <CollapsibleSetSection
-                  key={group.setCode}
-                  group={group}
-                  deckId={deck.id}
-                  defaultOpen={false}
-                  focusedItemKey={focusedItemKey}
-                  onFocusItem={handleFocusItem}
-                />
-              ))}
-            </div>
-          </div>
-        )}
+            {/* Pulled Section */}
+            {showPulledSection && pulledGroups.length > 0 && (
+              <div className="space-y-3 pt-4 border-t">
+                <div className="flex items-center gap-2">
+                  <Check className="h-5 w-5 text-green-500" />
+                  <h2 className="text-lg font-semibold text-muted-foreground">Already Pulled</h2>
+                </div>
 
-        {/* Empty state when no set collection */}
-        {unpulledGroups.length === 0 && pulledGroups.length === 0 && !allPulled && (
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <Package className="h-12 w-12 text-muted-foreground mb-4" />
-            <p className="text-lg font-medium">
-              {source === 'maybeboard'
-                ? 'No maybeboard cards in owned sets'
-                : 'No cards in owned sets'}
-            </p>
-            <p className="text-sm text-muted-foreground mt-1">
-              {source === 'maybeboard'
-                ? 'Add confirmed cards to the maybeboard, or add sets to your collection'
-                : 'Add sets to your collection in Settings to see pull list options'}
-            </p>
-          </div>
+                <div className="space-y-3 opacity-75">
+                  {pulledGroups.map(group => (
+                    <CollapsibleSetSection
+                      key={group.setCode}
+                      group={group}
+                      deckId={deck.id}
+                      defaultOpen={false}
+                      focusedItemKey={focusedItemKey}
+                      onFocusItem={handleFocusItem}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Empty state when no set collection */}
+            {unpulledGroups.length === 0 && pulledGroups.length === 0 && !allPulled && (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <Package className="h-12 w-12 text-muted-foreground mb-4" />
+                <p className="text-lg font-medium">
+                  {source === 'maybeboard'
+                    ? 'No maybeboard cards in owned sets'
+                    : 'No cards in owned sets'}
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {source === 'maybeboard'
+                    ? 'Add confirmed cards to the maybeboard, or add sets to your collection'
+                    : 'Add sets to your collection in Settings to see pull list options'}
+                </p>
+              </div>
+            )}
+          </>
         )}
         </div>
       </div>
