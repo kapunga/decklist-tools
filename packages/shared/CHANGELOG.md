@@ -1,5 +1,11 @@
 # @mtg-deckbuilder/shared
 
+## 0.10.4
+
+### Patch Changes
+
+- e59f7be: Fix release workflow to upload all platform artifacts in a single release job
+
 ## 0.10.3
 
 ### Patch Changes
