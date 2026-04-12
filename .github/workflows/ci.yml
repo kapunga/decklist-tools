@@ -24,6 +24,10 @@ jobs:
 
       - run: pnpm build:shared
 
+      - run: pnpm build:mcp
+
+      - run: pnpm --filter @mtg-deckbuilder/electron-app compile
+
       - run: pnpm typecheck
 
       - run: pnpm -r test

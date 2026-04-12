@@ -4,4 +4,4 @@
 "@mtg-deckbuilder/electron-app": patch
 ---
 
-Fix corrupted pnpm-lock.yaml that contained duplicate YAML documents
+Fix corrupted pnpm-lock.yaml and add build validation to CI
