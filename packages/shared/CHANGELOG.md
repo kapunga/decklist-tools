@@ -1,5 +1,11 @@
 # @mtg-deckbuilder/shared
 
+## 0.10.1
+
+### Patch Changes
+
+- 201e590: Fix corrupted pnpm-lock.yaml and add build validation to CI
+
 ## 0.10.0
 
 ## 0.9.2

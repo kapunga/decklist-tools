@@ -1,5 +1,13 @@
 # @mtg-deckbuilder/electron-app
 
+## 0.10.1
+
+### Patch Changes
+
+- 201e590: Fix corrupted pnpm-lock.yaml and add build validation to CI
+- Updated dependencies [201e590]
+  - @mtg-deckbuilder/shared@0.10.1
+
 ## 0.10.0
 
 ### Minor Changes
