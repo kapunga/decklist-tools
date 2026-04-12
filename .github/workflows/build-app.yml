@@ -21,9 +21,6 @@ jobs:
 
     runs-on: ${{ matrix.os }}
 
-    permissions:
-      contents: write
-
     steps:
       - uses: actions/checkout@v6
 
@@ -67,11 +64,35 @@ jobs:
         working-directory: packages/electron-app
         run: npx electron-builder --linux --x64 --arm64
 
-      - name: Upload artifacts to GitHub Release
+      - name: Upload build artifacts
         if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
+        uses: actions/upload-artifact@v4
         with:
-          files: |
+          name: release-${{ matrix.platform }}
+          path: |
             packages/electron-app/release/*.dmg
             packages/electron-app/release/*.exe
             packages/electron-app/release/*.AppImage
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/**/*.dmg
+            artifacts/**/*.exe
+            artifacts/**/*.AppImage
