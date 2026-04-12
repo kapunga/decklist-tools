@@ -1,5 +1,11 @@
 # @mtg-deckbuilder/shared
 
+## 0.10.2
+
+### Patch Changes
+
+- 8c5aa3a: Fix lockfile corruption from pnpm manage-package-manager-versions and add build validation to CI
+
 ## 0.10.1
 
 ### Patch Changes

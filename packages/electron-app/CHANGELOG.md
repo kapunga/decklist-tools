@@ -1,5 +1,13 @@
 # @mtg-deckbuilder/electron-app
 
+## 0.10.2
+
+### Patch Changes
+
+- 8c5aa3a: Fix lockfile corruption from pnpm manage-package-manager-versions and add build validation to CI
+- Updated dependencies [8c5aa3a]
+  - @mtg-deckbuilder/shared@0.10.2
+
 ## 0.10.1
 
 ### Patch Changes
