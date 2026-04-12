@@ -13,27 +13,16 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
         with:
-          version: 10.33.0
+          node-version: 22
+
+      - run: corepack enable && corepack install
 
       - uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: pnpm
-
-      - name: Debug pnpm and lockfile state
-        run: |
-          echo "=== pnpm version ==="
-          pnpm --version
-          echo "=== lockfile header ==="
-          head -10 pnpm-lock.yaml
-          echo "=== document separators ==="
-          grep -n '^---' pnpm-lock.yaml || echo "none found"
-          echo "=== .npmrc ==="
-          cat .npmrc
-          echo "=== packageManager ==="
-          node -e "console.log(require('./package.json').packageManager)"
 
       - run: pnpm install --frozen-lockfile
 
