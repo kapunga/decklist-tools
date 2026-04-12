@@ -33,7 +33,7 @@
     "cmdk": "^0.2.0",
     "lucide-react": "^0.294.0",
     "react": "^19.2.5",
-    "react-dom": "^18.2.0",
+    "react-dom": "^19.2.5",
     "react-router-dom": "^7.14.0",
     "recharts": "^3.8.1",
     "tailwind-merge": "^3.5.0",
@@ -43,7 +43,7 @@
   "devDependencies": {
     "@playwright/test": "^1.59.1",
     "@types/react": "^19.2.14",
-    "@types/react-dom": "^18.2.15",
+    "@types/react-dom": "^19.2.3",
     "@types/uuid": "^9.0.6",
     "@vitejs/plugin-react": "^4.2.0",
     "autoprefixer": "^10.4.27",
