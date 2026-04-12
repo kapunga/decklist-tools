@@ -2,8 +2,3 @@ packages:
   - 'packages/*'
 
 managePackageManagerVersions: false
-
-onlyBuiltDependencies:
-  - electron
-  - electron-winstaller
-  - esbuild
