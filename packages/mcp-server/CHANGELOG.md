@@ -1,5 +1,13 @@
 # @mtg-deckbuilder/mcp-server
 
+## 0.10.3
+
+### Patch Changes
+
+- bd96c8a: Downgrade pnpm to 10.32.1 to fix lockfile corruption and add build validation to CI
+- Updated dependencies [bd96c8a]
+  - @mtg-deckbuilder/shared@0.10.3
+
 ## 0.10.2
 
 ### Patch Changes
