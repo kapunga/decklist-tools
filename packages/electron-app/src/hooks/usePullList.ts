@@ -5,9 +5,9 @@ import { getCardPrintings } from '@/lib/scryfall'
 import type { Deck, CardEntry, ScryfallCard, PullListSortKey, PullListSource } from '@/types'
 import { getTotalPulledQuantity, isBasicLand, OWNERSHIP_STATUS, CARD_SOURCE, getPulledPrintings } from '@/types'
 import { getMainboard, getSideboard, getAlternates } from '@mtg-deckbuilder/shared'
-import type { PullListItem, PullListGroup } from './types'
+import type { PullListItem, PullListGroup, IdentifyItem } from './types'
 
-export type { PullListItem, PullListGroup } from './types'
+export type { PullListItem, PullListGroup, IdentifyItem } from './types'
 
 // Rarity order for sorting (mythic first, common last)
 const RARITY_ORDER: Record<string, number> = {
@@ -349,6 +349,23 @@ export function usePullList(deck: Deck | null) {
     return groups
   }, [pulledItems, comparator])
 
+  const identifyItems: IdentifyItem[] = useMemo(() => {
+    if (!deck) return []
+    return confirmedCards
+      .map(card => {
+        const pulledTotal = getTotalPulledQuantity(card)
+        return {
+          deckCardId: card.id,
+          cardName: card.card.name,
+          quantityNeeded: card.quantity,
+          quantityPulledTotal: pulledTotal,
+          remainingNeeded: card.quantity - pulledTotal,
+          currentPrintings: getPulledPrintings(card),
+        }
+      })
+      .sort((a, b) => a.cardName.localeCompare(b.cardName))
+  }, [deck, confirmedCards])
+
   const isLoading = printingsQueries.some(q => q.isLoading)
   const showPulledSection = pullListConfig?.showPulledSection ?? true
 
@@ -365,6 +382,8 @@ export function usePullList(deck: Deck | null) {
     showPulledSection,
     hideBasicLands,
     sortColumns,
-    source
+    source,
+    identifyItems,
+    printingsMap,
   }
 }
