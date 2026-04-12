@@ -1,5 +1,13 @@
 # @mtg-deckbuilder/mcp-server
 
+## 0.10.4
+
+### Patch Changes
+
+- e59f7be: Fix release workflow to upload all platform artifacts in a single release job
+- Updated dependencies [e59f7be]
+  - @mtg-deckbuilder/shared@0.10.4
+
 ## 0.10.3
 
 ### Patch Changes
