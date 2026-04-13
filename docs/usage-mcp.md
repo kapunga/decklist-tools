@@ -1,6 +1,6 @@
 # MCP Server
 
-The MCP server provides 15 tools that let Claude Desktop help you build and manage decks through natural conversation.
+The MCP server provides tools that let Claude Desktop help you build and manage decks through natural conversation.
 
 ## Getting Started
 
@@ -24,29 +24,30 @@ Claude will use the `manage_deck` tool and confirm the deck was created. Changes
 
 | Tool | Description |
 |------|-------------|
-| [`manage_card`](/mcp/card-management#manage_card) | Add, remove, update, or move a card in a deck |
+| [`manage_card`](/mcp/card-management#manage_card) | Add, remove, update, or move cards in a deck |
 | [`search_cards`](/mcp/card-management#search_cards) | Search for cards on Scryfall (name, UUID, or query) |
 
 ### Commander
 
 | Tool | Description |
 |------|-------------|
-| [`set_commanders`](/mcp/commanders#set_commanders) | Set commander(s) and color identity |
+| [`manage_commander`](/mcp/commanders#manage_commander) | Add, remove, or swap commanders |
 
 ### Views
 
 | Tool | Description |
 |------|-------------|
-| [`view_deck`](/mcp/views#view_deck) | Render a deck in a specific view format |
-
-Available views: `full` (supports `group_by` and `sort_by` params), `curve`, `notes`
+| [`deck_list`](/mcp/views#deck_list) | Full card list with Oracle text, grouping, sorting, and filtering |
+| [`deck_curve`](/mcp/views#deck_curve) | Mana curve analysis with CMC distribution and color pips |
+| [`deck_notes`](/mcp/views#deck_notes) | Strategy notes: combos, synergies, themes |
+| [`deck_pull_list`](/mcp/views#deck_pull_list) | Cards grouped by set for collection pulling |
 
 ### Roles
 
 | Tool | Description |
 |------|-------------|
 | [`list_roles`](/mcp/roles#list_roles) | List all available roles |
-| [`manage_role`](/mcp/roles#manage_role) | Add custom/global roles, update or delete global roles |
+| [`manage_role`](/mcp/roles#manage_role) | Add, update, or delete custom/global roles |
 
 ### Notes
 
@@ -62,12 +63,12 @@ Available views: `full` (supports `group_by` and `sort_by` params), `curve`, `no
 | [`get_interest_list`](/mcp/interest-list#get_interest_list) | Get the full interest list |
 | [`manage_interest_list`](/mcp/interest-list#manage_interest_list) | Add or remove cards from the interest list |
 
-### Search & Reports
+### Search & Collection
 
 | Tool | Description |
 |------|-------------|
 | [`search_decks_for_card`](/mcp/search-reports#search_decks_for_card) | Find which decks contain a card |
-| [`get_buy_list`](/mcp/search-reports#get_buy_list) | Get all "need to buy" cards across decks |
+| [`get_collection_filter`](/mcp/search-reports#get_collection_filter) | Generate a Scryfall filter from your set collection |
 
 ## Example Conversation
 
@@ -79,11 +80,11 @@ Created deck "Isshin Attacks" in Commander format.
 
 User: Show me the mana curve
 
-Claude: [Uses view_deck with view=curve]
+Claude: [Uses deck_curve]
 ...
 
-User: What cards do I still need to buy across all my decks?
+User: Which of my decks have Sol Ring?
 
-Claude: [Uses get_buy_list]
+Claude: [Uses search_decks_for_card]
 ...
 ```
