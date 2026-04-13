@@ -19,7 +19,9 @@ features:
   - title: Desktop App
     details: Visual deck management with card grid, mana curve, role-based grouping, and real-time sync.
   - title: MCP Server
-    details: 30+ tools for Claude Desktop — build and manage decks through natural conversation.
+    details: MCP tools for Claude Desktop — build and manage decks through natural conversation.
   - title: Shared Storage
     details: Both apps read and write the same JSON files, so changes in one appear instantly in the other.
 ---
+
+<DownloadButton />

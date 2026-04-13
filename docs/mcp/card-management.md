@@ -16,18 +16,16 @@ Add, remove, update, or move cards in a deck. Supports batch operations via the 
 | `collector_number` | string | no | Collector number for single-card add (deprecated, use `cards`) |
 | `quantity` | number | no | Copies for single-card add (deprecated, use `Nx` prefix in `cards`) |
 | `roles` | string[] | no | Role IDs (add: initial roles, update: replace all) |
-| `status` | string | no | `confirmed` or `considering` (add/update) |
-| `ownership` | string | no | `unknown` (default), `owned`, `pulled`, or `need_to_buy` (add/update) |
+| `ownership` | string | no | `unknown` (default), `owned`, or `need_to_buy` (add/update) |
 | `to_alternates` | boolean | no | Add to alternates (add) |
 | `to_sideboard` | boolean | no | Add to sideboard (add) |
 | `from_alternates` | boolean | no | Remove from alternates (remove) |
 | `from_sideboard` | boolean | no | Remove from sideboard (remove) |
 | `add_roles` | string[] | no | Add roles to existing (update) |
 | `remove_roles` | string[] | no | Remove roles (update) |
-| `pinned` | boolean | no | Pin/unpin card (update) |
 | `notes` | string | no | Card notes (update) |
-| `from` | string | move | `mainboard`, `alternates`, or `sideboard` |
-| `to` | string | move | `mainboard`, `alternates`, or `sideboard` |
+| `from` | string | move | `mainboard`, `sideboard`, `alternates`, or `cut` |
+| `to` | string | move | `mainboard`, `sideboard`, `alternates`, or `cut` |
 
 \* Either `cards` or `name` must be provided. If `name` is provided without `cards`, it is treated as `cards: [name]`.
 
