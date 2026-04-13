@@ -12,6 +12,7 @@
     "bundle": "esbuild dist/main.js --bundle --platform=node --format=esm --outfile=dist/bundle.js",
     "start": "node dist/main.js",
     "dev": "tsx src/main.ts",
+    "serve": "tsx src/main.ts --storage-dir ../../dev-storage",
     "clean": "rm -rf dist",
     "test": "vitest run",
     "test:watch": "vitest",
