@@ -1,11 +1,3 @@
-# MCP Server (Scala) - archived
-mcp-server/target/
-mcp-server/project/target/
-mcp-server/project/project/
-mcp-server/.bsp/
-mcp-server/.metals/
-mcp-server/.bloop/
-
 # Node.js
 node_modules/
 .pnpm-store/

@@ -139,8 +139,6 @@ Design docs in `specs/`:
 
 **One-time procedures** (delete after implementation):
 - `04-project-rename.md` — procedure for renaming the project
-- `05-dynamic-download-button.md` — landing page download button design
-- `06-distribution-prep.md` — distribution / release prep checklist
 
 **Note:** Architecture references should be kept up to date when the code they describe changes. One-time procedure specs should be deleted after the procedure is complete.
 
