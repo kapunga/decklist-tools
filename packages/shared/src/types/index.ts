@@ -71,6 +71,10 @@ export const FORMAT_TYPE = {
   COMMANDER: 'commander',
   STANDARD: 'standard',
   MODERN: 'modern',
+  PIONEER: 'pioneer',
+  LEGACY: 'legacy',
+  PAUPER: 'pauper',
+  BRAWL: 'brawl',
   KITCHEN_TABLE: 'kitchen_table',
 } as const
 export type FormatType = typeof FORMAT_TYPE[keyof typeof FORMAT_TYPE]
@@ -146,6 +150,47 @@ export const formatDefaults: Record<FormatType, DeckFormat> = {
       'Seven Dwarves': 7,
       'Nazgul': 9
     }
+  },
+  [FORMAT_TYPE.PIONEER]: {
+    type: FORMAT_TYPE.PIONEER,
+    deckSize: 60,
+    sideboardSize: 15,
+    cardLimit: 4,
+    unlimitedCards: [],
+    specialLimitCards: {
+      'Seven Dwarves': 7
+    }
+  },
+  [FORMAT_TYPE.LEGACY]: {
+    type: FORMAT_TYPE.LEGACY,
+    deckSize: 60,
+    sideboardSize: 15,
+    cardLimit: 4,
+    unlimitedCards: [
+      'Relentless Rats', 'Rat Colony', 'Shadowborn Apostle',
+      "Dragon's Approach", 'Persistent Petitioners'
+    ],
+    specialLimitCards: {
+      'Seven Dwarves': 7,
+      'Nazgul': 9
+    }
+  },
+  [FORMAT_TYPE.PAUPER]: {
+    type: FORMAT_TYPE.PAUPER,
+    deckSize: 60,
+    sideboardSize: 15,
+    cardLimit: 4,
+    unlimitedCards: [],
+    specialLimitCards: {
+      'Seven Dwarves': 7
+    }
+  },
+  [FORMAT_TYPE.BRAWL]: {
+    type: FORMAT_TYPE.BRAWL,
+    deckSize: 60,
+    sideboardSize: 0,
+    cardLimit: 1,
+    unlimitedCards: []
   },
   [FORMAT_TYPE.KITCHEN_TABLE]: {
     type: FORMAT_TYPE.KITCHEN_TABLE,
