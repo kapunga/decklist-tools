@@ -39,6 +39,8 @@ export function getIntrinsicDeckLimit(card: ScryfallCard): number | null {
   return n ?? null
 }
 
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000 // 24 hours
+
 interface CacheFile {
   fetchedAt: string
   entries: Array<[string, number | 'Infinity']>
@@ -52,13 +54,20 @@ function deserializeEntries(serialized: Array<[string, number | 'Infinity']>): A
   return serialized.map(([name, limit]) => [name, limit === 'Infinity' ? Infinity : limit])
 }
 
-function readCache(cachePath: string): Array<[string, number]> | null {
+interface ReadCacheResult {
+  entries: Array<[string, number]>
+  fresh: boolean
+}
+
+function readCache(cachePath: string): ReadCacheResult | null {
   try {
     if (!fs.existsSync(cachePath)) return null
     const raw = fs.readFileSync(cachePath, 'utf-8')
     const parsed = JSON.parse(raw) as CacheFile
     if (!parsed?.entries || !Array.isArray(parsed.entries)) return null
-    return deserializeEntries(parsed.entries)
+    const fetchedAt = parsed.fetchedAt ? Date.parse(parsed.fetchedAt) : NaN
+    const fresh = Number.isFinite(fetchedAt) && Date.now() - fetchedAt < CACHE_TTL_MS
+    return { entries: deserializeEntries(parsed.entries), fresh }
   } catch {
     return null
   }
@@ -92,16 +101,20 @@ async function fetchFromScryfall(): Promise<Array<[string, number]> | null> {
   }
 }
 
+// TODO: surface load failures through a proper telemetry/error channel rather than
+// console.warn — stderr-only output is easy to miss in both the Electron main process
+// and the MCP stdio server.
 export async function loadCardDeckLimits(opts: { cachePath?: string } = {}): Promise<void> {
   const { cachePath } = opts
+  const cached = cachePath ? readCache(cachePath) : null
 
-  // Warm start from disk cache.
-  if (cachePath) {
-    const cached = readCache(cachePath)
-    if (cached && cached.length > 0) {
-      setDeckLimits(cached)
-    }
+  // Warm start from disk cache regardless of freshness.
+  if (cached && cached.entries.length > 0) {
+    setDeckLimits(cached.entries)
   }
+
+  // Skip the network if the cache is still within TTL.
+  if (cached?.fresh) return
 
   // Fresh pull from Scryfall.
   const fresh = await fetchFromScryfall()
@@ -112,7 +125,7 @@ export async function loadCardDeckLimits(opts: { cachePath?: string } = {}): Pro
   }
 
   // Fall back only if nothing was loaded from cache either.
-  if (!cachePath || !readCache(cachePath)) {
+  if (!cached) {
     setDeckLimits(FALLBACK_DECK_LIMITS)
   }
 }
