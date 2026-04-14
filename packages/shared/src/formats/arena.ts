@@ -1,5 +1,5 @@
 import type { Deck } from '../types/index.js'
-import { FORMAT_TYPE } from '../types/index.js'
+import { isCommanderLikeFormat } from '../types/index.js'
 import type { DeckExportFormat, ParsedCard, RenderOptions } from './types.js'
 import { getConfirmedCards, getMaybeboardCards, getSideboardCards, parseLinesWithSections, PARSER_SECTION, consumed, type LineParserConfig } from './utils.js'
 
@@ -47,7 +47,7 @@ export const arenaFormat: DeckExportFormat = {
     const lines: string[] = []
 
     // Commander section for Commander format
-    if (deck.format.type === FORMAT_TYPE.COMMANDER && deck.commanders.length > 0) {
+    if (isCommanderLikeFormat(deck.format.type) && deck.commanders.length > 0) {
       lines.push('Commander')
       deck.commanders.forEach(c => {
         lines.push(

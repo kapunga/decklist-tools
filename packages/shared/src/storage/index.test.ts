@@ -15,7 +15,6 @@ function makeDeck(overrides: Partial<Deck> = {}): Deck {
       deckSize: 100,
       sideboardSize: 0,
       cardLimit: 1,
-      unlimitedCards: ['Relentless Rats', 'Rat Colony', 'Shadowborn Apostle'],
     },
     createdAt: '2024-01-01T00:00:00.000Z',
     updatedAt: '2024-01-01T00:00:00.000Z',

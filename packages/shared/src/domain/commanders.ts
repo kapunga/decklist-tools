@@ -1,5 +1,5 @@
 import type { Deck, CardIdentifier } from '../types/index.js'
-import { FORMAT_TYPE } from '../types/index.js'
+import { FORMAT_TYPE, isCommanderLikeFormat } from '../types/index.js'
 import { getMainboard, getSideboard } from './card-sets.js'
 import type { OpResult, CommanderMeta } from './types.js'
 
@@ -120,14 +120,14 @@ export function swapCommander(
  * Other formats: computes the union of all non-cut cards' color identities.
  */
 export function getDeckColorIdentity(deck: Deck): string[] {
-  if (deck.format.type === FORMAT_TYPE.COMMANDER) {
+  if (isCommanderLikeFormat(deck.format.type)) {
     return deck.colorIdentity ?? []
   }
   const allCards = [...getMainboard(deck), ...getSideboard(deck)].map(dc => dc.card)
   return deriveColorIdentity(allCards)
 }
 
-/** Colorless is only a meaningful identity for commander format. */
+/** Colorless is only a meaningful identity for commander-like formats (Commander, Brawl). */
 export function showColorlessPip(deck: Deck): boolean {
-  return deck.format.type === FORMAT_TYPE.COMMANDER
+  return isCommanderLikeFormat(deck.format.type)
 }

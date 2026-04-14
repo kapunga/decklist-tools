@@ -29,7 +29,7 @@ function makeDeck(opts: MakeDeckOptions = {}): Deck {
   return {
     id: 'test-deck',
     name: 'Test',
-    format: opts.format ?? { type: FORMAT_TYPE.COMMANDER, deckSize: 100, sideboardSize: 0, cardLimit: 1, unlimitedCards: [] },
+    format: opts.format ?? { type: FORMAT_TYPE.COMMANDER, deckSize: 100, sideboardSize: 0, cardLimit: 1 },
     createdAt: '2024-01-01T00:00:00.000Z',
     updatedAt: '2024-01-01T00:00:00.000Z',
     version: 1,
@@ -160,7 +160,7 @@ describe('moveCard', () => {
   it('moves a singleton card with no quantity argument', () => {
     const deck = makeDeck({
       mainboard: [makeEntry('Sol Ring')],
-      format: { type: FORMAT_TYPE.STANDARD, deckSize: 60, sideboardSize: 15, cardLimit: 4, unlimitedCards: [] },
+      format: { type: FORMAT_TYPE.STANDARD, deckSize: 60, sideboardSize: 15, cardLimit: 4 },
     })
     const result = moveCard(deck, 'Sol Ring', CARD_SET.MAINBOARD, CARD_SET.SIDEBOARD)
     expect(getMainboard(result.deck)).toHaveLength(0)

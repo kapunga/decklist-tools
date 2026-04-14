@@ -6,7 +6,8 @@ import {
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js'
 
-import { Storage } from '@mtg-deckbuilder/shared'
+import * as path from 'path'
+import { Storage, loadCardDeckLimits } from '@mtg-deckbuilder/shared'
 import { handleToolCall, getToolDefinitions } from './tools/index.js'
 
 function parseStorageDir(argv: string[]): string | undefined {
@@ -16,6 +17,13 @@ function parseStorageDir(argv: string[]): string | undefined {
 
 async function main() {
   const storage = new Storage(parseStorageDir(process.argv))
+
+  // Load card-intrinsic deck limits ("A deck can have..." cards) before serving
+  // any requests. Non-throwing: logs warnings on failure and falls back to a
+  // hardcoded list so validation still works offline on first boot.
+  await loadCardDeckLimits({
+    cachePath: path.join(storage.getBasePath(), 'cache', 'deck-limits.json'),
+  })
 
   const server = new Server(
     {

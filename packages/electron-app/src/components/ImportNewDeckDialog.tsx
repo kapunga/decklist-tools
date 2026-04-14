@@ -23,7 +23,7 @@ import { useImportCards } from '@/hooks/useImportCards'
 import { formats } from '@/lib/formats'
 import { getCardById } from '@/lib/scryfall'
 import type { FormatType, Deck, CardEntry, CardIdentifier } from '@/types'
-import { formatDefaults, FORMAT_TYPE, CARD_SET } from '@/types'
+import { formatDefaults, FORMAT_TYPE, CARD_SET, isCommanderLikeFormat } from '@/types'
 import { withDeckCardSet, getCardSetEntries } from '@mtg-deckbuilder/shared'
 
 export function ImportNewDeckDialog() {
@@ -98,7 +98,7 @@ export function ImportNewDeckDialog() {
       let colorIdentity: string[] | undefined
       let commanders: CardIdentifier[] = []
 
-      if (deckFormat === FORMAT_TYPE.COMMANDER) {
+      if (isCommanderLikeFormat(deckFormat)) {
         // Check if any parsed cards were marked as commanders
         const commanderIndices: number[] = []
         for (let i = 0; i < parsedCards.length; i++) {
@@ -215,8 +215,12 @@ export function ImportNewDeckDialog() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={FORMAT_TYPE.COMMANDER}>Commander</SelectItem>
+                  <SelectItem value={FORMAT_TYPE.BRAWL}>Brawl</SelectItem>
                   <SelectItem value={FORMAT_TYPE.STANDARD}>Standard</SelectItem>
+                  <SelectItem value={FORMAT_TYPE.PIONEER}>Pioneer</SelectItem>
                   <SelectItem value={FORMAT_TYPE.MODERN}>Modern</SelectItem>
+                  <SelectItem value={FORMAT_TYPE.LEGACY}>Legacy</SelectItem>
+                  <SelectItem value={FORMAT_TYPE.PAUPER}>Pauper</SelectItem>
                   <SelectItem value={FORMAT_TYPE.KITCHEN_TABLE}>Kitchen Table</SelectItem>
                 </SelectContent>
               </Select>

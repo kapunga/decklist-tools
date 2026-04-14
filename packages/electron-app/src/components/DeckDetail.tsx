@@ -20,7 +20,7 @@ import { RoleEditModal } from '@/components/RoleEditModal'
 import { ColorPips } from '@/components/ColorPips'
 import { PullListView } from '@/components/PullListView'
 import { getDeckColorIdentity, showColorlessPip, getAlternates, getSideboard, getCutList } from '@mtg-deckbuilder/shared'
-import { getCardCount, getCardDisplayName, FORMAT_TYPE, CARD_SET } from '@/types'
+import { getCardCount, getCardDisplayName, CARD_SET, isCommanderLikeFormat } from '@/types'
 import type { RoleDefinition, CardSetName } from '@/types'
 
 export function DeckDetail() {
@@ -151,8 +151,8 @@ export function DeckDetail() {
             showColorless={showColorlessPip(deck)}
           />
 
-          {/* Commander display for Commander format */}
-          {deck.format.type === FORMAT_TYPE.COMMANDER && deck.commanders.length > 0 && (
+          {/* Commander display for Commander-like formats (Commander, Brawl) */}
+          {isCommanderLikeFormat(deck.format.type) && deck.commanders.length > 0 && (
             <div className="flex items-center gap-1">
               <Crown className="w-4 h-4 text-yellow-500" />
               <span className="text-sm">

@@ -21,7 +21,7 @@ function makeDeck(opts: MakeDeckOptions = {}): Deck {
   return {
     id: 'test-deck',
     name: 'Test',
-    format: opts.format ?? { type: FORMAT_TYPE.COMMANDER, deckSize: 100, sideboardSize: 0, cardLimit: 1, unlimitedCards: [] },
+    format: opts.format ?? { type: FORMAT_TYPE.COMMANDER, deckSize: 100, sideboardSize: 0, cardLimit: 1 },
     createdAt: '2024-01-01T00:00:00.000Z',
     updatedAt: '2024-01-01T00:00:00.000Z',
     version: 1,
@@ -60,7 +60,7 @@ describe('addCommander', () => {
   })
 
   it('throws for non-commander format', () => {
-    const deck = makeDeck({ format: { type: FORMAT_TYPE.STANDARD, deckSize: 60, sideboardSize: 15, cardLimit: 4, unlimitedCards: [] } })
+    const deck = makeDeck({ format: { type: FORMAT_TYPE.STANDARD, deckSize: 60, sideboardSize: 15, cardLimit: 4 } })
     expect(() => addCommander(deck, makeCommander('X'))).toThrow('Commander format')
   })
 
@@ -158,7 +158,7 @@ describe('getDeckColorIdentity', () => {
 
   it('computes union of card colors for non-commander decks', () => {
     const deck = makeDeck({
-      format: { type: FORMAT_TYPE.STANDARD, deckSize: 60, sideboardSize: 15, cardLimit: 4, unlimitedCards: [] },
+      format: { type: FORMAT_TYPE.STANDARD, deckSize: 60, sideboardSize: 15, cardLimit: 4 },
       mainboard: [
         makeEntry('Bolt', { card: { name: 'Bolt', setCode: 'test', collectorNumber: '1', colorIdentity: ['R'] } }),
         makeEntry('Counterspell', { card: { name: 'Counterspell', setCode: 'test', collectorNumber: '2', colorIdentity: ['U'] } }),
@@ -170,7 +170,7 @@ describe('getDeckColorIdentity', () => {
 
   it('includes sideboard colors for non-commander decks', () => {
     const deck = makeDeck({
-      format: { type: FORMAT_TYPE.MODERN, deckSize: 60, sideboardSize: 15, cardLimit: 4, unlimitedCards: [] },
+      format: { type: FORMAT_TYPE.MODERN, deckSize: 60, sideboardSize: 15, cardLimit: 4 },
       mainboard: [
         makeEntry('Bolt', { card: { name: 'Bolt', setCode: 'test', collectorNumber: '1', colorIdentity: ['R'] } }),
       ],
@@ -183,7 +183,7 @@ describe('getDeckColorIdentity', () => {
 
   it('skips cards in the cut set for non-commander decks', () => {
     const deck = makeDeck({
-      format: { type: FORMAT_TYPE.STANDARD, deckSize: 60, sideboardSize: 15, cardLimit: 4, unlimitedCards: [] },
+      format: { type: FORMAT_TYPE.STANDARD, deckSize: 60, sideboardSize: 15, cardLimit: 4 },
       mainboard: [
         makeEntry('Bolt', { card: { name: 'Bolt', setCode: 'test', collectorNumber: '1', colorIdentity: ['R'] } }),
       ],
@@ -198,7 +198,7 @@ describe('getDeckColorIdentity', () => {
 
   it('returns empty array for non-commander decks with no cards', () => {
     const deck = makeDeck({
-      format: { type: FORMAT_TYPE.KITCHEN_TABLE, deckSize: 60, sideboardSize: 15, cardLimit: Infinity, unlimitedCards: [] },
+      format: { type: FORMAT_TYPE.KITCHEN_TABLE, deckSize: 60, sideboardSize: 15, cardLimit: Infinity },
     })
     expect(getDeckColorIdentity(deck)).toEqual([])
   })

@@ -1,5 +1,5 @@
 import type { Deck, CardEntry } from '../types/index.js'
-import { FORMAT_TYPE } from '../types/index.js'
+import { isCommanderLikeFormat } from '../types/index.js'
 import { PARSER_SECTION } from './utils.js'
 import type { DeckExportFormat, ParsedCard, RenderOptions } from './types.js'
 import { prepareLines, getConfirmedCards, getMaybeboardCards, getSideboardCards } from './utils.js'
@@ -74,7 +74,7 @@ export const archidektFormat: DeckExportFormat = {
     }
 
     // Commanders section
-    if (deck.format.type === FORMAT_TYPE.COMMANDER && deck.commanders.length > 0) {
+    if (isCommanderLikeFormat(deck.format.type) && deck.commanders.length > 0) {
       deck.commanders.forEach(c => {
         lines.push(`1x ${c.name} (${(c.setCode || '???').toUpperCase()}) ${c.collectorNumber || '0'} [Commander]`)
       })

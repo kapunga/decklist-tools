@@ -1,5 +1,5 @@
 import type { Deck, ScryfallCard } from '../types/index.js'
-import { FORMAT_TYPE, getCardLimit, getCardCount } from '../types/index.js'
+import { FORMAT_TYPE, getCardLimit, getCardCount, isCommanderLikeFormat } from '../types/index.js'
 import { isLegalInFormat } from '../scryfall/index.js'
 import { getSideboard, getNonCutEntries } from './card-sets.js'
 import type { ValidationIssue } from './types.js'
@@ -7,7 +7,7 @@ import { ISSUE_CATEGORY, composeValidators } from './types.js'
 
 /**
  * Validate deck size against format requirements.
- * Commander: must be exactly deckSize. Others: at least deckSize.
+ * Commander-like (Commander, Brawl): must be exactly deckSize. Others: at least deckSize.
  */
 export function validateDeckSize(deck: Deck): ValidationIssue[] {
   const cardCount = getCardCount(deck)
@@ -21,11 +21,11 @@ export function validateDeckSize(deck: Deck): ValidationIssue[] {
     }]
   }
 
-  if (cardCount > format.deckSize && format.type === FORMAT_TYPE.COMMANDER) {
+  if (cardCount > format.deckSize && isCommanderLikeFormat(format.type)) {
     return [{
       category: ISSUE_CATEGORY.STRUCTURE,
       code: 'deck_oversize',
-      message: `Commander deck has ${cardCount} cards, should be exactly ${format.deckSize}`,
+      message: `${format.type} deck has ${cardCount} cards, should be exactly ${format.deckSize}`,
     }]
   }
 
@@ -78,14 +78,14 @@ export function validateCardLimits(deck: Deck): ValidationIssue[] {
 }
 
 /**
- * Validate that a commander format deck has at least one commander.
+ * Validate that a commander-like format deck has at least one commander.
  */
 export function validateCommanderPresence(deck: Deck): ValidationIssue[] {
-  if (deck.format.type === FORMAT_TYPE.COMMANDER && deck.commanders.length === 0) {
+  if (isCommanderLikeFormat(deck.format.type) && deck.commanders.length === 0) {
     return [{
       category: ISSUE_CATEGORY.STRUCTURE,
       code: 'no_commander',
-      message: 'No commander set for Commander format deck',
+      message: `No commander set for ${deck.format.type} format deck`,
     }]
   }
 
@@ -119,12 +119,12 @@ export function validateFormatLegality(deck: Deck, scryfallCache: Map<string, Sc
 }
 
 /**
- * Validate color identity for commander format decks.
+ * Validate color identity for commander-like format decks (Commander, Brawl).
  * Uses the colorIdentity stored on each CardIdentifier — no Scryfall lookup needed.
  * Skips cards without stored colorIdentity (pre-migration cards).
  */
 export function validateColorIdentity(deck: Deck): ValidationIssue[] {
-  if (deck.format.type !== FORMAT_TYPE.COMMANDER) return []
+  if (!isCommanderLikeFormat(deck.format.type)) return []
   if (!deck.colorIdentity || deck.colorIdentity.length === 0) return []
 
   const issues: ValidationIssue[] = []

@@ -1,5 +1,5 @@
 import type { Deck } from '../types/index.js'
-import { FORMAT_TYPE } from '../types/index.js'
+import { isCommanderLikeFormat } from '../types/index.js'
 import { PARSER_SECTION } from './utils.js'
 import type { DeckExportFormat, ParsedCard, RenderOptions } from './types.js'
 import { getConfirmedCards, getMaybeboardCards, getSideboardCards } from './utils.js'
@@ -56,7 +56,7 @@ export const moxfieldFormat: DeckExportFormat = {
     const lines: string[] = ['Count,Name,Edition,Collector Number,Foil,Condition,Language,Category']
 
     // Commanders first for Commander format
-    if (deck.format.type === FORMAT_TYPE.COMMANDER && deck.commanders.length > 0) {
+    if (isCommanderLikeFormat(deck.format.type) && deck.commanders.length > 0) {
       deck.commanders.forEach(c => {
         lines.push(
           `1,${c.name},${c.setCode},${c.collectorNumber},,,English,Commander`

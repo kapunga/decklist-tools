@@ -130,8 +130,12 @@ export function DeckList() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={FORMAT_TYPE.COMMANDER}>Commander</SelectItem>
+                  <SelectItem value={FORMAT_TYPE.BRAWL}>Brawl</SelectItem>
                   <SelectItem value={FORMAT_TYPE.STANDARD}>Standard</SelectItem>
+                  <SelectItem value={FORMAT_TYPE.PIONEER}>Pioneer</SelectItem>
                   <SelectItem value={FORMAT_TYPE.MODERN}>Modern</SelectItem>
+                  <SelectItem value={FORMAT_TYPE.LEGACY}>Legacy</SelectItem>
+                  <SelectItem value={FORMAT_TYPE.PAUPER}>Pauper</SelectItem>
                   <SelectItem value={FORMAT_TYPE.KITCHEN_TABLE}>Kitchen Table</SelectItem>
                 </SelectContent>
               </Select>

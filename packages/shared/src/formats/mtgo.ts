@@ -1,5 +1,5 @@
 import type { Deck } from '../types/index.js'
-import { FORMAT_TYPE } from '../types/index.js'
+import { isCommanderLikeFormat } from '../types/index.js'
 import type { DeckExportFormat, ParsedCard, RenderOptions } from './types.js'
 import { getConfirmedCards, getSideboardCards, parseLinesWithSections, PARSER_SECTION, consumed, implicit, type LineParserConfig } from './utils.js'
 
@@ -32,7 +32,7 @@ export const mtgoFormat: DeckExportFormat = {
   render(deck: Deck, options: RenderOptions): string {
     const lines: string[] = []
 
-    if (deck.format.type === FORMAT_TYPE.COMMANDER && deck.commanders.length > 0) {
+    if (isCommanderLikeFormat(deck.format.type) && deck.commanders.length > 0) {
       lines.push('Commander')
       deck.commanders.forEach(c => {
         lines.push(`1 ${c.name}`)

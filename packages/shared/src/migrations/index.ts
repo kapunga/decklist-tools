@@ -3,6 +3,7 @@ import { migrateNotes } from './001-migrate-notes.js'
 import { migrateCardSets } from './002-card-sets.js'
 import { migrateCardEntryCleanup } from './003-card-entry-cleanup.js'
 import { migrateStripTypeLine } from './004-strip-typeline.js'
+import { migrateStripFormatCardLists } from './005-strip-format-card-lists.js'
 
 // --- Migration Types ---
 
@@ -24,6 +25,7 @@ const migrations: Migration[] = [
   migrateCardSets,
   migrateCardEntryCleanup,
   migrateStripTypeLine,
+  migrateStripFormatCardLists,
 ]
 
 /**
