@@ -1,6 +1,5 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@config "../../tailwind.config.js";
 
 @layer base {
   :root {
@@ -62,10 +61,6 @@
 /* Dark mode by default */
 html {
   color-scheme: dark;
-}
-
-body {
-  @apply dark;
 }
 
 /* Custom scrollbar */
