@@ -59,9 +59,9 @@ describe('addCommander', () => {
     expect(() => addCommander(deck, makeCommander('Kenrith', ['W']))).toThrow('already a commander')
   })
 
-  it('throws for non-commander format', () => {
+  it('throws for non-commander-like format', () => {
     const deck = makeDeck({ format: { type: FORMAT_TYPE.STANDARD, deckSize: 60, sideboardSize: 15, cardLimit: 4 } })
-    expect(() => addCommander(deck, makeCommander('X'))).toThrow('Commander format')
+    expect(() => addCommander(deck, makeCommander('X'))).toThrow(/commander-like formats/)
   })
 
   it('does not mutate the original deck', () => {

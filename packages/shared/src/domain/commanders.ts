@@ -1,5 +1,5 @@
 import type { Deck, CardIdentifier } from '../types/index.js'
-import { FORMAT_TYPE, isCommanderLikeFormat } from '../types/index.js'
+import { isCommanderLikeFormat } from '../types/index.js'
 import { getMainboard, getSideboard } from './card-sets.js'
 import type { OpResult, CommanderMeta } from './types.js'
 
@@ -23,9 +23,9 @@ function buildMeta(commanders: CardIdentifier[]): CommanderMeta {
   }
 }
 
-function requireCommanderFormat(deck: Deck): void {
-  if (deck.format.type !== FORMAT_TYPE.COMMANDER) {
-    throw new Error('Commanders can only be managed for Commander format decks')
+function requireCommanderLikeFormat(deck: Deck): void {
+  if (!isCommanderLikeFormat(deck.format.type)) {
+    throw new Error(`Commanders can only be managed for commander-like formats (Commander, Brawl); this deck is ${deck.format.type}`)
   }
 }
 
@@ -36,7 +36,7 @@ function requireCommanderFormat(deck: Deck): void {
  * Throws if not commander format or commander already exists.
  */
 export function addCommander(deck: Deck, commander: CardIdentifier): OpResult<CommanderMeta> {
-  requireCommanderFormat(deck)
+  requireCommanderLikeFormat(deck)
 
   const isDuplicate = deck.commanders.some(
     c => c.name.toLowerCase() === commander.name.toLowerCase()
@@ -59,7 +59,7 @@ export function addCommander(deck: Deck, commander: CardIdentifier): OpResult<Co
  * Throws if not commander format or commander not found.
  */
 export function removeCommander(deck: Deck, commanderName: string): OpResult<CommanderMeta> {
-  requireCommanderFormat(deck)
+  requireCommanderLikeFormat(deck)
 
   const index = deck.commanders.findIndex(
     c => c.name.toLowerCase() === commanderName.toLowerCase()
@@ -86,7 +86,7 @@ export function swapCommander(
   oldName: string,
   newCommander: CardIdentifier
 ): OpResult<CommanderMeta> {
-  requireCommanderFormat(deck)
+  requireCommanderLikeFormat(deck)
 
   const index = deck.commanders.findIndex(
     c => c.name.toLowerCase() === oldName.toLowerCase()

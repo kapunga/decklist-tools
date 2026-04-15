@@ -122,8 +122,15 @@ export function manageDeck(storage: Storage, args: ManageDeckArgs) {
       if (args.name !== undefined) deck.name = args.name
       if (args.description !== undefined) deck.description = args.description
       if (args.archetype !== undefined) deck.archetype = args.archetype
+      if (args.format !== undefined) {
+        const formatType = args.format as FormatType
+        if (!formatDefaults[formatType]) {
+          throw new Error(`Invalid format: ${args.format}`)
+        }
+        deck.format = formatDefaults[formatType]
+      }
       storage.saveDeck(deck)
-      return { success: true, deck: { id: deck.id, name: deck.name } }
+      return { success: true, deck: { id: deck.id, name: deck.name, format: deck.format.type } }
     }
     case 'delete': {
       if (!args.deck_id) throw new Error('deck_id is required for delete')

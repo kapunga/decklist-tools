@@ -841,7 +841,7 @@ describe('Commander', () => {
       mock._decks.set(deck.id, deck)
 
       await expect(call('manage_commander', { action: 'add', deck_id: deck.id, commander_name: 'X' }))
-        .rejects.toThrow('Commanders can only be managed for Commander format decks')
+        .rejects.toThrow(/commander-like formats/)
     })
 
     it('rejects duplicate commander', async () => {

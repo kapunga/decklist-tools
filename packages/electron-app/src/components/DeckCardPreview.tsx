@@ -11,7 +11,6 @@ import { getCardById, getCardArtCropUrl } from '@/lib/scryfall'
 
 const formatColors: Record<FormatType, string> = {
   commander: 'bg-purple-600',
-  brawl: 'bg-fuchsia-600',
   standard: 'bg-blue-600',
   pioneer: 'bg-sky-600',
   modern: 'bg-green-600',
@@ -22,7 +21,6 @@ const formatColors: Record<FormatType, string> = {
 
 const formatLabels: Record<FormatType, string> = {
   commander: 'Commander',
-  brawl: 'Brawl',
   standard: 'Standard',
   pioneer: 'Pioneer',
   modern: 'Modern',

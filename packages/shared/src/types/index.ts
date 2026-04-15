@@ -76,15 +76,14 @@ export const FORMAT_TYPE = {
   PIONEER: 'pioneer',
   LEGACY: 'legacy',
   PAUPER: 'pauper',
-  BRAWL: 'brawl',
   KITCHEN_TABLE: 'kitchen_table',
 } as const
 export type FormatType = typeof FORMAT_TYPE[keyof typeof FORMAT_TYPE]
 
-// Commander and Brawl share three structural rules: exact deck size,
-// a required commander, and enforced color identity.
+// Commander is the only format with a commander zone today. Kept as a helper
+// so future commander-zone formats (Oathbreaker, etc.) can be added in one place.
 export function isCommanderLikeFormat(type: FormatType): boolean {
-  return type === FORMAT_TYPE.COMMANDER || type === FORMAT_TYPE.BRAWL
+  return type === FORMAT_TYPE.COMMANDER
 }
 
 export const NOTE_TYPE = {
@@ -157,12 +156,6 @@ export const formatDefaults: Record<FormatType, DeckFormat> = {
     deckSize: 60,
     sideboardSize: 15,
     cardLimit: 4,
-  },
-  [FORMAT_TYPE.BRAWL]: {
-    type: FORMAT_TYPE.BRAWL,
-    deckSize: 60,
-    sideboardSize: 0,
-    cardLimit: 1,
   },
   [FORMAT_TYPE.KITCHEN_TABLE]: {
     type: FORMAT_TYPE.KITCHEN_TABLE,

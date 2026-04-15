@@ -215,7 +215,6 @@ export function ImportNewDeckDialog() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={FORMAT_TYPE.COMMANDER}>Commander</SelectItem>
-                  <SelectItem value={FORMAT_TYPE.BRAWL}>Brawl</SelectItem>
                   <SelectItem value={FORMAT_TYPE.STANDARD}>Standard</SelectItem>
                   <SelectItem value={FORMAT_TYPE.PIONEER}>Pioneer</SelectItem>
                   <SelectItem value={FORMAT_TYPE.MODERN}>Modern</SelectItem>
