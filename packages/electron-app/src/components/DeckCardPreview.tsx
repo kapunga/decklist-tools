@@ -12,15 +12,21 @@ import { getCardById, getCardArtCropUrl } from '@/lib/scryfall'
 const formatColors: Record<FormatType, string> = {
   commander: 'bg-purple-600',
   standard: 'bg-blue-600',
+  pioneer: 'bg-sky-600',
   modern: 'bg-green-600',
-  kitchen_table: 'bg-orange-600'
+  legacy: 'bg-teal-600',
+  pauper: 'bg-amber-600',
+  kitchen_table: 'bg-orange-600',
 }
 
 const formatLabels: Record<FormatType, string> = {
   commander: 'Commander',
   standard: 'Standard',
+  pioneer: 'Pioneer',
   modern: 'Modern',
-  kitchen_table: 'Kitchen Table'
+  legacy: 'Legacy',
+  pauper: 'Pauper',
+  kitchen_table: 'Kitchen Table',
 }
 
 interface DeckCardPreviewProps {

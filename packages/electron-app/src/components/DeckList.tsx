@@ -58,7 +58,7 @@ export function DeckList() {
   const deckToDelete = decks.find(d => d.id === showDeleteDialog)
 
   return (
-    <div className="p-6">
+    <div className="h-full overflow-y-auto p-6">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">My Decks</h1>
         <div className="flex gap-2">
@@ -131,7 +131,10 @@ export function DeckList() {
                 <SelectContent>
                   <SelectItem value={FORMAT_TYPE.COMMANDER}>Commander</SelectItem>
                   <SelectItem value={FORMAT_TYPE.STANDARD}>Standard</SelectItem>
+                  <SelectItem value={FORMAT_TYPE.PIONEER}>Pioneer</SelectItem>
                   <SelectItem value={FORMAT_TYPE.MODERN}>Modern</SelectItem>
+                  <SelectItem value={FORMAT_TYPE.LEGACY}>Legacy</SelectItem>
+                  <SelectItem value={FORMAT_TYPE.PAUPER}>Pauper</SelectItem>
                   <SelectItem value={FORMAT_TYPE.KITCHEN_TABLE}>Kitchen Table</SelectItem>
                 </SelectContent>
               </Select>

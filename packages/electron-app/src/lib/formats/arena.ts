@@ -1,4 +1,4 @@
-import { FORMAT_TYPE, type Deck } from '@/types'
+import { isCommanderLikeFormat, type Deck } from '@/types'
 import { getMainboard, getSideboard, getAlternates } from '@mtg-deckbuilder/shared'
 import type { DeckFormat, ParsedCard, RenderOptions } from './types'
 import { PARSER_SECTION } from './types'
@@ -85,7 +85,7 @@ export const arenaFormat: DeckFormat = {
     const lines: string[] = []
 
     // Commander section for Commander format
-    if (deck.format.type === FORMAT_TYPE.COMMANDER && deck.commanders.length > 0) {
+    if (isCommanderLikeFormat(deck.format.type) && deck.commanders.length > 0) {
       lines.push('Commander')
       deck.commanders.forEach(c => {
         lines.push(

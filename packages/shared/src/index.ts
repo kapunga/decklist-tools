@@ -6,6 +6,10 @@ export * from './constants/index.js'
 
 // Scryfall client
 export * from './scryfall/index.js'
+export { loadCardDeckLimits, getIntrinsicDeckLimit, FALLBACK_DECK_LIMITS } from './scryfall/deck-limits-loader.js'
+
+// Cards — in-memory card-level state
+export { getDeckLimit, hasDeckLimitsLoaded } from './cards/deck-limits.js'
 
 // Format parsers
 export * from './formats/index.js'

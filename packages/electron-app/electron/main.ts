@@ -2,7 +2,7 @@ import { app, BrowserWindow, dialog, ipcMain, protocol, session } from 'electron
 import path from 'path'
 import fs from 'fs'
 import os from 'os'
-import { Storage } from '@mtg-deckbuilder/shared'
+import { Storage, loadCardDeckLimits } from '@mtg-deckbuilder/shared'
 import type { Deck, Taxonomy, CardList, Config, RoleDefinition, SetCollectionFile, PullListConfig } from '@mtg-deckbuilder/shared'
 import {
   watchForChanges,
@@ -199,8 +199,14 @@ const createWindow = () => {
 // Ensure the app menu shows the correct name (Electron uses package.json "name" by default)
 app.setName('MTG Deckbuilder')
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   storage = new Storage(getStorageDir())
+
+  // Load card-intrinsic deck limits ("A deck can have..." cards). Non-blocking:
+  // failures are logged but never throw, so the app always proceeds.
+  await loadCardDeckLimits({
+    cachePath: path.join(storage.getBasePath(), 'cache', 'deck-limits.json'),
+  })
 
   // Set Content Security Policy (production only - Vite dev server needs more permissive settings)
   if (app.isPackaged) {

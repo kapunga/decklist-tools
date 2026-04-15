@@ -178,6 +178,22 @@ export async function searchCards(query: string): Promise<SearchResult | null> {
   )
 }
 
+export async function searchCardsAll(query: string): Promise<ScryfallCard[]> {
+  const all: ScryfallCard[] = []
+  let url: string | undefined = `${BASE_URL}/cards/search?q=${encodeURIComponent(query)}`
+  while (url) {
+    const page: SearchResult | null = await fetchFromScryfall<SearchResult>(
+      url,
+      'searching cards (paginated)',
+      emptySearchResult
+    )
+    if (!page) break
+    all.push(...page.data)
+    url = page.has_more ? page.next_page : undefined
+  }
+  return all
+}
+
 export function getCardImageUrl(
   card: ScryfallCard,
   size: 'small' | 'normal' | 'large' = 'normal'

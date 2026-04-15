@@ -60,7 +60,7 @@ export function getToolDefinitions(): Tool[] {
           name: { type: 'string', description: 'Deck name (required for create)' },
           format: {
             type: 'string',
-            enum: ['commander', 'standard', 'modern', 'kitchen_table'],
+            enum: ['commander', 'standard', 'modern', 'pioneer', 'legacy', 'pauper', 'kitchen_table'],
             description: 'Required for create',
           },
           archetype: { type: 'string' },

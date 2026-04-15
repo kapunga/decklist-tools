@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeAll } from 'vitest'
 import {
   validateDeckSize,
   validateSideboardSize,
@@ -10,6 +10,12 @@ import {
 import { ISSUE_CATEGORY } from './types.js'
 import type { Deck, CardEntry } from '../types/index.js'
 import { CARD_SET, CARD_SOURCE, FORMAT_TYPE, OWNERSHIP_STATUS } from '../types/index.js'
+import { setDeckLimits } from '../cards/deck-limits.js'
+import { FALLBACK_DECK_LIMITS } from '../scryfall/deck-limits-loader.js'
+
+beforeAll(() => {
+  setDeckLimits(FALLBACK_DECK_LIMITS)
+})
 
 function makeEntry(name: string, overrides: Partial<CardEntry> = {}): CardEntry {
   return {
@@ -38,7 +44,7 @@ function makeDeck(opts: MakeDeckOptions = {}): Deck {
   return {
     id: 'test-deck',
     name: 'Test',
-    format: opts.format ?? { type: FORMAT_TYPE.COMMANDER, deckSize: 100, sideboardSize: 0, cardLimit: 1, unlimitedCards: [] },
+    format: opts.format ?? { type: FORMAT_TYPE.COMMANDER, deckSize: 100, sideboardSize: 0, cardLimit: 1 },
     createdAt: '2024-01-01T00:00:00.000Z',
     updatedAt: '2024-01-01T00:00:00.000Z',
     version: 1,
@@ -84,7 +90,7 @@ describe('validateDeckSize', () => {
 describe('validateSideboardSize', () => {
   it('reports oversize sideboard', () => {
     const deck = makeDeck({
-      format: { type: FORMAT_TYPE.STANDARD, deckSize: 60, sideboardSize: 15, cardLimit: 4, unlimitedCards: [] },
+      format: { type: FORMAT_TYPE.STANDARD, deckSize: 60, sideboardSize: 15, cardLimit: 4 },
       sideboard: Array.from({ length: 16 }, (_, i) => makeEntry(`SB ${i}`)),
       commanders: [],
     })
@@ -95,7 +101,7 @@ describe('validateSideboardSize', () => {
 
   it('passes for valid sideboard', () => {
     const deck = makeDeck({
-      format: { type: FORMAT_TYPE.STANDARD, deckSize: 60, sideboardSize: 15, cardLimit: 4, unlimitedCards: [] },
+      format: { type: FORMAT_TYPE.STANDARD, deckSize: 60, sideboardSize: 15, cardLimit: 4 },
       sideboard: [makeEntry('Negate')],
       commanders: [],
     })
@@ -113,12 +119,25 @@ describe('validateCardLimits', () => {
     expect(issues[0].code).toBe('card_limit_exceeded')
   })
 
-  it('allows unlimited cards', () => {
+  it('allows unlimited cards via card-intrinsic limit (Relentless Rats)', () => {
     const deck = makeDeck({
-      format: { type: FORMAT_TYPE.COMMANDER, deckSize: 100, sideboardSize: 0, cardLimit: 1, unlimitedCards: ['Relentless Rats'] },
       mainboard: [makeEntry('Relentless Rats', { quantity: 30 })],
     })
     expect(validateCardLimits(deck)).toHaveLength(0)
+  })
+
+  it('allows card-intrinsic N-limited cards (Seven Dwarves: 7)', () => {
+    const deck = makeDeck({
+      mainboard: [makeEntry('Seven Dwarves', { quantity: 7 })],
+    })
+    expect(validateCardLimits(deck)).toHaveLength(0)
+  })
+
+  it('flags card-intrinsic N-limited cards when exceeded', () => {
+    const deck = makeDeck({
+      mainboard: [makeEntry('Seven Dwarves', { quantity: 8 })],
+    })
+    expect(validateCardLimits(deck)).toHaveLength(1)
   })
 
   it('skips cards in the cut set', () => {
@@ -154,7 +173,7 @@ describe('validateCommanderPresence', () => {
 
   it('does not require commander for non-commander formats', () => {
     const deck = makeDeck({
-      format: { type: FORMAT_TYPE.STANDARD, deckSize: 60, sideboardSize: 15, cardLimit: 4, unlimitedCards: [] },
+      format: { type: FORMAT_TYPE.STANDARD, deckSize: 60, sideboardSize: 15, cardLimit: 4 },
       commanders: [],
     })
     expect(validateCommanderPresence(deck)).toHaveLength(0)
@@ -191,7 +210,7 @@ describe('validateColorIdentity', () => {
 
   it('skips non-commander formats', () => {
     const deck = makeDeck({
-      format: { type: FORMAT_TYPE.STANDARD, deckSize: 60, sideboardSize: 15, cardLimit: 4, unlimitedCards: [] },
+      format: { type: FORMAT_TYPE.STANDARD, deckSize: 60, sideboardSize: 15, cardLimit: 4 },
       commanders: [],
       colorIdentity: undefined,
     })
@@ -211,3 +230,4 @@ describe('validateDeckStructure (composed)', () => {
     expect(issues.every(i => i.category === ISSUE_CATEGORY.STRUCTURE)).toBe(true)
   })
 })
+

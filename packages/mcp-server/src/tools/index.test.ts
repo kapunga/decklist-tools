@@ -271,7 +271,7 @@ describe('Card Management', () => {
 
     it('adds to sideboard', async () => {
       mockSearchCardByName.mockResolvedValue(bolCard)
-      const deck = makeDeck({ format: { type: 'standard', deckSize: 60, sideboardSize: 15, cardLimit: 4, unlimitedCards: [] } })
+      const deck = makeDeck({ format: { type: 'standard', deckSize: 60, sideboardSize: 15, cardLimit: 4 } })
       mock._decks.set(deck.id, deck)
 
       await call('manage_card', { action: 'add', deck_id: deck.id, name: 'Lightning Bolt', to_sideboard: true })
@@ -423,7 +423,7 @@ describe('Card Management', () => {
 
   describe('manage_card move', () => {
     it('moves card from mainboard to sideboard', async () => {
-      const deck = makeDeck({ format: { type: 'standard', deckSize: 60, sideboardSize: 15, cardLimit: 4, unlimitedCards: [] } })
+      const deck = makeDeck({ format: { type: 'standard', deckSize: 60, sideboardSize: 15, cardLimit: 4 } })
       pushMainboard(deck,makeDeckCard('Lightning Bolt'))
       mock._decks.set(deck.id, deck)
 
@@ -447,7 +447,7 @@ describe('Card Management', () => {
     })
 
     it('throws when card not in source list', async () => {
-      const deck = makeDeck({ format: { type: 'standard', deckSize: 60, sideboardSize: 15, cardLimit: 4, unlimitedCards: [] } })
+      const deck = makeDeck({ format: { type: 'standard', deckSize: 60, sideboardSize: 15, cardLimit: 4 } })
       mock._decks.set(deck.id, deck)
       await expect(call('manage_card', {
         action: 'move', deck_id: deck.id, name: 'Nope', from: 'mainboard', to: 'sideboard'
@@ -837,11 +837,11 @@ describe('Commander', () => {
 
     it('rejects non-commander format', async () => {
       const deck = makeDeck({ name: 'Standard Deck' })
-      deck.format = { type: 'standard', deckSize: 60, sideboardSize: 15, cardLimit: 4, unlimitedCards: [] }
+      deck.format = { type: 'standard', deckSize: 60, sideboardSize: 15, cardLimit: 4 }
       mock._decks.set(deck.id, deck)
 
       await expect(call('manage_commander', { action: 'add', deck_id: deck.id, commander_name: 'X' }))
-        .rejects.toThrow('Commanders can only be managed for Commander format decks')
+        .rejects.toThrow(/commander-like formats/)
     })
 
     it('rejects duplicate commander', async () => {

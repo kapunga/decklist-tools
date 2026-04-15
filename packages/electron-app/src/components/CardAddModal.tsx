@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { CardImage } from '@/components/CardImage'
 import type { ScryfallCard, DeckFormat, RoleDefinition, CardSetName } from '@/types'
-import { getCardLimit, FORMAT_TYPE, CARD_SET } from '@/types'
+import { getCardLimit, FORMAT_TYPE, CARD_SET, isCommanderLikeFormat } from '@/types'
 import { getAllRoles } from '@/lib/constants'
 import { isLegalInFormat, matchesColorIdentity } from '@/lib/scryfall'
 import { useGlobalRoles } from '@/hooks/useStore'
@@ -251,8 +251,8 @@ function getLegalityWarning(
     return `${card.name} is not legal in ${format.type}.`
   }
 
-  // Check color identity for commander
-  if (format.type === FORMAT_TYPE.COMMANDER && colorIdentity !== undefined) {
+  // Check color identity for commander-like formats (Commander, Brawl)
+  if (isCommanderLikeFormat(format.type) && colorIdentity !== undefined) {
     if (!matchesColorIdentity(card, colorIdentity)) {
       const cardColors = card.color_identity.length > 0
         ? card.color_identity.join('')

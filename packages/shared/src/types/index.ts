@@ -1,3 +1,5 @@
+import { getDeckLimit } from '../cards/deck-limits.js'
+
 // Set Collection Types
 export type CollectionLevel = 1 | 2 | 3 | 4
 
@@ -71,9 +73,18 @@ export const FORMAT_TYPE = {
   COMMANDER: 'commander',
   STANDARD: 'standard',
   MODERN: 'modern',
+  PIONEER: 'pioneer',
+  LEGACY: 'legacy',
+  PAUPER: 'pauper',
   KITCHEN_TABLE: 'kitchen_table',
 } as const
 export type FormatType = typeof FORMAT_TYPE[keyof typeof FORMAT_TYPE]
+
+// Commander is the only format with a commander zone today. Kept as a helper
+// so future commander-zone formats (Oathbreaker, etc.) can be added in one place.
+export function isCommanderLikeFormat(type: FormatType): boolean {
+  return type === FORMAT_TYPE.COMMANDER
+}
 
 export const NOTE_TYPE = {
   COMBO: 'combo',
@@ -107,8 +118,6 @@ export interface DeckFormat {
   deckSize: number
   sideboardSize: number
   cardLimit: number
-  unlimitedCards: string[]
-  specialLimitCards?: Record<string, number> // Cards with specific limits (e.g., Seven Dwarves: 7)
 }
 
 export const formatDefaults: Record<FormatType, DeckFormat> = {
@@ -117,43 +126,43 @@ export const formatDefaults: Record<FormatType, DeckFormat> = {
     deckSize: 100,
     sideboardSize: 0,
     cardLimit: 1,
-    unlimitedCards: [
-      'Relentless Rats', 'Rat Colony', 'Shadowborn Apostle',
-      "Dragon's Approach", 'Persistent Petitioners', 'Slime Against Humanity'
-    ],
-    specialLimitCards: {
-      'Seven Dwarves': 7,
-      'Nazgul': 9
-    }
   },
   [FORMAT_TYPE.STANDARD]: {
     type: FORMAT_TYPE.STANDARD,
     deckSize: 60,
     sideboardSize: 15,
     cardLimit: 4,
-    unlimitedCards: [],
-    specialLimitCards: {
-      'Seven Dwarves': 7
-    }
   },
   [FORMAT_TYPE.MODERN]: {
     type: FORMAT_TYPE.MODERN,
     deckSize: 60,
     sideboardSize: 15,
     cardLimit: 4,
-    unlimitedCards: [],
-    specialLimitCards: {
-      'Seven Dwarves': 7,
-      'Nazgul': 9
-    }
+  },
+  [FORMAT_TYPE.PIONEER]: {
+    type: FORMAT_TYPE.PIONEER,
+    deckSize: 60,
+    sideboardSize: 15,
+    cardLimit: 4,
+  },
+  [FORMAT_TYPE.LEGACY]: {
+    type: FORMAT_TYPE.LEGACY,
+    deckSize: 60,
+    sideboardSize: 15,
+    cardLimit: 4,
+  },
+  [FORMAT_TYPE.PAUPER]: {
+    type: FORMAT_TYPE.PAUPER,
+    deckSize: 60,
+    sideboardSize: 15,
+    cardLimit: 4,
   },
   [FORMAT_TYPE.KITCHEN_TABLE]: {
     type: FORMAT_TYPE.KITCHEN_TABLE,
     deckSize: 60,
     sideboardSize: 15,
     cardLimit: Infinity,
-    unlimitedCards: []
-  }
+  },
 }
 
 // Pulled Printing - tracks which specific printings were pulled for a card
@@ -394,17 +403,13 @@ export function createEmptyDeck(name: string, formatType: FormatType): Deck {
   }
 }
 
-// Get card limit for a specific card in a format
+// Get card limit for a specific card in a format.
+// Card-intrinsic limits (from "A deck can have..." oracle text) override format defaults.
+// Those are loaded on boot via loadCardDeckLimits() into the in-memory map.
 export function getCardLimit(cardName: string, format: DeckFormat): number {
-  // Check if basic land (always unlimited)
   if (isBasicLand(cardName)) return Infinity
-  // Check if in unlimited cards list
-  if (format.unlimitedCards.includes(cardName)) return Infinity
-  // Check if has a special limit
-  if (format.specialLimitCards?.[cardName] !== undefined) {
-    return format.specialLimitCards[cardName]
-  }
-  // Return default card limit for format
+  const intrinsic = getDeckLimit(cardName)
+  if (intrinsic !== undefined) return intrinsic
   return format.cardLimit
 }
 

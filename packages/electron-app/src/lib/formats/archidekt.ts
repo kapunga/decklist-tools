@@ -1,4 +1,4 @@
-import { FORMAT_TYPE, type Deck, type CardEntry } from '@/types'
+import { isCommanderLikeFormat, type Deck, type CardEntry } from '@/types'
 import { getMainboard, getSideboard, getAlternates } from '@mtg-deckbuilder/shared'
 import type { DeckFormat, ParsedCard, RenderOptions } from './types'
 import { PARSER_SECTION } from './types'
@@ -73,7 +73,7 @@ export const archidektFormat: DeckFormat = {
     }
 
     // Commanders section
-    if (deck.format.type === FORMAT_TYPE.COMMANDER && deck.commanders.length > 0) {
+    if (isCommanderLikeFormat(deck.format.type) && deck.commanders.length > 0) {
       deck.commanders.forEach(c => {
         lines.push(`1x ${c.name} (${c.setCode.toUpperCase()}) ${c.collectorNumber} [Commander]`)
       })
