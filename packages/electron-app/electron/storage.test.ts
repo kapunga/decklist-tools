@@ -48,7 +48,7 @@ describe('Storage collection export/import', () => {
     })
 
     it('exports config when present', () => {
-      const config = { scryfallCacheExpiryDays: 14, theme: 'dark' }
+      const config = { scryfallCacheExpiryDays: 14, theme: 'gothic' }
       writeJsonFile(path.join(baseDir, 'config.json'), config)
 
       const result = exportCollection(storage)
@@ -227,7 +227,7 @@ describe('Storage collection export/import', () => {
       writeJsonFile(path.join(decksDir, 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee.json'), {
         id: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee', name: 'Round Trip Deck', cards: [], alternates: [], sideboard: [], commanders: [], version: 1
       })
-      writeJsonFile(path.join(baseDir, 'config.json'), { theme: 'dark' })
+      writeJsonFile(path.join(baseDir, 'config.json'), { theme: 'gothic' })
 
       const exported = exportCollection(storage)
 
@@ -236,7 +236,7 @@ describe('Storage collection export/import', () => {
 
       const result = importCollection(storage, exported)
       expect(result.deckCount).toBe(1)
-      expect(readJsonFile(path.join(baseDir, 'config.json'))).toEqual({ theme: 'dark' })
+      expect(readJsonFile(path.join(baseDir, 'config.json'))).toEqual({ theme: 'gothic' })
     })
   })
 })
