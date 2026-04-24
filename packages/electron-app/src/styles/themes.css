@@ -1,0 +1,252 @@
+/*
+ * Theme system — palettes, color identity, and typography for the
+ * six built-in themes. Each theme block overrides shadcn CSS variables
+ * plus adds mana-color and font variables.
+ *
+ * `:root` holds Library defaults; later `.theme-*` blocks only override
+ * what differs. Properties not re-declared inherit from `:root`.
+ */
+
+@layer base {
+  /* ─────────────────────────────────────────────────────────────
+   * Library — Editorial (light, default)
+   * Warm off-white, muted terracotta accent. Quiet, restrained.
+   * ──────────────────────────────────────────────────────────── */
+  :root {
+    color-scheme: light;
+
+    --background: #F7F2EA;
+    --foreground: #1C1915;
+    --card: #FBF8F1;
+    --card-foreground: #1C1915;
+    --popover: #FBF8F1;
+    --popover-foreground: #1C1915;
+    --primary: #1C1915;
+    --primary-foreground: #F7F2EA;
+    --secondary: #E4DED2;
+    --secondary-foreground: #1C1915;
+    --muted: #E4DED2;
+    --muted-foreground: #6B5F54;
+    --accent: #E4DED2;
+    --accent-foreground: #1C1915;
+    --destructive: #B8513F;
+    --destructive-foreground: #F7F2EA;
+    --border: #E4DED2;
+    --input: #E4DED2;
+    --ring: #B8513F;
+    --radius: 0.5rem;
+
+    /* Color identity */
+    --color-w: #E8DDBF;
+    --color-u: #5B7A95;
+    --color-b: #3B2E2B;
+    --color-r: #B8513F;
+    --color-g: #6E7F4C;
+    --color-m: #B69349;
+    --color-c: #B4ABA0;
+
+    /* Typography — --font-title is shared across themes */
+    --font-title: 'Cinzel', serif;
+    --font-display: 'Fraunces', serif;
+    --font-body: 'Inter', system-ui, sans-serif;
+  }
+
+  .theme-library {
+    /* Same as :root — explicit class for when theme is set dynamically. */
+  }
+
+  /* ─────────────────────────────────────────────────────────────
+   * Fantasy — Grimoire (light)
+   * Parchment and oxblood. Illuminated manuscript pigments.
+   * ──────────────────────────────────────────────────────────── */
+  .theme-fantasy {
+    color-scheme: light;
+
+    --background: #EFE4C8;
+    --foreground: #2A1B0E;
+    --card: #F7EED7;
+    --card-foreground: #2A1B0E;
+    --popover: #F7EED7;
+    --popover-foreground: #2A1B0E;
+    --primary: #2A1B0E;
+    --primary-foreground: #EFE4C8;
+    --secondary: #D9C8A0;
+    --secondary-foreground: #2A1B0E;
+    --muted: #D9C8A0;
+    --muted-foreground: #7A6340;
+    --accent: #D9C8A0;
+    --accent-foreground: #2A1B0E;
+    --destructive: #7A1F1A;
+    --destructive-foreground: #EFE4C8;
+    --border: #D9C8A0;
+    --input: #D9C8A0;
+    --ring: #7A1F1A;
+
+    --color-w: #D9C98B;
+    --color-u: #3E5A7D;
+    --color-b: #2B1B2D;
+    --color-r: #7A1F1A;
+    --color-g: #385432;
+    --color-m: #B89447;
+    --color-c: #96887A;
+
+    --font-display: 'EB Garamond', serif;
+    --font-body: 'IBM Plex Serif', serif;
+  }
+
+  /* ─────────────────────────────────────────────────────────────
+   * Steampunk — Drafting Table (light)
+   * Drafting-paper cream, aged brass. Victorian engineering.
+   * ──────────────────────────────────────────────────────────── */
+  .theme-steampunk {
+    color-scheme: light;
+
+    --background: #EAE2D0;
+    --foreground: #1A1611;
+    --card: #F2EBDB;
+    --card-foreground: #1A1611;
+    --popover: #F2EBDB;
+    --popover-foreground: #1A1611;
+    --primary: #1A1611;
+    --primary-foreground: #EAE2D0;
+    --secondary: #C9B789;
+    --secondary-foreground: #1A1611;
+    --muted: #C9B789;
+    --muted-foreground: #6F5E45;
+    --accent: #C9B789;
+    --accent-foreground: #1A1611;
+    --destructive: #8E3A28;
+    --destructive-foreground: #EAE2D0;
+    --border: #C9B789;
+    --input: #C9B789;
+    --ring: #A0691C;
+
+    --color-w: #E3D9B3;
+    --color-u: #33546B;
+    --color-b: #221C13;
+    --color-r: #8E3A28;
+    --color-g: #4A5F33;
+    --color-m: #A0691C;
+    --color-c: #8B7E66;
+
+    --font-display: 'Playfair Display', serif;
+    --font-body: 'IBM Plex Mono', monospace;
+  }
+
+  /* ─────────────────────────────────────────────────────────────
+   * Ukiyo-e — Woodblock (light)
+   * Washi cream, sumi ink, indigo + vermillion seal.
+   * ──────────────────────────────────────────────────────────── */
+  .theme-ukiyoe {
+    color-scheme: light;
+
+    --background: #F0EADB;
+    --foreground: #1A1918;
+    --card: #F8F2E3;
+    --card-foreground: #1A1918;
+    --popover: #F8F2E3;
+    --popover-foreground: #1A1918;
+    --primary: #1A1918;
+    --primary-foreground: #F0EADB;
+    --secondary: #C7B993;
+    --secondary-foreground: #1A1918;
+    --muted: #C7B993;
+    --muted-foreground: #5D6B7A;
+    --accent: #C7B993;
+    --accent-foreground: #1A1918;
+    --destructive: #B03A2E;
+    --destructive-foreground: #F0EADB;
+    --border: #C7B993;
+    --input: #C7B993;
+    --ring: #B03A2E;
+
+    --color-w: #EFE3C6;
+    --color-u: #324E6E;
+    --color-b: #1C1522;
+    --color-r: #B03A2E;
+    --color-g: #3F5A3E;
+    --color-m: #B08D2B;
+    --color-c: #9C9186;
+
+    --font-display: 'Instrument Serif', serif;
+    --font-body: 'Inter', system-ui, sans-serif;
+  }
+
+  /* ─────────────────────────────────────────────────────────────
+   * Cyberpunk — Dataslate (dark)
+   * Black with blue cast, neon accents, mono data.
+   * ──────────────────────────────────────────────────────────── */
+  .theme-cyberpunk {
+    color-scheme: dark;
+
+    --background: #0B0E14;
+    --foreground: #E8ECF5;
+    --card: #11151C;
+    --card-foreground: #E8ECF5;
+    --popover: #11151C;
+    --popover-foreground: #E8ECF5;
+    --primary: #E8ECF5;
+    --primary-foreground: #0B0E14;
+    --secondary: #1E2430;
+    --secondary-foreground: #E8ECF5;
+    --muted: #1E2430;
+    --muted-foreground: #6A7588;
+    --accent: #1E2430;
+    --accent-foreground: #E8ECF5;
+    --destructive: #D23F7C;
+    --destructive-foreground: #0B0E14;
+    --border: #1E2430;
+    --input: #1E2430;
+    --ring: #D23F7C;
+
+    --color-w: #EAF8FF;
+    --color-u: #00E5FF;
+    --color-b: #1F2330;
+    --color-r: #D23F7C;
+    --color-g: #39FF14;
+    --color-m: #FFED47;
+    --color-c: #A4B2C4;
+
+    --font-display: 'Space Grotesk', sans-serif;
+    --font-body: 'JetBrains Mono', monospace;
+  }
+
+  /* ─────────────────────────────────────────────────────────────
+   * Gothic — Candlelight (dark)
+   * Dried-ink black, candle-bone text, garnet accent.
+   * ──────────────────────────────────────────────────────────── */
+  .theme-gothic {
+    color-scheme: dark;
+
+    --background: #14100F;
+    --foreground: #E8DFD4;
+    --card: #1A1614;
+    --card-foreground: #E8DFD4;
+    --popover: #1A1614;
+    --popover-foreground: #E8DFD4;
+    --primary: #E8DFD4;
+    --primary-foreground: #14100F;
+    --secondary: #2A2420;
+    --secondary-foreground: #E8DFD4;
+    --muted: #2A2420;
+    --muted-foreground: #7D706B;
+    --accent: #2A2420;
+    --accent-foreground: #E8DFD4;
+    --destructive: #7A1F2B;
+    --destructive-foreground: #E8DFD4;
+    --border: #2A2420;
+    --input: #2A2420;
+    --ring: #7A1F2B;
+
+    --color-w: #D4C7B8;
+    --color-u: #2A3E5A;
+    --color-b: #1E1014;
+    --color-r: #7A1F2B;
+    --color-g: #2E4A33;
+    --color-m: #8E7239;
+    --color-c: #6B5F57;
+
+    --font-display: 'Cormorant Garamond', serif;
+    --font-body: 'Cormorant Garamond', serif;
+  }
+}

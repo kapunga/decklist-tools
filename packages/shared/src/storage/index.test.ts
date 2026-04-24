@@ -296,21 +296,39 @@ describe('Storage', () => {
   describe('config', () => {
     it('returns defaults when no file exists', () => {
       const config = storage.getConfig()
-      expect(config.theme).toBe('dark')
+      expect(config.theme).toBe('library')
       expect(config.scryfallCacheExpiryDays).toBe(7)
     })
 
     it('save and load round-trip', () => {
       const config: Config = {
         scryfallCacheExpiryDays: 14,
-        theme: 'light',
+        theme: 'cyberpunk',
         imageCacheEnabled: false,
         imageCacheMaxSize: 100,
       }
       storage.saveConfig(config)
       const loaded = storage.getConfig()
-      expect(loaded.theme).toBe('light')
+      expect(loaded.theme).toBe('cyberpunk')
       expect(loaded.scryfallCacheExpiryDays).toBe(14)
+    })
+
+    it('migrates legacy light/dark theme values', () => {
+      storage.saveConfig({
+        scryfallCacheExpiryDays: 7,
+        theme: 'light' as unknown as Config['theme'],
+        imageCacheEnabled: true,
+        imageCacheMaxSize: 500,
+      })
+      expect(storage.getConfig().theme).toBe('library')
+
+      storage.saveConfig({
+        scryfallCacheExpiryDays: 7,
+        theme: 'dark' as unknown as Config['theme'],
+        imageCacheEnabled: true,
+        imageCacheMaxSize: 500,
+      })
+      expect(storage.getConfig().theme).toBe('gothic')
     })
   })
 

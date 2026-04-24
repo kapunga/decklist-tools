@@ -7,6 +7,7 @@ import { DeckDetail } from '@/components/DeckDetail'
 import { InterestListView } from '@/components/InterestListView'
 import { BuyListView } from '@/components/BuyListView'
 import { SettingsPage } from '@/components/SettingsPage'
+import { ALL_THEMES } from '@/types'
 
 export function App() {
   const loadData = useStore(state => state.loadData)
@@ -15,6 +16,7 @@ export function App() {
   const error = useStore(state => state.error)
   const currentView = useStore(state => state.currentView)
   const setView = useStore(state => state.setView)
+  const theme = useStore(state => state.config?.theme)
 
   useEffect(() => {
     loadData()
@@ -28,6 +30,14 @@ export function App() {
       window.electronAPI.removeStorageListener()
     }
   }, [loadData])
+
+  // Sync theme class on <html>. Strips any prior theme-* class so switching works cleanly.
+  useEffect(() => {
+    if (!theme) return
+    const root = document.documentElement
+    for (const t of ALL_THEMES) root.classList.remove(`theme-${t}`)
+    root.classList.add(`theme-${theme}`)
+  }, [theme])
 
   // Only show global loading spinner on initial app load, not during operations
   if (isLoading && !hasInitialized) {

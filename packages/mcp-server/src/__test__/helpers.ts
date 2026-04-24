@@ -82,7 +82,7 @@ export function createMockStorage() {
     saveTaxonomy: vi.fn(),
     getConfig: vi.fn(() => ({
       scryfallCacheExpiryDays: 7,
-      theme: 'dark' as const,
+      theme: 'gothic' as const,
       imageCacheEnabled: true,
       imageCacheMaxSize: 500,
     })),
