@@ -18,6 +18,11 @@ export function getAllEntries(sets: CardSet[]): CardEntry[] {
   return sets.flatMap(s => s.entries)
 }
 
+/** Total card count (sum of quantities) across a CardEntry array. */
+export function getEntriesTotalQuantity(entries: CardEntry[]): number {
+  return entries.reduce((sum, e) => sum + e.quantity, 0)
+}
+
 // --- Immutable Updaters ---
 
 /** Return a new card sets array with the named set's entries replaced. Creates the set if absent. */
