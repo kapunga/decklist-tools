@@ -2,6 +2,7 @@ import {
   Storage,
   type OwnershipStatus,
   type ScryfallCard,
+  type SearchResult,
   type CardSetName,
   searchCardByNameExact,
   searchCardByName,
@@ -247,9 +248,27 @@ function formatCardCompact(card: ScryfallCard): string {
   return lines.join('\n')
 }
 
+function buildSearchResponse(
+  result: SearchResult,
+  limit: number,
+  useCompact: boolean,
+  header: string,
+) {
+  const cards = result.data.slice(0, limit)
+  if (useCompact) {
+    return `${header}\n\n${cards.map(formatCardCompact).join('\n\n')}`
+  }
+  return {
+    totalCards: result.total_cards,
+    hasMore: result.data.length > limit,
+    cards: cards.map(formatCardResponse),
+  }
+}
+
 export async function searchCardsHandler(args: SearchCardsArgs) {
   const useCompact = args.format !== 'json'
   const formatCard = useCompact ? formatCardCompact : formatCardResponse
+  const limit = args.limit ?? 10
 
   if (args.set_code && args.collector_number) {
     const scryfallCard = await getCardBySetAndNumber(args.set_code, args.collector_number)
@@ -267,27 +286,27 @@ export async function searchCardsHandler(args: SearchCardsArgs) {
   if (SCRYFALL_OPERATORS.test(args.query)) {
     const result = await searchCards(args.query)
     if (!result) throw new Error(`Search failed for query: ${args.query}`)
-    const limit = args.limit ?? 10
-    const cards = result.data.slice(0, limit)
-
-    if (useCompact) {
-      const formatted = cards.map(formatCardCompact)
-      return `Found ${result.total_cards} cards:\n\n${formatted.join('\n\n')}`
-    }
-
-    return {
-      totalCards: result.total_cards,
-      hasMore: result.data.length > limit,
-      cards: cards.map(formatCardResponse),
-    }
+    return buildSearchResponse(result, limit, useCompact, `Found ${result.total_cards} cards:`)
   }
 
-  let scryfallCard
   if (args.exact) {
-    scryfallCard = await searchCardByNameExact(args.query)
-  } else {
-    scryfallCard = await searchCardByName(args.query)
+    const scryfallCard = await searchCardByNameExact(args.query)
+    if (!scryfallCard) throw new Error(`Card not found: ${args.query}`)
+    return formatCard(scryfallCard)
   }
-  if (!scryfallCard) throw new Error(`Card not found: ${args.query}`)
-  return formatCard(scryfallCard)
+
+  const scryfallCard = await searchCardByName(args.query)
+  if (scryfallCard) return formatCard(scryfallCard)
+
+  // Scryfall's /cards/named?fuzzy returns 404 for both "no match" AND
+  // "ambiguous match" (e.g. "Sephiroth" matches multiple printings).
+  // Fall back to a name-substring search so Claude can disambiguate.
+  const escapedName = args.query.replace(/"/g, '\\"')
+  const fallback = await searchCards(`name:"${escapedName}"`)
+  if (!fallback || fallback.total_cards === 0) {
+    throw new Error(`Card not found: ${args.query}`)
+  }
+  const shown = Math.min(limit, fallback.data.length)
+  const header = `Multiple cards match "${args.query}". Showing ${shown} of ${fallback.total_cards}:`
+  return buildSearchResponse(fallback, limit, useCompact, header)
 }

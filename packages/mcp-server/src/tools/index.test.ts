@@ -522,9 +522,72 @@ describe('Card Search', () => {
       expect(result.cards).toHaveLength(1)
     })
 
-    it('throws when not found', async () => {
+    it('throws when not found (fuzzy null + zero search results)', async () => {
       mockSearchCardByName.mockResolvedValue(null as any)
+      mockSearchCards.mockResolvedValue({
+        object: 'list', total_cards: 0, has_more: false, data: [],
+      } as any)
       await expect(call('search_cards', { query: 'Fake' })).rejects.toThrow('Card not found')
+    })
+
+    it('falls back to name-substring search when fuzzy is ambiguous (compact)', async () => {
+      // Reproduces the Sephiroth bug: fuzzy 404s on ambiguity, name: search returns the candidates.
+      const sephFabled = mockScryfallCard('Sephiroth, Fabled SOLDIER', {
+        type_line: 'Legendary Creature — Human Soldier',
+        set: 'fin',
+        collector_number: '100',
+      })
+      const sephFallen = mockScryfallCard('Sephiroth, Fallen Hero', {
+        type_line: 'Legendary Creature — Human Soldier',
+        set: 'fin',
+        collector_number: '101',
+      })
+      mockSearchCardByName.mockResolvedValue(null as any)
+      mockSearchCards.mockResolvedValue({
+        object: 'list', total_cards: 2, has_more: false, data: [sephFabled, sephFallen],
+      } as any)
+
+      const result = await call('search_cards', { query: 'Sephiroth' }) as string
+      expect(mockSearchCards).toHaveBeenCalledWith('name:"Sephiroth"')
+      expect(result).toContain('Multiple cards match "Sephiroth"')
+      expect(result).toContain('Showing 2 of 2')
+      expect(result).toContain('Sephiroth, Fabled SOLDIER')
+      expect(result).toContain('Sephiroth, Fallen Hero')
+    })
+
+    it('returns JSON shape on the disambiguation path when format=json', async () => {
+      const a = mockScryfallCard('Sephiroth, Fabled SOLDIER', { set: 'fin', collector_number: '100' })
+      const b = mockScryfallCard('Sephiroth, Fallen Hero', { set: 'fin', collector_number: '101' })
+      mockSearchCardByName.mockResolvedValue(null as any)
+      mockSearchCards.mockResolvedValue({
+        object: 'list', total_cards: 2, has_more: false, data: [a, b],
+      } as any)
+
+      const result = await call('search_cards', { query: 'Sephiroth', format: 'json' }) as any
+      expect(result.totalCards).toBe(2)
+      expect(result.cards).toHaveLength(2)
+      expect(result.cards[0].name).toBe('Sephiroth, Fabled SOLDIER')
+    })
+
+    it('does not call the fallback when fuzzy succeeds', async () => {
+      mockSearchCardByName.mockResolvedValue(bolCard)
+      await call('search_cards', { query: 'Lightning Bolt' })
+      expect(mockSearchCards).not.toHaveBeenCalled()
+    })
+
+    it('exact mode does not fall back on miss', async () => {
+      mockSearchCardByNameExact.mockResolvedValue(null as any)
+      await expect(call('search_cards', { query: 'Fake', exact: true })).rejects.toThrow('Card not found')
+      expect(mockSearchCards).not.toHaveBeenCalled()
+    })
+
+    it('escapes embedded quotes in the disambiguation query', async () => {
+      mockSearchCardByName.mockResolvedValue(null as any)
+      mockSearchCards.mockResolvedValue({
+        object: 'list', total_cards: 0, has_more: false, data: [],
+      } as any)
+      await expect(call('search_cards', { query: 'She said "hi"' })).rejects.toThrow('Card not found')
+      expect(mockSearchCards).toHaveBeenCalledWith('name:"She said \\"hi\\""')
     })
   })
 })
