@@ -296,10 +296,47 @@ export interface CardList {
   cardSets: CardSet[]
 }
 
+// Themes
+export type ThemeId =
+  | 'library'
+  | 'fantasy'
+  | 'steampunk'
+  | 'ukiyoe'
+  | 'cyberpunk'
+  | 'gothic'
+
+export type ThemeMode = 'light' | 'dark'
+
+export const LIGHT_THEMES: readonly ThemeId[] = ['library', 'fantasy', 'steampunk', 'ukiyoe'] as const
+export const DARK_THEMES: readonly ThemeId[] = ['cyberpunk', 'gothic'] as const
+export const ALL_THEMES: readonly ThemeId[] = [...LIGHT_THEMES, ...DARK_THEMES] as const
+
+export const THEME_MODE: Record<ThemeId, ThemeMode> = {
+  library: 'light',
+  fantasy: 'light',
+  steampunk: 'light',
+  ukiyoe: 'light',
+  cyberpunk: 'dark',
+  gothic: 'dark',
+}
+
+/**
+ * Normalize an unknown theme value from config. Migrates legacy `'light'|'dark'`
+ * values to concrete themes, and falls back to `'library'` for anything unknown.
+ */
+export function normalizeTheme(value: unknown): ThemeId {
+  if (value === 'light') return 'library'
+  if (value === 'dark') return 'gothic'
+  if (typeof value === 'string' && ALL_THEMES.includes(value as ThemeId)) {
+    return value as ThemeId
+  }
+  return 'library'
+}
+
 // Config
 export interface Config {
   scryfallCacheExpiryDays: number
-  theme: 'light' | 'dark'
+  theme: ThemeId
   imageCacheEnabled: boolean
   imageCacheMaxSize: number
   defaultFormat?: FormatType

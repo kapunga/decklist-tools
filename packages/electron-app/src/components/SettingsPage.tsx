@@ -31,6 +31,7 @@ import { SetCollectionQuickAdd } from '@/components/SetCollectionQuickAdd'
 import { CacheSettingsSection } from '@/components/CacheSettingsSection'
 import { DataManagementSection } from '@/components/DataManagementSection'
 import { McpIntegrationCard } from '@/components/McpIntegrationCard'
+import { ThemeSettingsSection } from '@/components/ThemeSettingsSection'
 import { getAllSets, type ScryfallSet } from '@/lib/scryfall'
 import type { RoleDefinition, SetCollectionEntry, CollectionLevel } from '@/types'
 import { getAllDeckEntries } from '@mtg-deckbuilder/shared'
@@ -460,6 +461,10 @@ export function SettingsPage() {
         {/* System Tab */}
         <TabsContent value="system" className="flex-1 overflow-auto m-0 pb-6">
           <div className="max-w-3xl space-y-8">
+            <section>
+              <h2 className="text-lg font-semibold mb-4">Appearance</h2>
+              <ThemeSettingsSection />
+            </section>
             <section>
               <h2 className="text-lg font-semibold mb-4">Data Management</h2>
               <DataManagementSection />

@@ -3,7 +3,7 @@ import path from 'path'
 import os from 'os'
 import type { Deck, Taxonomy, CardList, CardEntry, Config, RoleDefinition, SetCollectionFile, PullListConfig, CacheIndex, CacheEntryMeta, CacheStats, ScryfallCard } from '../types/index.js'
 import { DEFAULT_GLOBAL_ROLES } from '../constants/index.js'
-import { DEFAULT_PULL_LIST_CONFIG, isDoubleFacedCard, INTEREST_LIST_ID, CARD_SET } from '../types/index.js'
+import { DEFAULT_PULL_LIST_CONFIG, isDoubleFacedCard, INTEREST_LIST_ID, CARD_SET, normalizeTheme } from '../types/index.js'
 import { runMigrations } from '../migrations/index.js'
 import type { MigrationContext } from '../migrations/index.js'
 import type { GlobalRolesFile } from './types.js'
@@ -335,12 +335,14 @@ export class Storage {
 
   // Config
   getConfig(): Config {
-    const config = this.readJson<Config>(path.join(this.baseDir, 'config.json'))
-    if (config) return config
+    const raw = this.readJson<Config>(path.join(this.baseDir, 'config.json'))
+    if (raw) {
+      return { ...raw, theme: normalizeTheme(raw.theme) }
+    }
 
     return {
       scryfallCacheExpiryDays: 7,
-      theme: 'dark',
+      theme: 'library',
       imageCacheEnabled: true,
       imageCacheMaxSize: 500
     }
