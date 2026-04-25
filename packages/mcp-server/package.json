@@ -28,7 +28,7 @@
     "pkg": "^5.8.1",
     "tsx": "^4.7.0",
     "typescript": "^5.2.2",
-    "vitest": "^4.1.4"
+    "vitest": "^4.1.5"
   },
   "pkg": {
     "scripts": "dist/**/*.js",
