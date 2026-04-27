@@ -49,6 +49,11 @@
     --font-title: 'Cinzel', serif;
     --font-display: 'Fraunces', serif;
     --font-body: 'Inter', system-ui, sans-serif;
+
+    /* Card elevation — drop shadow for light themes, backlight glow for dark.
+     * Each theme overrides these to set its own physical-context lighting. */
+    --card-elevation: 0 1px 0 0 rgba(168,154,122,0.3), 0 12px 24px -16px rgba(28,25,21,0.18);
+    --card-elevation-hover: 0 1px 0 0 rgba(168,154,122,0.4), 0 20px 36px -20px rgba(28,25,21,0.28);
   }
 
   .theme-library {
@@ -92,6 +97,9 @@
 
     --font-display: 'EB Garamond', serif;
     --font-body: 'IBM Plex Serif', serif;
+
+    --card-elevation: 0 1px 0 0 rgba(122,99,64,0.3), 0 12px 24px -16px rgba(42,27,14,0.18);
+    --card-elevation-hover: 0 1px 0 0 rgba(122,99,64,0.45), 0 20px 36px -20px rgba(42,27,14,0.3);
   }
 
   /* ─────────────────────────────────────────────────────────────
@@ -131,6 +139,9 @@
 
     --font-display: 'Playfair Display', serif;
     --font-body: 'IBM Plex Mono', monospace;
+
+    --card-elevation: 0 1px 0 0 rgba(160,105,28,0.25), 0 12px 24px -16px rgba(26,22,17,0.18);
+    --card-elevation-hover: 0 1px 0 0 rgba(160,105,28,0.45), 0 20px 36px -20px rgba(26,22,17,0.3);
   }
 
   /* ─────────────────────────────────────────────────────────────
@@ -170,6 +181,9 @@
 
     --font-display: 'Instrument Serif', serif;
     --font-body: 'Inter', system-ui, sans-serif;
+
+    --card-elevation: 0 1px 0 0 rgba(160,148,118,0.35), 0 8px 16px -12px rgba(26,25,24,0.15);
+    --card-elevation-hover: 0 1px 0 0 rgba(176,58,46,0.35), 0 14px 24px -16px rgba(26,25,24,0.22);
   }
 
   /* ─────────────────────────────────────────────────────────────
@@ -209,6 +223,26 @@
 
     --font-display: 'Space Grotesk', sans-serif;
     --font-body: 'JetBrains Mono', monospace;
+
+    /* Cyberpunk — neon-sign backlight, per-deck color identity.
+     * Components set --deck-color-1 (primary tube) and --deck-color-2 (halo)
+     * inline based on the deck's color identity. Falls back to --ring if
+     * the component doesn't set those variables. Six layers: saturated tube,
+     * soft tube edge, drop shadow, hot inner glow, main halo, atmospheric. */
+    --card-elevation:
+      0 0 0 3px color-mix(in srgb, var(--deck-color-1, var(--ring)) 70%, transparent),
+      0 0 0 4px color-mix(in srgb, var(--deck-color-1, var(--ring)) 25%, transparent),
+      0 18px 36px -18px rgba(0,0,0,0.7),
+      0 0 12px -1px color-mix(in srgb, var(--deck-color-1, var(--ring)) 75%, transparent),
+      0 0 36px -2px color-mix(in srgb, var(--deck-color-1, var(--ring)) 55%, transparent),
+      0 0 80px -10px color-mix(in srgb, var(--deck-color-2, var(--ring)) 28%, transparent);
+    --card-elevation-hover:
+      0 0 0 3px color-mix(in srgb, var(--deck-color-1, var(--ring)) 90%, transparent),
+      0 0 0 5px color-mix(in srgb, var(--deck-color-1, var(--ring)) 40%, transparent),
+      0 18px 36px -18px rgba(0,0,0,0.7),
+      0 0 16px -1px color-mix(in srgb, var(--deck-color-1, var(--ring)) 95%, transparent),
+      0 0 48px -2px color-mix(in srgb, var(--deck-color-1, var(--ring)) 70%, transparent),
+      0 0 100px -8px color-mix(in srgb, var(--deck-color-2, var(--ring)) 38%, transparent);
   }
 
   /* ─────────────────────────────────────────────────────────────
@@ -248,5 +282,22 @@
 
     --font-display: 'Cormorant Garamond', serif;
     --font-body: 'Cormorant Garamond', serif;
+
+    /* Gothic — candlelight, per-deck color identity. Same per-deck pattern
+     * as Cyberpunk but quieter — softer rim, no hot inner glow, more
+     * romantic than electric. Tertiary halo uses warm-bone atmospheric. */
+    --card-elevation:
+      0 0 0 2px color-mix(in srgb, var(--deck-color-1, var(--ring)) 50%, transparent),
+      0 18px 36px -18px rgba(0,0,0,0.6),
+      0 0 24px -4px color-mix(in srgb, var(--deck-color-1, var(--ring)) 35%, transparent),
+      0 0 56px -12px color-mix(in srgb, var(--deck-color-2, var(--ring)) 22%, transparent),
+      0 0 80px -16px rgba(232,223,212,0.08);
+    --card-elevation-hover:
+      0 0 0 2px color-mix(in srgb, var(--deck-color-1, var(--ring)) 75%, transparent),
+      0 0 0 3px color-mix(in srgb, var(--deck-color-1, var(--ring)) 30%, transparent),
+      0 18px 36px -18px rgba(0,0,0,0.6),
+      0 0 32px -2px color-mix(in srgb, var(--deck-color-1, var(--ring)) 55%, transparent),
+      0 0 72px -8px color-mix(in srgb, var(--deck-color-2, var(--ring)) 32%, transparent),
+      0 0 100px -12px rgba(232,223,212,0.14);
   }
 }
