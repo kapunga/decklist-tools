@@ -240,3 +240,57 @@ describe('Storage collection export/import', () => {
     })
   })
 })
+
+describe('Storage art-crop cache', () => {
+  // Real Scryfall ids (real UUIDs) so validateUUID accepts them.
+  const sephirothId = '85eaf5e7-77dc-4842-a70c-ce4ac7f724df'
+  const adrixNevId = '6adadbc9-4a08-4c1d-adf7-edee73799d9e'
+
+  let storage: Storage
+  let baseDir: string
+  let artCropDir: string
+
+  beforeEach(() => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mtg-test-'))
+    baseDir = path.join(tempDir, 'mtg-deckbuilder')
+    artCropDir = path.join(baseDir, 'cache', 'images', 'art-crops')
+    storage = new Storage(baseDir)
+  })
+
+  afterEach(() => {
+    const parentDir = path.dirname(baseDir)
+    fs.rmSync(parentDir, { recursive: true, force: true })
+  })
+
+  it('returns null when no art crop is cached', () => {
+    expect(storage.getCachedArtCropPath(sephirothId)).toBeNull()
+    expect(storage.getCachedArtCropPath(sephirothId, 'back')).toBeNull()
+  })
+
+  it('round-trips cached front art crop', () => {
+    const fakeJpeg = Buffer.from('fake jpeg bytes')
+    storage.cacheArtCrop(sephirothId, fakeJpeg)
+    const cachedPath = storage.getCachedArtCropPath(sephirothId)
+    expect(cachedPath).not.toBeNull()
+    expect(fs.readFileSync(cachedPath!)).toEqual(fakeJpeg)
+  })
+
+  it('stores front and back as distinct files', () => {
+    const front = Buffer.from('front art')
+    const back = Buffer.from('back art')
+    storage.cacheArtCrop(adrixNevId, front, 'front')
+    storage.cacheArtCrop(adrixNevId, back, 'back')
+
+    const frontPath = storage.getCachedArtCropPath(adrixNevId, 'front')!
+    const backPath = storage.getCachedArtCropPath(adrixNevId, 'back')!
+    expect(frontPath).not.toBe(backPath)
+    expect(fs.readFileSync(frontPath)).toEqual(front)
+    expect(fs.readFileSync(backPath)).toEqual(back)
+  })
+
+  it('writes files into the art-crops subdirectory under cache/images', () => {
+    storage.cacheArtCrop(sephirothId, Buffer.from('x'))
+    const expectedPath = path.join(artCropDir, `${sephirothId}.jpg`)
+    expect(fs.existsSync(expectedPath)).toBe(true)
+  })
+})

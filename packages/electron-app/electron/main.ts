@@ -2,7 +2,7 @@ import { app, BrowserWindow, dialog, ipcMain, protocol, session } from 'electron
 import path from 'path'
 import fs from 'fs'
 import os from 'os'
-import { Storage, loadCardDeckLimits } from '@mtg-deckbuilder/shared'
+import { Storage, loadCardDeckLimits, buildArtCropUrlFromId } from '@mtg-deckbuilder/shared'
 import type { Deck, Taxonomy, CardList, Config, RoleDefinition, SetCollectionFile, PullListConfig } from '@mtg-deckbuilder/shared'
 import {
   watchForChanges,
@@ -409,6 +409,29 @@ function setupIpcHandlers() {
 
   ipcMain.handle('cache:get-image-path', async (_, scryfallId: string, face?: string) => {
     return storage!.getCachedImagePath(scryfallId, face as 'front' | 'back' | undefined)
+  })
+
+  // Cache-or-fetch for art crops: returns a `cached-image://` URL on success,
+  // or null on network failure (renderer falls back to the direct CDN URL).
+  // Only fetches once per id+face — subsequent calls hit the local file.
+  ipcMain.handle('cache:get-or-fetch-art-crop', async (_, scryfallId: string, face?: string) => {
+    if (!storage) return null
+    const resolvedFace = (face === 'back' ? 'back' : 'front') as 'front' | 'back'
+    const filename = resolvedFace === 'back' ? `${scryfallId}_back.jpg` : `${scryfallId}.jpg`
+    const cacheUrl = `cached-image://cache/art-crops/${encodeURIComponent(filename)}`
+
+    if (storage.getCachedArtCropPath(scryfallId, resolvedFace)) return cacheUrl
+
+    try {
+      const response = await fetch(buildArtCropUrlFromId(scryfallId, resolvedFace))
+      if (!response.ok) return null
+      const buffer = Buffer.from(await response.arrayBuffer())
+      storage.cacheArtCrop(scryfallId, buffer, resolvedFace)
+      return cacheUrl
+    } catch (error) {
+      console.error(`Error fetching art crop for ${scryfallId} (${resolvedFace}):`, error)
+      return null
+    }
   })
 
   ipcMain.handle('cache:get-cards', async (_, scryfallIds: string[]) => {

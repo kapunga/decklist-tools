@@ -5,6 +5,7 @@ import {
   getCardFaceImageUrl,
   formatManaCost,
   getColorIdentityString,
+  buildArtCropUrlFromId,
   WUBRG_ORDER,
 } from './index.js'
 import type { ScryfallCard } from '../types/index.js'
@@ -165,6 +166,43 @@ describe('getCardFaceImageUrl', () => {
       ],
     }
     expect(getCardFaceImageUrl(adventureCard, 0)).toBe('https://example.com/normal.jpg')
+  })
+})
+
+describe('buildArtCropUrlFromId', () => {
+  // Real id from Sephiroth, Fabled SOLDIER (a transform card) — empirically
+  // verified to return both /front/ and /back/ art_crops at this URL pattern.
+  const sephirothId = '85eaf5e7-77dc-4842-a70c-ce4ac7f724df'
+
+  it('defaults to the front face when no face is given', () => {
+    expect(buildArtCropUrlFromId(sephirothId)).toBe(
+      'https://cards.scryfall.io/art_crop/front/8/5/85eaf5e7-77dc-4842-a70c-ce4ac7f724df.jpg',
+    )
+  })
+
+  it('returns the front URL when face is explicitly "front"', () => {
+    expect(buildArtCropUrlFromId(sephirothId, 'front')).toBe(
+      'https://cards.scryfall.io/art_crop/front/8/5/85eaf5e7-77dc-4842-a70c-ce4ac7f724df.jpg',
+    )
+  })
+
+  it('returns the back URL when face is "back"', () => {
+    expect(buildArtCropUrlFromId(sephirothId, 'back')).toBe(
+      'https://cards.scryfall.io/art_crop/back/8/5/85eaf5e7-77dc-4842-a70c-ce4ac7f724df.jpg',
+    )
+  })
+
+  it('splits the first two characters of the id into directory segments', () => {
+    // Different leading chars to confirm c1/c2 indexing isn't hardcoded.
+    expect(buildArtCropUrlFromId('ab74e12a-ad7c-4563-aa06-632654bac91d')).toBe(
+      'https://cards.scryfall.io/art_crop/front/a/b/ab74e12a-ad7c-4563-aa06-632654bac91d.jpg',
+    )
+  })
+
+  it('produces distinct URLs for front and back of the same id', () => {
+    const front = buildArtCropUrlFromId(sephirothId, 'front')
+    const back = buildArtCropUrlFromId(sephirothId, 'back')
+    expect(front).not.toBe(back)
   })
 })
 

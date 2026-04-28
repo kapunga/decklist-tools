@@ -24,10 +24,10 @@ export const createDeckSlice: SliceCreator<DeckSlice> = (set, get) => ({
     }))
   },
 
-  setDeckArtCard: async (deckId, scryfallId) => {
+  setDeckArtCard: async (deckId, scryfallId, face) => {
     const deck = get().decks.find(d => d.id === deckId)
     if (!deck) return
-    await get().updateDeck({ ...deck, artCardScryfallId: scryfallId })
+    await get().updateDeck({ ...deck, artCardScryfallId: scryfallId, artCardFace: face })
   },
 
   setDeckColorIdentity: async (deckId, colors) => {

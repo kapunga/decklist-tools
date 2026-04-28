@@ -79,6 +79,7 @@ export interface ElectronAPI {
   rebuildCacheIndex: () => Promise<CacheIndex>
   preCacheDeck: (deckId: string, includeImages: boolean) => Promise<PreCacheResult>
   getCachedImagePath: (scryfallId: string, face?: string) => Promise<string | null>
+  getOrFetchArtCrop: (scryfallId: string, face?: 'front' | 'back') => Promise<string | null>
   getCachedCards: (scryfallIds: string[]) => Promise<Record<string, unknown>>
   loadAllCardsToCache: (includeImages: boolean) => Promise<void>
   onCacheProgress: (callback: (progress: CacheLoadProgress) => void) => () => void
