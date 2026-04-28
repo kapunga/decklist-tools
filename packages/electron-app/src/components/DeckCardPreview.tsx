@@ -285,20 +285,25 @@ export function DeckCardPreview({ deck, onClick, onDelete }: DeckCardPreviewProp
       className="group relative aspect-[4/5] cursor-pointer overflow-hidden rounded-lg border border-border bg-background shadow-[var(--card-elevation)] transition-all duration-200 hover:scale-[1.02] hover:shadow-[var(--card-elevation-hover)]"
       onClick={onClick}
     >
-      {/* Hero — top 58% — sized so the internal aspect (~1.38:1) matches
-          Scryfall's native art_crop, avoiding sideways crop. */}
+      {/* Hero — top 58%, internal aspect ~1.38:1 to match Scryfall's native
+          art_crop. The color-identity gradient is the base layer; when card
+          art is present, it sits on top with a radial alpha mask so the
+          center reads sharply and the corners reveal the color identity
+          underneath as an atmospheric border. */}
       <div
-        className="relative h-[58%] bg-cover bg-center"
-        style={{
-          backgroundImage: artUrl ? `url(${artUrl})` : fallbackGradient,
-        }}
+        className="relative h-[58%]"
+        style={{ background: fallbackGradient }}
       >
-        {/* Vignette — center stays clear so the art's focal point reads sharply,
-            edges darkened to frame and to soften the join with the title plate. */}
-        <div
-          className="absolute inset-0"
-          style={{ background: 'radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.5) 100%)' }}
-        />
+        {artUrl && (
+          <div
+            className="absolute inset-0 bg-cover bg-center"
+            style={{
+              backgroundImage: `url(${artUrl})`,
+              WebkitMaskImage: 'radial-gradient(ellipse at center, black 30%, transparent 95%)',
+              maskImage: 'radial-gradient(ellipse at center, black 30%, transparent 95%)',
+            }}
+          />
+        )}
         {/* Bottom-fade into the title plate */}
         <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-card/70 to-transparent" />
 
