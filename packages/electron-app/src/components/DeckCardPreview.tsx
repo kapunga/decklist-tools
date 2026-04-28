@@ -1,11 +1,12 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { Trash2 } from 'lucide-react'
+import { Trash2, FlipHorizontal2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ColorPips } from '@/components/ColorPips'
 import type { Deck, DeckFormat, FormatType } from '@/types'
 import { getCardCount, FORMAT_TYPE } from '@/types'
-import { getDeckColorIdentity, showColorlessPip } from '@mtg-deckbuilder/shared'
-import { getCardById, getCardArtCropUrl } from '@/lib/scryfall'
+import { getDeckColorIdentity, getMainboard, showColorlessPip } from '@mtg-deckbuilder/shared'
+import { getCardById, resolveArtCropUrl } from '@/lib/scryfall'
+import { useStore } from '@/hooks/useStore'
 
 interface DeckCardPreviewProps {
   deck: Deck
@@ -34,14 +35,50 @@ const FORMAT_GLYPHS: Record<FormatType, string> = {
 }
 
 // Positions for stacking up to 5 radial-gradient stops in the fallback hero.
-// Spread asymmetrically so multi-color decks read as a "scene," not a target.
+// Pushed to the corners and edges (no center stop) so the middle reads as
+// negative space — the same composition that frames card art when it loads.
 const GRADIENT_POSITIONS = [
-  { x: '30%', y: '25%' },
-  { x: '75%', y: '60%' },
-  { x: '20%', y: '75%' },
-  { x: '80%', y: '20%' },
-  { x: '50%', y: '50%' },
+  { x: '10%', y: '10%' },  // top-left
+  { x: '90%', y: '90%' },  // bottom-right
+  { x: '90%', y: '10%' },  // top-right
+  { x: '10%', y: '90%' },  // bottom-left
+  { x: '50%', y: '5%' },   // top edge (5th color spillover)
 ]
+
+// Card layouts where a true back-face art exists (distinct image URL).
+// Used to gate the hover flip button — for `flip`/`adventure`/`split`
+// layouts, the "back" is the same image rotated, which #136 will handle.
+const TWO_FACED_LAYOUTS = ['transform', 'modal_dfc', 'reversible_card']
+
+// Pick a hero card from the mainboard for non-Commander decks: the highest-CMC
+// non-land card, with ties broken deterministically by deck id so the same deck
+// always shows the same art across renders. Returns null for empty/all-land
+// mainboards so the caller can fall back to the gradient.
+async function pickHeroFromMainboard(deck: Deck): Promise<string | null> {
+  const entries = getMainboard(deck).filter(e => e.card.scryfallId)
+  if (entries.length === 0) return null
+
+  const cards = await Promise.all(
+    entries.map(async e => ({
+      id: e.card.scryfallId!,
+      card: await getCardById(e.card.scryfallId!),
+    })),
+  )
+  const nonLands = cards.filter(
+    c => c.card && !c.card.type_line.toLowerCase().includes('land'),
+  )
+  if (nonLands.length === 0) return null
+
+  const maxCmc = Math.max(...nonLands.map(c => c.card!.cmc ?? 0))
+  const candidates = nonLands.filter(c => (c.card!.cmc ?? 0) === maxCmc)
+  candidates.sort((a, b) => a.id.localeCompare(b.id))
+
+  const hash = Array.from(deck.id).reduce(
+    (h, ch) => (h * 31 + ch.charCodeAt(0)) | 0,
+    0,
+  )
+  return candidates[Math.abs(hash) % candidates.length].id
+}
 
 // Build a layered radial-gradient hero from a deck's color identity, using
 // the theme's `--color-{w,u,b,r,g,c}` variables. Each color contributes one
@@ -129,9 +166,13 @@ function buildNeonShadow(primaryHex: string, secondaryHex: string, hover: boolea
 
 export function DeckCardPreview({ deck, onClick, onDelete }: DeckCardPreviewProps) {
   const cardRef = useRef<HTMLDivElement>(null)
+  const [heroCardId, setHeroCardId] = useState<string | null>(null)
+  const [heroLayout, setHeroLayout] = useState<string | null>(null)
   const [artUrl, setArtUrl] = useState<string | null>(null)
   const colorIdentity = getDeckColorIdentity(deck) ?? []
   const cardCount = getCardCount(deck)
+  const heroFace: 'front' | 'back' = deck.artCardFace ?? 'front'
+  const setDeckArtCard = useStore(state => state.setDeckArtCard)
 
   const fallbackGradient = useMemo(
     () => deriveIdentityGradient(colorIdentity),
@@ -143,15 +184,70 @@ export function DeckCardPreview({ deck, onClick, onDelete }: DeckCardPreviewProp
     [colorIdentity.join('')],
   )
 
+  // Resolution chain: explicit override → commander default → highest-CMC heuristic.
+  // Sets just the id; URL and layout are resolved in dependent effects below.
   useEffect(() => {
-    if (deck.artCardScryfallId) {
-      getCardById(deck.artCardScryfallId).then(card => {
-        if (card) setArtUrl(getCardArtCropUrl(card))
-      })
-    } else {
-      setArtUrl(null)
+    let cancelled = false
+    const resolve = async () => {
+      if (deck.artCardScryfallId) {
+        if (!cancelled) setHeroCardId(deck.artCardScryfallId)
+        return
+      }
+      const commanderId = deck.commanders[0]?.scryfallId
+      if (commanderId) {
+        if (!cancelled) setHeroCardId(commanderId)
+        return
+      }
+      const heuristicId = await pickHeroFromMainboard(deck)
+      if (!cancelled) setHeroCardId(heuristicId)
     }
-  }, [deck.artCardScryfallId])
+    resolve()
+    return () => {
+      cancelled = true
+    }
+  }, [deck.id, deck.artCardScryfallId, deck.commanders, deck.cardSets])
+
+  // Resolve the art URL through the disk cache (or fall back to direct CDN).
+  useEffect(() => {
+    if (!heroCardId) {
+      setArtUrl(null)
+      return
+    }
+    let cancelled = false
+    resolveArtCropUrl(heroCardId, heroFace).then(url => {
+      if (!cancelled) setArtUrl(url)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [heroCardId, heroFace])
+
+  // Fetch the hero card's layout to gate the flip button. Single fetch per
+  // resolved id; getCardById is locally cached so this is essentially free.
+  useEffect(() => {
+    if (!heroCardId) {
+      setHeroLayout(null)
+      return
+    }
+    let cancelled = false
+    getCardById(heroCardId).then(card => {
+      if (!cancelled) setHeroLayout(card?.layout ?? null)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [heroCardId])
+
+  const canFlipFace = heroLayout !== null && TWO_FACED_LAYOUTS.includes(heroLayout)
+
+  const handleFlipFace = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!heroCardId) return
+    // Anchor the current heroCardId when flipping so the choice doesn't drift
+    // if the underlying default later changes (commander swap, mainboard edit).
+    const newFace: 'front' | 'back' = heroFace === 'back' ? 'front' : 'back'
+    await setDeckArtCard(deck.id, heroCardId, newFace)
+  }
 
   // Compute and inject the per-deck box-shadow whenever the theme changes
   // or the deck's glow colors change. On light themes, remove our overrides
@@ -186,20 +282,22 @@ export function DeckCardPreview({ deck, onClick, onDelete }: DeckCardPreviewProp
   return (
     <div
       ref={cardRef}
-      className="group relative aspect-[5/7] cursor-pointer overflow-hidden rounded-lg border border-border bg-background shadow-[var(--card-elevation)] transition-all duration-200 hover:scale-[1.02] hover:shadow-[var(--card-elevation-hover)]"
+      className="group relative aspect-[4/5] cursor-pointer overflow-hidden rounded-lg border border-border bg-background shadow-[var(--card-elevation)] transition-all duration-200 hover:scale-[1.02] hover:shadow-[var(--card-elevation-hover)]"
       onClick={onClick}
     >
-      {/* Hero — top 65% — card art OR identity gradient */}
+      {/* Hero — top 58% — sized so the internal aspect (~1.38:1) matches
+          Scryfall's native art_crop, avoiding sideways crop. */}
       <div
-        className="relative h-[65%] bg-cover bg-center"
+        className="relative h-[58%] bg-cover bg-center"
         style={{
           backgroundImage: artUrl ? `url(${artUrl})` : fallbackGradient,
         }}
       >
-        {/* Vignette to sink the edges and frame the center */}
+        {/* Vignette — center stays clear so the art's focal point reads sharply,
+            edges darkened to frame and to soften the join with the title plate. */}
         <div
           className="absolute inset-0"
-          style={{ background: 'radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.4) 100%)' }}
+          style={{ background: 'radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.5) 100%)' }}
         />
         {/* Bottom-fade into the title plate */}
         <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-card/70 to-transparent" />
@@ -221,13 +319,26 @@ export function DeckCardPreview({ deck, onClick, onDelete }: DeckCardPreviewProp
         >
           <Trash2 className="w-4 h-4 text-destructive" />
         </Button>
+
+        {/* Flip-face button — hover-only, only for layouts with a real back face */}
+        {canFlipFace && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute bottom-1 left-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8"
+            onClick={handleFlipFace}
+            title={heroFace === 'back' ? 'Show front face' : 'Show back face'}
+          >
+            <FlipHorizontal2 className="w-4 h-4 text-foreground" />
+          </Button>
+        )}
       </div>
 
       {/* Brass divider — theme-accent hairline */}
       <div className="h-[2px] bg-gradient-to-r from-transparent via-accent to-transparent" />
 
-      {/* Title plate — bottom 35% */}
-      <div className="h-[calc(35%-2px)] bg-card text-card-foreground flex flex-col p-3 gap-1.5">
+      {/* Title plate — bottom 42% */}
+      <div className="h-[calc(42%-2px)] bg-card text-card-foreground flex flex-col p-3 gap-1.5">
         <div className="font-body font-medium text-[9px] uppercase tracking-[0.2em] text-muted-foreground line-clamp-1">
           {getFormatTypeLine(deck.format, deck.archetype)}
         </div>

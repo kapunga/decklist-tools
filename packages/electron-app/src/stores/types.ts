@@ -39,7 +39,7 @@ export interface DeckSlice {
   createDeck: (name: string, formatType: string) => Promise<Deck>
   updateDeck: (deck: Deck) => Promise<void>
   deleteDeck: (id: string) => Promise<void>
-  setDeckArtCard: (deckId: string, scryfallId: string | undefined) => Promise<void>
+  setDeckArtCard: (deckId: string, scryfallId: string | undefined, face?: 'front' | 'back') => Promise<void>
   setDeckColorIdentity: (deckId: string, colors: string[]) => Promise<void>
 }
 
