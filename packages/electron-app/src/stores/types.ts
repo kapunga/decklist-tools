@@ -1,4 +1,4 @@
-import type { Deck, Taxonomy, CardList, Config, CardEntry, DeckNote, CardIdentifier, RoleDefinition, SetCollectionFile, SetCollectionEntry, CollectionLevel, PullListConfig, CardSetName, CardSource } from '@/types'
+import type { Deck, Taxonomy, CardList, Config, CardEntry, DeckNote, CardIdentifier, RoleDefinition, SetCollectionFile, SetCollectionEntry, CollectionLevel, PullListConfig, CardSetName, CardSource, ArtCardFace } from '@/types'
 
 export type AppView = 'decks' | 'deck-detail' | 'interest-list' | 'buy-list' | 'settings'
 
@@ -39,7 +39,7 @@ export interface DeckSlice {
   createDeck: (name: string, formatType: string) => Promise<Deck>
   updateDeck: (deck: Deck) => Promise<void>
   deleteDeck: (id: string) => Promise<void>
-  setDeckArtCard: (deckId: string, scryfallId: string | undefined, face?: 'front' | 'back') => Promise<void>
+  setDeckArtCard: (deckId: string, scryfallId: string | undefined, face?: ArtCardFace) => Promise<void>
   setDeckColorIdentity: (deckId: string, colors: string[]) => Promise<void>
 }
 
