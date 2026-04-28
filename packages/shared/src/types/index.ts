@@ -271,7 +271,8 @@ export interface Deck {
   commandersPulled?: PulledPrinting[]  // Track pulled status for commanders
   customRoles: RoleDefinition[]   // Deck-specific custom roles
   notes: DeckNote[]
-  artCardScryfallId?: string      // Scryfall ID for background art
+  artCardScryfallId?: string      // Scryfall ID for background art (override; default is derived)
+  artCardFace?: 'front' | 'back'  // Face of artCardScryfallId to render; absent = front
   colorIdentity?: string[]        // Color identity (for commander, derived from commander card)
   schemaVersion?: number          // Schema migration version (0 = pre-migration, undefined treated as 0)
 }

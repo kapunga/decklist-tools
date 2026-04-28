@@ -17,6 +17,7 @@ export {
   getCardImageUrl,
   getCardFaceImageUrl,
   getCardArtCropUrl,
+  buildArtCropUrlFromId,
   formatManaCost,
   getColorIdentityString,
   sortColorsWUBRG,

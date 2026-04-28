@@ -45,6 +45,7 @@ export class Storage {
   private listsDir: string
   private cacheDir: string
   private imageCacheDir: string
+  private artCropCacheDir: string
   private cacheIndexPath: string
   private globalRolesPath: string
 
@@ -54,6 +55,7 @@ export class Storage {
     this.listsDir = path.join(this.baseDir, 'lists')
     this.cacheDir = path.join(this.baseDir, 'cache', 'scryfall')
     this.imageCacheDir = path.join(this.baseDir, 'cache', 'images')
+    this.artCropCacheDir = path.join(this.imageCacheDir, 'art-crops')
     this.cacheIndexPath = path.join(this.cacheDir, 'index.json')
     this.globalRolesPath = path.join(this.baseDir, 'global-roles.json')
 
@@ -63,6 +65,7 @@ export class Storage {
     this.ensureDir(this.listsDir)
     this.ensureDir(this.cacheDir)
     this.ensureDir(this.imageCacheDir)
+    this.ensureDir(this.artCropCacheDir)
 
     // Initialize global roles file if it doesn't exist
     this.ensureGlobalRolesFile()
@@ -723,6 +726,24 @@ export class Storage {
     validateUUID(scryfallId, 'Scryfall ID')
     return this.getCachedImagePath(scryfallId) !== null ||
            this.getCachedImagePath(scryfallId, 'front') !== null
+  }
+
+  // Art-crop cache (smaller than full card images; used for hero backgrounds).
+  // Front is universal; back is only meaningful for transform/modal_dfc/reversible_card layouts.
+  private artCropFilename(scryfallId: string, face: 'front' | 'back'): string {
+    return face === 'back' ? `${scryfallId}_back.jpg` : `${scryfallId}.jpg`
+  }
+
+  getCachedArtCropPath(scryfallId: string, face: 'front' | 'back' = 'front'): string | null {
+    validateUUID(scryfallId, 'Scryfall ID')
+    const imagePath = path.join(this.artCropCacheDir, this.artCropFilename(scryfallId, face))
+    return fs.existsSync(imagePath) ? imagePath : null
+  }
+
+  cacheArtCrop(scryfallId: string, data: Buffer, face: 'front' | 'back' = 'front'): void {
+    validateUUID(scryfallId, 'Scryfall ID')
+    const imagePath = path.join(this.artCropCacheDir, this.artCropFilename(scryfallId, face))
+    fs.writeFileSync(imagePath, data)
   }
 
   private getImageSize(scryfallId: string): number | undefined {

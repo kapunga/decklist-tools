@@ -304,6 +304,22 @@ export function getCardArtCropUrl(card: ScryfallCard): string | null {
   return null
 }
 
+// Build an art crop URL directly from a Scryfall id, bypassing the API.
+// Useful when the caller already has the id (e.g. a deck's commander) and
+// wants to skip the getCardById round-trip just to render an image. The
+// `front` URL is valid for every card in Scryfall — single-faced layouts
+// (normal, adventure, split, flip, meld) and DFCs alike — so the default is
+// correct universally. Pass 'back' explicitly only for transform/modal_dfc/
+// reversible_card layouts when the caller specifically wants the back face.
+export type ScryfallCardFace = 'front' | 'back'
+
+export function buildArtCropUrlFromId(
+  scryfallId: string,
+  face: ScryfallCardFace = 'front',
+): string {
+  return `https://cards.scryfall.io/art_crop/${face}/${scryfallId[0]}/${scryfallId[1]}/${scryfallId}.jpg`
+}
+
 // Get price information from a card
 export interface CardPrices {
   usd?: string
