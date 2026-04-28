@@ -27,7 +27,7 @@ export interface ThemeMeta {
 export const THEMES: Record<ThemeId, ThemeMeta> = {
   library: {
     id: 'library',
-    name: 'Library',
+    name: 'Strixhaven',
     tagline: 'Editorial',
     blurb: "Warm off-white with a muted terracotta accent. Quiet, confident, restrained — the curator's catalog.",
     mode: 'light',
@@ -38,7 +38,7 @@ export const THEMES: Record<ThemeId, ThemeMeta> = {
   },
   fantasy: {
     id: 'fantasy',
-    name: 'Fantasy',
+    name: 'Dominaria',
     tagline: 'Grimoire',
     blurb: 'Parchment and oxblood. Thick serifs and tea-stain neutrals — a leather-bound spellbook.',
     mode: 'light',
@@ -49,7 +49,7 @@ export const THEMES: Record<ThemeId, ThemeMeta> = {
   },
   steampunk: {
     id: 'steampunk',
-    name: 'Steampunk',
+    name: 'Kaladesh',
     tagline: 'Drafting Table',
     blurb: "Drafting-paper cream with aged brass. High-contrast serif and mono data — an engineer's ledger.",
     mode: 'light',
@@ -60,7 +60,7 @@ export const THEMES: Record<ThemeId, ThemeMeta> = {
   },
   ukiyoe: {
     id: 'ukiyoe',
-    name: 'Ukiyo-e',
+    name: 'Kamigawa',
     tagline: 'Woodblock',
     blurb: 'Washi cream and sumi ink. Muted indigo and vermillion seal — east-Asian restraint, modern bones.',
     mode: 'light',
@@ -71,7 +71,7 @@ export const THEMES: Record<ThemeId, ThemeMeta> = {
   },
   cyberpunk: {
     id: 'cyberpunk',
-    name: 'Cyberpunk',
+    name: 'Neo Kamigawa',
     tagline: 'Dataslate',
     blurb: 'Black with a blue cast and one hot accent. Grotesque display, mono data — a terminal readout.',
     mode: 'dark',
@@ -82,7 +82,7 @@ export const THEMES: Record<ThemeId, ThemeMeta> = {
   },
   gothic: {
     id: 'gothic',
-    name: 'Gothic',
+    name: 'Innistrad',
     tagline: 'Candlelight',
     blurb: 'Candle-bone on dried-ink black. Italic serifs and garnet — forbidden book, midnight.',
     mode: 'dark',
