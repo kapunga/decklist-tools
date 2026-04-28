@@ -9,7 +9,7 @@
 
 @layer base {
   /* ─────────────────────────────────────────────────────────────
-   * Library — Editorial (light, default)
+   * Strixhaven — Editorial (light, default)
    * Warm off-white, muted terracotta accent. Quiet, restrained.
    * ──────────────────────────────────────────────────────────── */
   :root {
@@ -61,7 +61,7 @@
   }
 
   /* ─────────────────────────────────────────────────────────────
-   * Fantasy — Grimoire (light)
+   * Dominaria — Grimoire (light)
    * Parchment and oxblood. Illuminated manuscript pigments.
    * ──────────────────────────────────────────────────────────── */
   .theme-fantasy {
@@ -103,7 +103,7 @@
   }
 
   /* ─────────────────────────────────────────────────────────────
-   * Steampunk — Drafting Table (light)
+   * Kaladesh — Drafting Table (light)
    * Drafting-paper cream, aged brass. Victorian engineering.
    * ──────────────────────────────────────────────────────────── */
   .theme-steampunk {
@@ -145,7 +145,7 @@
   }
 
   /* ─────────────────────────────────────────────────────────────
-   * Ukiyo-e — Woodblock (light)
+   * Kamigawa — Woodblock (light)
    * Washi cream, sumi ink, indigo + vermillion seal.
    * ──────────────────────────────────────────────────────────── */
   .theme-ukiyoe {
@@ -187,7 +187,7 @@
   }
 
   /* ─────────────────────────────────────────────────────────────
-   * Cyberpunk — Dataslate (dark)
+   * Neo Kamigawa — Dataslate (dark)
    * Black with blue cast, neon accents, mono data.
    * ──────────────────────────────────────────────────────────── */
   .theme-cyberpunk {
@@ -246,7 +246,7 @@
   }
 
   /* ─────────────────────────────────────────────────────────────
-   * Gothic — Candlelight (dark)
+   * Innistrad — Candlelight (dark)
    * Dried-ink black, candle-bone text, garnet accent.
    * ──────────────────────────────────────────────────────────── */
   .theme-gothic {
