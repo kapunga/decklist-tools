@@ -6,7 +6,7 @@ import { autocomplete, searchCardByName } from '@/lib/scryfall'
 import { AUTOCOMPLETE } from '@/lib/constants'
 import { CardAddModal } from '@/components/CardAddModal'
 import type { ScryfallCard, DeckFormat, RoleDefinition, CardSetName } from '@/types'
-import { makeCardEntry } from '@/types'
+import { makeCardEntry, getPrimaryType } from '@/types'
 
 interface QuickAddProps {
   deckId: string
@@ -116,6 +116,7 @@ export function QuickAdd({ deckId, format, colorIdentity, customRoles, activeTab
       },
       quantity,
       roles,
+      primaryType: getPrimaryType(pendingCard.type_line),
     })
 
     await addCardToDeck(deckId, deckCard, destination)

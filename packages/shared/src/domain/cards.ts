@@ -1,4 +1,4 @@
-import type { CardEntry, CardIdentifier, CardSetName, CardSource, Deck, OwnershipStatus, PulledPrinting } from '../types/index.js'
+import type { CardEntry, CardIdentifier, CardSetName, CardSource, Deck, OwnershipStatus, PrimaryType, PulledPrinting } from '../types/index.js'
 import { CARD_SOURCE, OWNERSHIP_STATUS, generateDeckCardId } from '../types/index.js'
 import { findCardByName, findCardIndexByName } from '../utils/card-utils.js'
 import { getCardSetEntries, withDeckCardSet, getAllDeckEntries } from './card-sets.js'
@@ -16,6 +16,7 @@ export interface MakeCardEntryInput {
   notes?: string
   pulledPrintings?: PulledPrinting[]
   potentialDecks?: string[]
+  primaryType?: PrimaryType
 }
 
 /**
@@ -40,6 +41,7 @@ export function makeCardEntry(input: MakeCardEntryInput): CardEntry {
     notes: input.notes,
     pulledPrintings: input.pulledPrintings,
     potentialDecks: input.potentialDecks,
+    primaryType: input.primaryType,
   }
 }
 

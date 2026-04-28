@@ -15,9 +15,9 @@ import { useScryfallCache } from '@/hooks/useScryfallCache'
 import { getCardById } from '@/lib/scryfall'
 import type { CardEntry, ScryfallCard, Deck, CardSetName } from '@/types'
 import { getCardLimit, isCardFullyPulled, getCardDisplayName, getCanonicalSuffix, OWNERSHIP_STATUS, CARD_SOURCE, CARD_SET } from '@/types'
-import { getPrimaryType, CARD_TYPE_SORT_ORDER } from '@/lib/constants'
+import { CARD_TYPE_SORT_ORDER } from '@/lib/constants'
 import type { CardFilter } from '@mtg-deckbuilder/shared'
-import { enrichCards, applyFilters, getMainboard, getCardSetEntries, getTypeLine } from '@mtg-deckbuilder/shared'
+import { enrichCards, applyFilters, getMainboard, getCardSetEntries, getEntryPrimaryType } from '@mtg-deckbuilder/shared'
 
 interface DeckListViewProps {
   deck: Deck
@@ -88,9 +88,10 @@ export function DeckListView({ deck, listType }: DeckListViewProps) {
         if (!groups['Commander']) groups['Commander'] = []
         groups['Commander'].push(card)
       } else {
-        // Group by card type
-        const typeLine = getTypeLine(card, scryfallCache)
-        const primaryType = typeLine ? getPrimaryType(typeLine) : 'Other'
+        // Group by primary type. `getEntryPrimaryType` prefers the
+        // denormalized `entry.primaryType`, falls back to the Scryfall
+        // cache, and defaults to 'Other'.
+        const primaryType = getEntryPrimaryType(card, scryfallCache)
         if (!groups[primaryType]) groups[primaryType] = []
         groups[primaryType].push(card)
       }

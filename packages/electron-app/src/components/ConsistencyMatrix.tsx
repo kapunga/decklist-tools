@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { X } from 'lucide-react'
-import { buildConsistencyMatrix, getTypeLine } from '@mtg-deckbuilder/shared'
+import { buildConsistencyMatrix, getEntryPrimaryType } from '@mtg-deckbuilder/shared'
 import type { ConsistencyMode, CardEntry, Deck, ScryfallCard } from '@mtg-deckbuilder/shared'
 import { getAllRoles } from '@/lib/constants'
 import { useGlobalRoles } from '@/hooks/useStore'
@@ -22,13 +22,9 @@ interface ConsistencyMatrixProps {
 }
 
 function countLands(cards: CardEntry[], scryfallCache: Map<string, ScryfallCard>): number {
-  return cards.reduce((sum, c) => {
-    const typeLine = getTypeLine(c, scryfallCache) || ''
-    if (typeLine.toLowerCase().includes('land')) {
-      return sum + c.quantity
-    }
-    return sum
-  }, 0)
+  return cards.reduce((sum, c) =>
+    getEntryPrimaryType(c, scryfallCache) === 'Land' ? sum + c.quantity : sum,
+  0)
 }
 
 export function ConsistencyMatrix({

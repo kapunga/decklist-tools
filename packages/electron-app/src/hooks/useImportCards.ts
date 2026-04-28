@@ -2,7 +2,7 @@ import { useState, useCallback, useRef } from 'react'
 import { formats, detectFormat, type ParsedCard } from '@/lib/formats'
 import { searchCardByName, getCardBySetAndNumber } from '@/lib/scryfall'
 import { SCRYFALL, IMPORT_PREVIEW } from '@/lib/constants'
-import { OWNERSHIP_STATUS, CARD_SOURCE, CARD_SET, makeCardEntry } from '@/types'
+import { OWNERSHIP_STATUS, CARD_SOURCE, CARD_SET, makeCardEntry, getPrimaryType } from '@/types'
 import type { ImportProgress, ResolvedCard, UseImportCardsResult } from './types'
 
 export type { ImportProgress, ResolvedCard, UseImportCardsResult } from './types'
@@ -107,6 +107,7 @@ export function useImportCards(sideboardSize?: number): UseImportCardsResult {
           ownership: OWNERSHIP_STATUS.OWNED,
           roles,
           source: CARD_SOURCE.IMPORT,
+          primaryType: getPrimaryType(scryfallCard.type_line),
         })
 
         const hasSideboard = sideboardSize !== undefined && sideboardSize > 0

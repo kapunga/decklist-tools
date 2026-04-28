@@ -17,6 +17,7 @@ import {
   updateCardInDeck,
   findCardAcrossLists,
   makeCardEntry,
+  getPrimaryType,
 } from '@mtg-deckbuilder/shared'
 import { getDeckOrThrow, fetchScryfallCard, createCardIdentifier, parseCardString } from './helpers.js'
 import type { ManageCardArgs, SearchCardsArgs } from './types.js'
@@ -98,6 +99,7 @@ export async function manageCard(storage: Storage, args: ManageCardArgs) {
           quantity,
           ownership: args.ownership as OwnershipStatus | undefined,
           roles: args.roles,
+          primaryType: getPrimaryType(scryfallCard.type_line),
         })
 
         const result = addCardToDeck(deck, deckCard, target)
