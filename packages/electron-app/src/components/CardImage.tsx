@@ -25,6 +25,10 @@ export function CardImage({
   const [cachedPath, setCachedPath] = useState<string | null>(null)
 
   const isDFC = isDoubleFacedCard(card)
+  // Flip-layout cards (CHK-style) have one image_uris but render the alternate
+  // face by 180° rotation. We reuse `currentFace` as a binary "flipped?" bit.
+  const isFlipLayout = card.layout === 'flip'
+  const isRotated = isFlipLayout && currentFace === 1
 
   // Check for cached image
   useEffect(() => {
@@ -40,7 +44,8 @@ export function CardImage({
     checkCache()
   }, [card.id, currentFace, isDFC])
 
-  // Get the appropriate image URL (use cached if available)
+  // Get the appropriate image URL (use cached if available).
+  // Flip-layout cards have only one URL — rotation is render-side.
   const scryfallUrl = isDFC
     ? getCardFaceImageUrl(card, currentFace, size)
     : getCardImageUrl(card, size)
@@ -57,9 +62,14 @@ export function CardImage({
 
   const handleFlip = useCallback(() => {
     setCurrentFace(prev => (prev === 0 ? 1 : 0))
-    setIsLoading(true)
-    setCachedPath(null) // Reset cached path on flip to trigger re-check
-  }, [])
+    // For flip-layout cards the URL doesn't change — same <img>, same src,
+    // just a CSS rotation — so onLoad never fires again. Skipping the
+    // loading reset here keeps the spinner from sticking on forever.
+    if (!isFlipLayout) {
+      setIsLoading(true)
+      setCachedPath(null)
+    }
+  }, [isFlipLayout])
 
   const handleLoad = useCallback(() => {
     setIsLoading(false)
@@ -71,8 +81,10 @@ export function CardImage({
     setHasError(true)
   }, [])
 
-  // Get face name for accessibility
-  const faceName = isDFC && card.card_faces
+  // Get face name for accessibility. Flip-layout cards have card_faces names
+  // (e.g. "Akki Lavarunner" / "Tok-Tok, Volcano Born") even though the image
+  // is shared.
+  const faceName = (isDFC || isFlipLayout) && card.card_faces
     ? card.card_faces[currentFace]?.name || card.name
     : card.name
 
@@ -102,13 +114,14 @@ export function CardImage({
           isLoading && 'opacity-0',
           !isLoading && !hasError && 'opacity-100'
         )}
+        style={{ transform: isRotated ? 'rotate(180deg)' : undefined }}
         onLoad={handleLoad}
         onError={handleError}
         loading="lazy"
       />
 
-      {/* Flip button for DFCs */}
-      {isDFC && showFlipButton && (
+      {/* Flip button for DFCs and flip-layout cards */}
+      {(isDFC || isFlipLayout) && showFlipButton && (
         <Button
           variant="secondary"
           size="icon"
@@ -118,7 +131,11 @@ export function CardImage({
             'opacity-30 hover:opacity-100 transition-opacity',
             'bg-background/80 hover:bg-background'
           )}
-          title={`Flip to ${currentFace === 0 ? 'back' : 'front'} face`}
+          title={
+            isFlipLayout
+              ? (currentFace === 0 ? 'Rotate 180°' : 'Show upright')
+              : `Flip to ${currentFace === 0 ? 'back' : 'front'} face`
+          }
         >
           <RefreshCw className="w-4 h-4" />
         </Button>

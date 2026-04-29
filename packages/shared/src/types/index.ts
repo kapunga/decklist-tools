@@ -256,6 +256,33 @@ export function propagateNoteRole(deck: Deck, note: DeckNote): void {
   }
 }
 
+// Deck art face — three render strategies:
+//   'front'   → front URL, upright (default)
+//   'back'    → back URL, upright (DFC-style layouts only)
+//   'flipped' → front URL, rotated 180° (CHK-style flip layout only)
+// Validity depends on the underlying card's Scryfall layout — see
+// `isArtCardFaceValid`. Use the validator anywhere a face is being chosen
+// against an unknown card; the toggle in the deck-tile UI is safe by
+// construction (it derives the new face from the layout itself).
+export type ArtCardFace = 'front' | 'back' | 'flipped'
+
+// Layouts where Scryfall returns a distinct image_uris per face.
+export const TWO_FACED_LAYOUTS = ['transform', 'modal_dfc', 'reversible_card'] as const
+
+// Layouts that share one image but render the alternate face by 180° rotation.
+export const ROTATED_LAYOUTS = ['flip'] as const
+
+// Whether `face` is a coherent choice for a card with the given Scryfall
+// layout. 'front' is always valid; 'back' requires a two-faced layout;
+// 'flipped' requires a rotation-style layout. Used as a render-side
+// fallback (incoherent stored face → render front instead).
+export function isArtCardFaceValid(face: ArtCardFace, layout: string): boolean {
+  if (face === 'front') return true
+  if (face === 'back') return (TWO_FACED_LAYOUTS as readonly string[]).includes(layout)
+  if (face === 'flipped') return (ROTATED_LAYOUTS as readonly string[]).includes(layout)
+  return false
+}
+
 // Deck
 export interface Deck {
   id: string
@@ -272,7 +299,7 @@ export interface Deck {
   customRoles: RoleDefinition[]   // Deck-specific custom roles
   notes: DeckNote[]
   artCardScryfallId?: string      // Scryfall ID for background art (override; default is derived)
-  artCardFace?: 'front' | 'back'  // Face of artCardScryfallId to render; absent = front
+  artCardFace?: ArtCardFace       // Face of artCardScryfallId to render; absent = front
   colorIdentity?: string[]        // Color identity (for commander, derived from commander card)
   schemaVersion?: number          // Schema migration version (0 = pre-migration, undefined treated as 0)
 }

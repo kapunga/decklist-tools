@@ -4,7 +4,15 @@ import { Button } from '@/components/ui/button'
 import { ColorPips } from '@/components/ColorPips'
 import type { Deck, DeckFormat, FormatType } from '@/types'
 import { getCardCount, FORMAT_TYPE } from '@/types'
-import { getDeckColorIdentity, getMainboard, showColorlessPip } from '@mtg-deckbuilder/shared'
+import {
+  getDeckColorIdentity,
+  getMainboard,
+  showColorlessPip,
+  isArtCardFaceValid,
+  TWO_FACED_LAYOUTS,
+  ROTATED_LAYOUTS,
+  type ArtCardFace,
+} from '@mtg-deckbuilder/shared'
 import { getCardById, resolveArtCropUrl } from '@/lib/scryfall'
 import { useStore } from '@/hooks/useStore'
 
@@ -45,10 +53,9 @@ const GRADIENT_POSITIONS = [
   { x: '50%', y: '5%' },   // top edge (5th color spillover)
 ]
 
-// Card layouts where a true back-face art exists (distinct image URL).
-// Used to gate the hover flip button — for `flip`/`adventure`/`split`
-// layouts, the "back" is the same image rotated, which #136 will handle.
-const TWO_FACED_LAYOUTS = ['transform', 'modal_dfc', 'reversible_card']
+// `TWO_FACED_LAYOUTS` (DFC-style — distinct back URL) and `ROTATED_LAYOUTS`
+// (flip layout — same URL, rendered rotated 180°) are imported from the
+// shared package so the validator and these renderers agree on the rules.
 
 // Pick a hero card from the mainboard for non-Commander decks: the highest-CMC
 // non-land card, with ties broken deterministically by deck id so the same deck
@@ -171,8 +178,15 @@ export function DeckCardPreview({ deck, onClick, onDelete }: DeckCardPreviewProp
   const [artUrl, setArtUrl] = useState<string | null>(null)
   const colorIdentity = getDeckColorIdentity(deck) ?? []
   const cardCount = getCardCount(deck)
-  const heroFace: 'front' | 'back' = deck.artCardFace ?? 'front'
   const setDeckArtCard = useStore(state => state.setDeckArtCard)
+  const storedFace: ArtCardFace = deck.artCardFace ?? 'front'
+  // Read-side guardrail: if the stored face is incoherent with the current
+  // card's layout (e.g. the override card was swapped to one with a different
+  // layout), fall back to 'front' instead of mis-rendering. We don't rewrite
+  // storage here — the next explicit toggle will overwrite cleanly.
+  const heroFace: ArtCardFace =
+    heroLayout && !isArtCardFaceValid(storedFace, heroLayout) ? 'front' : storedFace
+  const isRotated = heroFace === 'flipped'
 
   const fallbackGradient = useMemo(
     () => deriveIdentityGradient(colorIdentity),
@@ -208,19 +222,23 @@ export function DeckCardPreview({ deck, onClick, onDelete }: DeckCardPreviewProp
   }, [deck.id, deck.artCardScryfallId, deck.commanders, deck.cardSets])
 
   // Resolve the art URL through the disk cache (or fall back to direct CDN).
+  // 'flipped' shares the front URL — rotation happens render-side via CSS — so
+  // we fold it down to 'front' before resolving to avoid an unnecessary
+  // re-fetch on every flip toggle.
+  const urlFace: 'front' | 'back' = heroFace === 'back' ? 'back' : 'front'
   useEffect(() => {
     if (!heroCardId) {
       setArtUrl(null)
       return
     }
     let cancelled = false
-    resolveArtCropUrl(heroCardId, heroFace).then(url => {
+    resolveArtCropUrl(heroCardId, urlFace).then(url => {
       if (!cancelled) setArtUrl(url)
     })
     return () => {
       cancelled = true
     }
-  }, [heroCardId, heroFace])
+  }, [heroCardId, urlFace])
 
   // Fetch the hero card's layout to gate the flip button. Single fetch per
   // resolved id; getCardById is locally cached so this is essentially free.
@@ -238,14 +256,20 @@ export function DeckCardPreview({ deck, onClick, onDelete }: DeckCardPreviewProp
     }
   }, [heroCardId])
 
-  const canFlipFace = heroLayout !== null && TWO_FACED_LAYOUTS.includes(heroLayout)
+  const isTwoFaced = heroLayout !== null && (TWO_FACED_LAYOUTS as readonly string[]).includes(heroLayout)
+  const isRotatable = heroLayout !== null && (ROTATED_LAYOUTS as readonly string[]).includes(heroLayout)
+  const canFlipFace = isTwoFaced || isRotatable
 
   const handleFlipFace = async (e: React.MouseEvent) => {
     e.stopPropagation()
     if (!heroCardId) return
     // Anchor the current heroCardId when flipping so the choice doesn't drift
     // if the underlying default later changes (commander swap, mainboard edit).
-    const newFace: 'front' | 'back' = heroFace === 'back' ? 'front' : 'back'
+    // Toggle semantics depend on layout: DFC layouts swap front↔back URLs;
+    // flip layouts keep the URL and toggle the rotation state.
+    const newFace: ArtCardFace = isRotatable
+      ? (heroFace === 'flipped' ? 'front' : 'flipped')
+      : (heroFace === 'back' ? 'front' : 'back')
     await setDeckArtCard(deck.id, heroCardId, newFace)
   }
 
@@ -299,6 +323,7 @@ export function DeckCardPreview({ deck, onClick, onDelete }: DeckCardPreviewProp
             className="absolute inset-0 bg-cover bg-center"
             style={{
               backgroundImage: `url(${artUrl})`,
+              transform: isRotated ? 'rotate(180deg)' : undefined,
               WebkitMaskImage: 'radial-gradient(ellipse at center, black 30%, transparent 95%)',
               maskImage: 'radial-gradient(ellipse at center, black 30%, transparent 95%)',
             }}
@@ -332,7 +357,11 @@ export function DeckCardPreview({ deck, onClick, onDelete }: DeckCardPreviewProp
             size="icon"
             className="absolute bottom-1 left-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8"
             onClick={handleFlipFace}
-            title={heroFace === 'back' ? 'Show front face' : 'Show back face'}
+            title={
+              isRotatable
+                ? (heroFace === 'flipped' ? 'Show upright' : 'Show flipped')
+                : (heroFace === 'back' ? 'Show front face' : 'Show back face')
+            }
           >
             <FlipHorizontal2 className="w-4 h-4 text-foreground" />
           </Button>
