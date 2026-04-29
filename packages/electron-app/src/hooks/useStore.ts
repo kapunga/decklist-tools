@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { create } from 'zustand'
 import type { Deck, Taxonomy, CardList, Config, RoleDefinition, SetCollectionFile, PullListConfig } from '@/types'
 import { getMainboard } from '@mtg-deckbuilder/shared'
@@ -118,43 +119,49 @@ export interface BuyListItem {
 export const useBuyList = (): BuyListItem[] => {
   const decks = useStore(state => state.decks)
 
-  const buyMap = new Map<string, BuyListItem>()
+  // Memoized so the returned array is referentially stable across renders
+  // when `decks` is unchanged. Consumers depend on this in effect deps —
+  // returning a fresh array each render caused a self-sustaining fetch loop
+  // in BuyListView (price fetch → setState → rerender → new ref → refetch).
+  return useMemo(() => {
+    const buyMap = new Map<string, BuyListItem>()
 
-  for (const deck of decks) {
-    for (const card of getMainboard(deck)) {
-      if (card.ownership === 'need_to_buy') {
-        const key = card.card.name.toLowerCase()
-        const existing = buyMap.get(key)
-        const qty = card.quantity
+    for (const deck of decks) {
+      for (const card of getMainboard(deck)) {
+        if (card.ownership === 'need_to_buy') {
+          const key = card.card.name.toLowerCase()
+          const existing = buyMap.get(key)
+          const qty = card.quantity
 
-        if (existing) {
-          existing.totalQuantity += qty
-          existing.decks.push({
-            deckId: deck.id,
-            deckName: deck.name,
-            quantity: qty
-          })
-        } else {
-          buyMap.set(key, {
-            cardName: card.card.name,
-            totalQuantity: qty,
-            decks: [{
+          if (existing) {
+            existing.totalQuantity += qty
+            existing.decks.push({
               deckId: deck.id,
               deckName: deck.name,
               quantity: qty
-            }],
-            scryfallId: card.card.scryfallId,
-            setCode: card.card.setCode,
-            collectorNumber: card.card.collectorNumber
-          })
+            })
+          } else {
+            buyMap.set(key, {
+              cardName: card.card.name,
+              totalQuantity: qty,
+              decks: [{
+                deckId: deck.id,
+                deckName: deck.name,
+                quantity: qty
+              }],
+              scryfallId: card.card.scryfallId,
+              setCode: card.card.setCode,
+              collectorNumber: card.card.collectorNumber
+            })
+          }
         }
       }
     }
-  }
 
-  return Array.from(buyMap.values()).sort((a, b) =>
-    a.cardName.localeCompare(b.cardName)
-  )
+    return Array.from(buyMap.values()).sort((a, b) =>
+      a.cardName.localeCompare(b.cardName)
+    )
+  }, [decks])
 }
 
 // Role hooks
