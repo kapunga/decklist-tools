@@ -30,7 +30,7 @@ export const CARD_TYPE_ORDER = [
   'Other'
 ] as const
 
-export const CARD_TYPE_SORT_ORDER: Record<string, number> = {
+export const CARD_TYPE_SORT_ORDER: Record<PrimaryType, number> = {
   Creature: 0,
   Planeswalker: 1,
   Battle: 2,

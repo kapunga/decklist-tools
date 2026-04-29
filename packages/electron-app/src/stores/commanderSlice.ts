@@ -5,13 +5,16 @@ import {
 } from '@mtg-deckbuilder/shared'
 import type { CommanderSlice, SliceCreator } from './types'
 
+function sameCommanders(a: { scryfallId?: string; name: string }[], b: { scryfallId?: string; name: string }[]): boolean {
+  if (a.length !== b.length) return false
+  return a.every((c, i) => (c.scryfallId ?? c.name) === (b[i].scryfallId ?? b[i].name))
+}
+
 export const createCommanderSlice: SliceCreator<CommanderSlice> = (_set, get) => ({
   setCommanders: async (deckId, commanders) => {
     const deck = get().decks.find(d => d.id === deckId)
     if (!deck) return
-    // Recompute deck color identity from the new commanders so the deck-level
-    // identity always reflects who's in the command zone. Mirrors what the
-    // domain's `addCommander` and `removeCommander` already do.
+    if (sameCommanders(deck.commanders, commanders)) return
     const colorIdentity = deriveColorIdentity(commanders)
     await get().updateDeck({ ...deck, commanders, colorIdentity })
   },

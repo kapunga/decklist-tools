@@ -88,9 +88,6 @@ export function DeckListView({ deck, listType }: DeckListViewProps) {
         if (!groups['Commander']) groups['Commander'] = []
         groups['Commander'].push(card)
       } else {
-        // Group by primary type. `getEntryPrimaryType` prefers the
-        // denormalized `entry.primaryType`, falls back to the Scryfall
-        // cache, and defaults to 'Other'.
         const primaryType = getEntryPrimaryType(card, scryfallCache)
         if (!groups[primaryType]) groups[primaryType] = []
         groups[primaryType].push(card)

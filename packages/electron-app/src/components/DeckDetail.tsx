@@ -25,6 +25,18 @@ import { getDeckColorIdentity, showColorlessPip, getAlternates, getSideboard, ge
 import { getCardCount, getCardDisplayName, CARD_SET, isCommanderLikeFormat } from '@/types'
 import type { RoleDefinition, CardSetName, ScryfallCard } from '@/types'
 
+// Modal mode encodes both open-state and behavior:
+//   'set'         — first commander on an empty deck (no constraints)
+//   'swap'        — replace the existing commander, identity-locked
+//   'addPartner'  — append a second commander, Partner-only, no identity lock
+type CommanderModalMode = 'set' | 'swap' | 'addPartner'
+
+const COMMANDER_MODAL_TITLES: Record<CommanderModalMode, string> = {
+  set: 'Set Commander',
+  swap: 'Change Commander',
+  addPartner: 'Add Partner',
+}
+
 export function DeckDetail() {
   const deck = useSelectedDeck()
   const selectDeck = useStore(state => state.selectDeck)
@@ -37,13 +49,8 @@ export function DeckDetail() {
   const [editedName, setEditedName] = useState('')
   const [activeTab, setActiveTab] = useState<CardSetName>(CARD_SET.MAINBOARD)
   const [showRoleModal, setShowRoleModal] = useState(false)
-  // Modal mode encodes both open-state and behavior:
-  //   'set'         — first commander on an empty deck (no constraints)
-  //   'swap'        — replace the existing commander, identity-locked
-  //   'addPartner'  — append a second commander, Partner-only, no identity lock
-  type CommanderModalMode = 'set' | 'swap' | 'addPartner'
   const [commanderModalMode, setCommanderModalMode] = useState<CommanderModalMode | null>(null)
-  // Partner-eligibility of the existing commander (when there's exactly one).
+  // Partner-eligibility of the existing solo commander; gates the "+ Partner" button.
   const [commanderHasPartner, setCommanderHasPartner] = useState(false)
   const [isCaching, setIsCaching] = useState(false)
   const [cacheResult, setCacheResult] = useState<{ success: boolean; cachedCards: number; cachedImages: number; errors: string[] } | null>(null)
@@ -85,10 +92,9 @@ export function DeckDetail() {
     }
   }, [deck?.id])
 
-  // Fetch the existing commander's Scryfall card to detect the Partner
-  // keyword. Only relevant when there's exactly one commander — 0 means
-  // nothing to add to, 2 means already at the cap. `getCardById` is locally
-  // cached so re-renders are essentially free.
+  // Detect Partner keyword on the solo commander to decide whether to show
+  // "+ Partner". Only relevant at exactly one commander (0 = nothing to pair,
+  // 2 = already at cap).
   const soloCommanderId = deck?.commanders.length === 1 ? deck.commanders[0]?.scryfallId : undefined
   useEffect(() => {
     if (!soloCommanderId) {
@@ -180,7 +186,6 @@ export function DeckDetail() {
             showColorless={showColorlessPip(deck)}
           />
 
-          {/* Commander display + edit/add affordances for Commander-like formats. */}
           {isCommanderLikeFormat(deck.format.type) && (
             deck.commanders.length > 0 ? (
               <div className="flex items-center gap-1">
@@ -197,8 +202,6 @@ export function DeckDetail() {
                 >
                   <Pencil className="w-3 h-3" />
                 </Button>
-                {/* "+ Partner" button appears only when the existing solo
-                 * commander has the Partner keyword and there's still room. */}
                 {commanderHasPartner && deck.commanders.length === 1 && (
                   <Button
                     variant="outline"
@@ -368,29 +371,17 @@ export function DeckDetail() {
         onSave={handleSaveCustomRoles}
       />
 
-      {/* Commander Selection Modal. Three modes:
-       *   'set'         — first commander; no constraints
-       *   'swap'        — replace existing commander; identity-locked so
-       *                   the swap can't silently invalidate existing cards
-       *   'addPartner'  — append a second commander; Partner-keyword only,
-       *                   no identity lock (Partners union identities) */}
       <SelectCommanderModal
         isOpen={commanderModalMode !== null}
         onClose={() => setCommanderModalMode(null)}
-        title={
-          commanderModalMode === 'addPartner' ? 'Add Partner' :
-          commanderModalMode === 'swap' ? 'Change Commander' :
-          'Set Commander'
-        }
+        title={commanderModalMode ? COMMANDER_MODAL_TITLES[commanderModalMode] : ''}
         requiredColorIdentity={commanderModalMode === 'swap' ? getDeckColorIdentity(deck) : undefined}
         partnerOnly={commanderModalMode === 'addPartner'}
         onSelect={(card: ScryfallCard) => {
           const identifier = createCardIdentifier(card)
           if (commanderModalMode === 'addPartner') {
-            // Append; the domain layer recomputes the union color identity.
             addCommander(deck.id, identifier)
           } else {
-            // Set or swap — replace the entire commanders array.
             setCommanders(deck.id, [identifier])
           }
           setCommanderModalMode(null)
