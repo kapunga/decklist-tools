@@ -128,17 +128,17 @@ export function CardAddModal({
                 className="flex gap-4"
               >
                 <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="cards" id="dest-mainboard" />
+                  <RadioGroupItem value={CARD_SET.MAINBOARD} id="dest-mainboard" />
                   <Label htmlFor="dest-mainboard" className="text-sm cursor-pointer">Mainboard</Label>
                 </div>
                 {hasSideboard && (
                   <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="sideboard" id="dest-sideboard" />
+                    <RadioGroupItem value={CARD_SET.SIDEBOARD} id="dest-sideboard" />
                     <Label htmlFor="dest-sideboard" className="text-sm cursor-pointer">Sideboard</Label>
                   </div>
                 )}
                 <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="alternates" id="dest-maybeboard" />
+                  <RadioGroupItem value={CARD_SET.ALTERNATES} id="dest-maybeboard" />
                   <Label htmlFor="dest-maybeboard" className="text-sm cursor-pointer">Maybeboard</Label>
                 </div>
               </RadioGroup>

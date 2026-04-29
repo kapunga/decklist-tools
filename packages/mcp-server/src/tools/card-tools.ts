@@ -18,8 +18,9 @@ import {
   findCardAcrossLists,
   makeCardEntry,
   getPrimaryType,
+  createCardIdentifier,
 } from '@mtg-deckbuilder/shared'
-import { getDeckOrThrow, fetchScryfallCard, createCardIdentifier, parseCardString } from './helpers.js'
+import { getDeckOrThrow, fetchScryfallCard, parseCardString } from './helpers.js'
 import type { ManageCardArgs, SearchCardsArgs } from './types.js'
 
 // Scryfall operator patterns for detecting search queries

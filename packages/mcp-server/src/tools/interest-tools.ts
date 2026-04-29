@@ -1,6 +1,6 @@
-import { Storage, INTEREST_LIST_ID, CARD_SET, CARD_SOURCE, makeCardEntry, getPrimaryType } from '@mtg-deckbuilder/shared'
+import { Storage, INTEREST_LIST_ID, CARD_SET, CARD_SOURCE, makeCardEntry, getPrimaryType, createCardIdentifier } from '@mtg-deckbuilder/shared'
 import type { CardEntry, CardList, CardSource } from '@mtg-deckbuilder/shared'
-import { fetchScryfallCard, createCardIdentifier } from './helpers.js'
+import { fetchScryfallCard } from './helpers.js'
 import type { ManageInterestListArgs } from './types.js'
 
 function getOrCreateInterestList(storage: Storage): CardList {

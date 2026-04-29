@@ -1,7 +1,6 @@
 import {
   Storage,
   type Deck,
-  type CardIdentifier,
   type ScryfallCard,
   CachedScryfallClient,
 } from '@mtg-deckbuilder/shared'
@@ -140,16 +139,5 @@ export async function fetchScryfallCard(
   }
 
   return scryfallCard
-}
-
-export function createCardIdentifier(scryfallCard: ScryfallCard): CardIdentifier {
-  return {
-    scryfallId: scryfallCard.id,
-    name: scryfallCard.name,
-    flavorName: scryfallCard.flavor_name,
-    setCode: scryfallCard.set,
-    collectorNumber: scryfallCard.collector_number,
-    colorIdentity: scryfallCard.color_identity,
-  }
 }
 

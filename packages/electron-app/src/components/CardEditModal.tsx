@@ -20,7 +20,7 @@ import { RoleAutocomplete } from '@/components/RoleAutocomplete'
 import { useStore, useGlobalRoles, useDeckById } from '@/hooks/useStore'
 import { getCardPrintings } from '@/lib/scryfall'
 import type { CardEntry, ScryfallCard, OwnershipStatus, CardSetName } from '@/types'
-import { getCardLimit, getCardDisplayName, OWNERSHIP_STATUS } from '@/types'
+import { getCardLimit, getCardDisplayName, OWNERSHIP_STATUS, createCardIdentifier } from '@/types'
 
 interface CardEditModalProps {
   isOpen: boolean
@@ -126,12 +126,7 @@ export function CardEditModal({
 
     // Update printing if changed
     if (selectedPrinting && selectedPrinting.id !== card.card.scryfallId) {
-      updates.card = {
-        name: card.card.name,
-        scryfallId: selectedPrinting.id,
-        setCode: selectedPrinting.set,
-        collectorNumber: selectedPrinting.collector_number,
-      }
+      updates.card = createCardIdentifier(selectedPrinting)
     }
 
     if (Object.keys(updates).length > 0) {

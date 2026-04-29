@@ -1,6 +1,7 @@
 import {
   addCommander as domainAddCommander,
   removeCommander as domainRemoveCommander,
+  deriveColorIdentity,
 } from '@mtg-deckbuilder/shared'
 import type { CommanderSlice, SliceCreator } from './types'
 
@@ -8,7 +9,11 @@ export const createCommanderSlice: SliceCreator<CommanderSlice> = (_set, get) =>
   setCommanders: async (deckId, commanders) => {
     const deck = get().decks.find(d => d.id === deckId)
     if (!deck) return
-    await get().updateDeck({ ...deck, commanders })
+    // Recompute deck color identity from the new commanders so the deck-level
+    // identity always reflects who's in the command zone. Mirrors what the
+    // domain's `addCommander` and `removeCommander` already do.
+    const colorIdentity = deriveColorIdentity(commanders)
+    await get().updateDeck({ ...deck, commanders, colorIdentity })
   },
 
   addCommander: async (deckId, commander) => {

@@ -2,7 +2,7 @@ import { useState, useCallback, useRef } from 'react'
 import { formats, detectFormat, type ParsedCard } from '@/lib/formats'
 import { searchCardByName, getCardBySetAndNumber } from '@/lib/scryfall'
 import { SCRYFALL, IMPORT_PREVIEW } from '@/lib/constants'
-import { OWNERSHIP_STATUS, CARD_SOURCE, CARD_SET, makeCardEntry, getPrimaryType } from '@/types'
+import { OWNERSHIP_STATUS, CARD_SOURCE, CARD_SET, makeCardEntry, getPrimaryType, createCardIdentifier } from '@/types'
 import type { ImportProgress, ResolvedCard, UseImportCardsResult } from './types'
 
 export type { ImportProgress, ResolvedCard, UseImportCardsResult } from './types'
@@ -97,12 +97,10 @@ export function useImportCards(sideboardSize?: number): UseImportCardsResult {
         const roles = [...(parsed.roles || [])]
 
         const deckCard = makeCardEntry({
-          card: {
-            scryfallId: scryfallCard.id,
-            name: scryfallCard.name,
-            setCode: parsed.setCode || scryfallCard.set,
-            collectorNumber: parsed.collectorNumber || scryfallCard.collector_number
-          },
+          card: createCardIdentifier(scryfallCard, {
+            setCode: parsed.setCode,
+            collectorNumber: parsed.collectorNumber,
+          }),
           quantity: parsed.quantity,
           ownership: OWNERSHIP_STATUS.OWNED,
           roles,

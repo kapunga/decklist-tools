@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { ArrowLeft, Check, AlertTriangle, Settings, Crown, Download, Loader2 } from 'lucide-react'
+import { ArrowLeft, Check, AlertTriangle, Settings, Crown, Download, Loader2, Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -11,28 +11,40 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useStore, useSelectedDeck } from '@/hooks/useStore'
+import { getCardById } from '@/lib/scryfall'
 import { DeckListView } from '@/components/DeckListView'
 import { QuickAdd } from '@/components/QuickAdd'
 import { ImportDialog } from '@/components/ImportDialog'
 import { DeckStats } from '@/components/DeckStats'
 import { NotesView } from '@/components/NotesView'
 import { RoleEditModal } from '@/components/RoleEditModal'
+import { SelectCommanderModal } from '@/components/SelectCommanderModal'
 import { ColorPips } from '@/components/ColorPips'
 import { PullListView } from '@/components/PullListView'
-import { getDeckColorIdentity, showColorlessPip, getAlternates, getSideboard, getCutList, getEntriesTotalQuantity } from '@mtg-deckbuilder/shared'
+import { getDeckColorIdentity, showColorlessPip, getAlternates, getSideboard, getCutList, getEntriesTotalQuantity, createCardIdentifier } from '@mtg-deckbuilder/shared'
 import { getCardCount, getCardDisplayName, CARD_SET, isCommanderLikeFormat } from '@/types'
-import type { RoleDefinition, CardSetName } from '@/types'
+import type { RoleDefinition, CardSetName, ScryfallCard } from '@/types'
 
 export function DeckDetail() {
   const deck = useSelectedDeck()
   const selectDeck = useStore(state => state.selectDeck)
   const updateDeck = useStore(state => state.updateDeck)
   const clearSelection = useStore(state => state.clearSelection)
+  const setCommanders = useStore(state => state.setCommanders)
+  const addCommander = useStore(state => state.addCommander)
 
   const [isEditingName, setIsEditingName] = useState(false)
   const [editedName, setEditedName] = useState('')
   const [activeTab, setActiveTab] = useState<CardSetName>(CARD_SET.MAINBOARD)
   const [showRoleModal, setShowRoleModal] = useState(false)
+  // Modal mode encodes both open-state and behavior:
+  //   'set'         — first commander on an empty deck (no constraints)
+  //   'swap'        — replace the existing commander, identity-locked
+  //   'addPartner'  — append a second commander, Partner-only, no identity lock
+  type CommanderModalMode = 'set' | 'swap' | 'addPartner'
+  const [commanderModalMode, setCommanderModalMode] = useState<CommanderModalMode | null>(null)
+  // Partner-eligibility of the existing commander (when there's exactly one).
+  const [commanderHasPartner, setCommanderHasPartner] = useState(false)
   const [isCaching, setIsCaching] = useState(false)
   const [cacheResult, setCacheResult] = useState<{ success: boolean; cachedCards: number; cachedImages: number; errors: string[] } | null>(null)
 
@@ -72,6 +84,23 @@ export function DeckDetail() {
       setEditedName(deck.name)
     }
   }, [deck?.id])
+
+  // Fetch the existing commander's Scryfall card to detect the Partner
+  // keyword. Only relevant when there's exactly one commander — 0 means
+  // nothing to add to, 2 means already at the cap. `getCardById` is locally
+  // cached so re-renders are essentially free.
+  const soloCommanderId = deck?.commanders.length === 1 ? deck.commanders[0]?.scryfallId : undefined
+  useEffect(() => {
+    if (!soloCommanderId) {
+      setCommanderHasPartner(false)
+      return
+    }
+    let cancelled = false
+    getCardById(soloCommanderId).then(card => {
+      if (!cancelled) setCommanderHasPartner(!!card?.keywords?.includes('Partner'))
+    })
+    return () => { cancelled = true }
+  }, [soloCommanderId])
 
   const handleNameSave = useCallback(async () => {
     if (deck && editedName.trim() && editedName !== deck.name) {
@@ -151,14 +180,46 @@ export function DeckDetail() {
             showColorless={showColorlessPip(deck)}
           />
 
-          {/* Commander display for Commander-like formats (Commander, Brawl) */}
-          {isCommanderLikeFormat(deck.format.type) && deck.commanders.length > 0 && (
-            <div className="flex items-center gap-1">
-              <Crown className="w-4 h-4 text-yellow-500" />
-              <span className="text-sm">
-                {deck.commanders.map(c => getCardDisplayName(c)).join(' & ')}
-              </span>
-            </div>
+          {/* Commander display + edit/add affordances for Commander-like formats. */}
+          {isCommanderLikeFormat(deck.format.type) && (
+            deck.commanders.length > 0 ? (
+              <div className="flex items-center gap-1">
+                <Crown className="w-4 h-4 text-yellow-500" />
+                <span className="text-sm">
+                  {deck.commanders.map(c => getCardDisplayName(c)).join(' & ')}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={() => setCommanderModalMode('swap')}
+                  title="Change commander"
+                >
+                  <Pencil className="w-3 h-3" />
+                </Button>
+                {/* "+ Partner" button appears only when the existing solo
+                 * commander has the Partner keyword and there's still room. */}
+                {commanderHasPartner && deck.commanders.length === 1 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-6 px-2 text-xs"
+                    onClick={() => setCommanderModalMode('addPartner')}
+                  >
+                    + Partner
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCommanderModalMode('set')}
+              >
+                <Crown className="w-4 h-4 mr-1 text-yellow-500" />
+                Set Commander
+              </Button>
+            )
           )}
 
           {deck.archetype && (
@@ -305,6 +366,35 @@ export function DeckDetail() {
         onClose={() => setShowRoleModal(false)}
         customRoles={deck.customRoles}
         onSave={handleSaveCustomRoles}
+      />
+
+      {/* Commander Selection Modal. Three modes:
+       *   'set'         — first commander; no constraints
+       *   'swap'        — replace existing commander; identity-locked so
+       *                   the swap can't silently invalidate existing cards
+       *   'addPartner'  — append a second commander; Partner-keyword only,
+       *                   no identity lock (Partners union identities) */}
+      <SelectCommanderModal
+        isOpen={commanderModalMode !== null}
+        onClose={() => setCommanderModalMode(null)}
+        title={
+          commanderModalMode === 'addPartner' ? 'Add Partner' :
+          commanderModalMode === 'swap' ? 'Change Commander' :
+          'Set Commander'
+        }
+        requiredColorIdentity={commanderModalMode === 'swap' ? getDeckColorIdentity(deck) : undefined}
+        partnerOnly={commanderModalMode === 'addPartner'}
+        onSelect={(card: ScryfallCard) => {
+          const identifier = createCardIdentifier(card)
+          if (commanderModalMode === 'addPartner') {
+            // Append; the domain layer recomputes the union color identity.
+            addCommander(deck.id, identifier)
+          } else {
+            // Set or swap — replace the entire commanders array.
+            setCommanders(deck.id, [identifier])
+          }
+          setCommanderModalMode(null)
+        }}
       />
     </div>
   )

@@ -408,6 +408,7 @@ export interface ScryfallCard {
   power?: string
   toughness?: string
   rarity: string
+  keywords?: string[]  // Scryfall-tagged ability keywords ('Partner', 'Flying', 'Trample', ...)
   layout?: string  // For detecting DFCs: 'transform', 'modal_dfc', 'reversible_card', etc.
   image_uris?: {
     small: string
