@@ -1,5 +1,6 @@
-import type { CardEntry, CardSet, Deck, ScryfallCard, PulledPrinting } from '../types/index.js'
+import type { CardEntry, CardSet, Deck, PrimaryType, ScryfallCard, PulledPrinting } from '../types/index.js'
 import { CARD_SET } from '../types/index.js'
+import { getPrimaryType } from '../constants/index.js'
 
 // --- Accessors ---
 
@@ -92,6 +93,18 @@ export function getNonCutEntries(deck: Deck): CardEntry[] {
 export function getTypeLine(entry: CardEntry, cache: Map<string, ScryfallCard>): string | undefined {
   if (!entry.card.scryfallId) return undefined
   return cache.get(entry.card.scryfallId)?.type_line
+}
+
+/**
+ * Resolve an entry's primary type bucket. Prefers the denormalized field
+ * stored on the entry; falls back to the Scryfall cache; defaults to
+ * `'Other'`. Use this anywhere the UI needs a card's bucket — it shields
+ * callers from cache-population timing.
+ */
+export function getEntryPrimaryType(entry: CardEntry, cache: Map<string, ScryfallCard>): PrimaryType {
+  if (entry.primaryType) return entry.primaryType
+  const typeLine = getTypeLine(entry, cache)
+  return typeLine ? getPrimaryType(typeLine) : 'Other'
 }
 
 /** Get the pulled printings for an entry, defaulting to an empty array. */

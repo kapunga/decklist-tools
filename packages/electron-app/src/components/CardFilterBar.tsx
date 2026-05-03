@@ -74,7 +74,10 @@ function computeAvailableValues(cards: EnrichedDeckCard[]): AvailableValues {
       }
     }
 
-    const primaryType = getPrimaryType(typeLine || 'Other')
+    // Prefer the entry's denormalized bucket; fall back to deriving from
+    // the resolved Scryfall card. This keeps the type filter populated
+    // even when the Scryfall cache is empty for a card.
+    const primaryType = deckCard.primaryType ?? (typeLine ? getPrimaryType(typeLine) : 'Other')
     typeSet.add(primaryType)
 
     for (const r of deckCard.roles) roleSet.add(r)

@@ -1,4 +1,4 @@
-import type { RoleDefinition } from '../types/index.js'
+import type { PrimaryType, RoleDefinition } from '../types/index.js'
 
 export const SCRYFALL = {
   MIN_REQUEST_INTERVAL_MS: 100,
@@ -45,7 +45,7 @@ export const CARD_TYPE_SORT_ORDER: Record<string, number> = {
 // Extract primary type from type line
 // For bimodal cards (Adventures, Omens, MDFCs with "//"), prioritize permanent types over spells
 // This ensures cards like "Land // Instant" categorize as Land, not Instant
-export function getPrimaryType(typeLine: string): string {
+export function getPrimaryType(typeLine: string): PrimaryType {
   const lower = typeLine.toLowerCase()
 
   // These permanent types always have highest priority

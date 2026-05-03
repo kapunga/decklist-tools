@@ -188,6 +188,23 @@ export function generateDeckCardId(): string {
   return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
 }
 
+// Primary card type bucket — the categorical projection of Scryfall's
+// `type_line` used throughout the UI for grouping, filtering, and analytics.
+// Stored on each `CardEntry` so type-aware UI doesn't depend on a populated
+// Scryfall cache. See `getEntryPrimaryType` for read-side resolution rules.
+export const PRIMARY_TYPES = [
+  'Creature',
+  'Planeswalker',
+  'Battle',
+  'Artifact',
+  'Enchantment',
+  'Land',
+  'Instant',
+  'Sorcery',
+  'Other',
+] as const
+export type PrimaryType = typeof PRIMARY_TYPES[number]
+
 // Unified Card Entry — a card in any collection (deck, list, etc.)
 export interface CardEntry {
   id: string
@@ -199,6 +216,10 @@ export interface CardEntry {
   ownership: OwnershipStatus
   roles: string[]
   pulledPrintings?: PulledPrinting[]
+  // Categorical bucket derived from Scryfall's `type_line` at write time.
+  // Optional for backward compat with pre-migration entries; readers should
+  // go through `getEntryPrimaryType` which falls back to a cache lookup.
+  primaryType?: PrimaryType
   // List-context fields
   potentialDecks?: string[]
 }

@@ -17,19 +17,6 @@ export const IMPORT_PREVIEW = {
   PROGRESS_UPDATE_INTERVAL: 5,
 } as const
 
-// Card type sort order for type-based grouping
-export const CARD_TYPE_ORDER = [
-  'Creature',
-  'Planeswalker',
-  'Battle',
-  'Instant',
-  'Sorcery',
-  'Artifact',
-  'Enchantment',
-  'Land',
-  'Other'
-] as const
-
 export const CARD_TYPE_SORT_ORDER: Record<string, number> = {
   Creature: 0,
   Planeswalker: 1,
@@ -40,45 +27,6 @@ export const CARD_TYPE_SORT_ORDER: Record<string, number> = {
   Enchantment: 6,
   Land: 7,
   Other: 8
-}
-
-// Extract primary type from type line
-// For bimodal cards (Adventures, Omens, MDFCs with "//"), prioritize permanent types over spells
-// This ensures cards like "Land // Instant" categorize as Land, not Instant
-export function getPrimaryType(typeLine: string): string {
-  const lower = typeLine.toLowerCase()
-
-  // These permanent types always have highest priority
-  if (lower.includes('creature')) return 'Creature'
-  if (lower.includes('planeswalker')) return 'Planeswalker'
-  if (lower.includes('battle')) return 'Battle'
-
-  // For bimodal cards, prioritize remaining permanents over spells
-  const isBimodal = lower.includes('//')
-
-  if (isBimodal) {
-    // Check remaining permanent types before spell types
-    if (lower.includes('artifact')) return 'Artifact'
-    if (lower.includes('enchantment')) return 'Enchantment'
-    if (lower.includes('land')) return 'Land'
-    // Then spell types
-    if (lower.includes('instant')) return 'Instant'
-    if (lower.includes('sorcery')) return 'Sorcery'
-  } else {
-    // Original order for non-bimodal cards
-    if (lower.includes('instant')) return 'Instant'
-    if (lower.includes('sorcery')) return 'Sorcery'
-    if (lower.includes('artifact')) return 'Artifact'
-    if (lower.includes('enchantment')) return 'Enchantment'
-    if (lower.includes('land')) return 'Land'
-  }
-
-  return 'Other'
-}
-
-export function getTypeSortOrder(typeLine: string): number {
-  const primaryType = getPrimaryType(typeLine)
-  return CARD_TYPE_SORT_ORDER[primaryType] ?? 8
 }
 
 // Default global roles - matches the Scala Taxonomy.default
