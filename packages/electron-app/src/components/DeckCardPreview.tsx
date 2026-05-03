@@ -8,6 +8,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { SelectDeckArtModal } from '@/components/SelectDeckArtModal'
 import { ColorPips } from '@/components/ColorPips'
 import type { Deck, DeckFormat, FormatType } from '@/types'
 import { getCardCount, FORMAT_TYPE } from '@/types'
@@ -183,6 +184,7 @@ export function DeckCardPreview({ deck, onClick, onDelete }: DeckCardPreviewProp
   const [heroCardId, setHeroCardId] = useState<string | null>(null)
   const [heroLayout, setHeroLayout] = useState<string | null>(null)
   const [artUrl, setArtUrl] = useState<string | null>(null)
+  const [isArtPickerOpen, setIsArtPickerOpen] = useState(false)
   const colorIdentity = getDeckColorIdentity(deck) ?? []
   const cardCount = getCardCount(deck)
   const setDeckArtCard = useStore(state => state.setDeckArtCard)
@@ -311,6 +313,7 @@ export function DeckCardPreview({ deck, onClick, onDelete }: DeckCardPreviewProp
   }, [glowColors.primary, glowColors.secondary])
 
   return (
+    <>
     <div
       ref={cardRef}
       className="group relative aspect-[4/5] cursor-pointer overflow-hidden rounded-lg border border-border bg-background shadow-[var(--card-elevation)] transition-all duration-200 hover:scale-[1.02] hover:shadow-[var(--card-elevation-hover)]"
@@ -358,20 +361,21 @@ export function DeckCardPreview({ deck, onClick, onDelete }: DeckCardPreviewProp
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" onClick={e => e.stopPropagation()}>
+            <DropdownMenuItem onClick={() => setIsArtPickerOpen(true)}>
+              Set deck art...
+            </DropdownMenuItem>
             {canFlipFace && (
-              <>
-                <DropdownMenuItem onClick={handleFlipFace}>
-                  {isRotatable
-                    ? heroFace === 'flipped'
-                      ? 'Show upright'
-                      : 'Show flipped'
-                    : heroFace === 'back'
-                      ? 'Use front face'
-                      : 'Use back face'}
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-              </>
+              <DropdownMenuItem onClick={handleFlipFace}>
+                {isRotatable
+                  ? heroFace === 'flipped'
+                    ? 'Show upright'
+                    : 'Show flipped'
+                  : heroFace === 'back'
+                    ? 'Use front face'
+                    : 'Use back face'}
+              </DropdownMenuItem>
             )}
+            <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={onDelete}
               className="text-destructive focus:text-destructive"
@@ -406,5 +410,11 @@ export function DeckCardPreview({ deck, onClick, onDelete }: DeckCardPreviewProp
         </div>
       </div>
     </div>
+    <SelectDeckArtModal
+      isOpen={isArtPickerOpen}
+      onClose={() => setIsArtPickerOpen(false)}
+      deck={deck}
+    />
+    </>
   )
 }
