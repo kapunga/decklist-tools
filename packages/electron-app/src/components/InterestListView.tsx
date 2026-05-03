@@ -7,7 +7,7 @@ import { useStore } from '@/hooks/useStore'
 import { autocomplete, searchCardByName, getCardImageUrl } from '@/lib/scryfall'
 import { AUTOCOMPLETE } from '@/lib/constants'
 import type { CardEntry } from '@/types'
-import { INTEREST_LIST_ID, getPotentialDecks } from '@/types'
+import { INTEREST_LIST_ID, getPotentialDecks, createCardIdentifier } from '@/types'
 
 export function InterestListView() {
   const cardLists = useStore(state => state.cardLists)
@@ -88,12 +88,7 @@ export function InterestListView() {
     try {
       const card = await searchCardByName(name)
       if (card) {
-        await addToInterestList({
-          scryfallId: card.id,
-          name: card.name,
-          setCode: card.set,
-          collectorNumber: card.collector_number
-        }, undefined, 'user')
+        await addToInterestList(createCardIdentifier(card), undefined, 'user')
       }
     } finally {
       setIsLoading(false)

@@ -25,8 +25,13 @@ interface SelectCommanderModalProps {
   description?: string
   // For post-import selection: list of legendary creatures already in deck
   existingLegendaries?: CardEntry[]
-  // For commander swap: only allow same color identity
+  // For commander swap: only allow same color identity. Ignored when
+  // `partnerOnly` is true — Partners union identities, they don't lock.
   requiredColorIdentity?: string[]
+  // When true, the suggestion query restricts to cards with the Partner
+  // keyword, and identity filtering is bypassed. Used when adding a
+  // second Partner commander.
+  partnerOnly?: boolean
 }
 
 export function SelectCommanderModal({
@@ -36,7 +41,8 @@ export function SelectCommanderModal({
   title = 'Select Commander',
   description = 'Search for a legendary creature to be your commander.',
   existingLegendaries,
-  requiredColorIdentity
+  requiredColorIdentity,
+  partnerOnly = false
 }: SelectCommanderModalProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [suggestions, setSuggestions] = useState<string[]>([])
@@ -79,13 +85,16 @@ export function SelectCommanderModal({
     }
 
     const timer = setTimeout(async () => {
-      // Search for legendary creatures
-      const result = await searchCards(`${searchQuery} t:legendary t:creature`)
+      // Build the Scryfall search. Partner-add restricts to cards with the
+      // Partner keyword and skips identity filtering (Partners union).
+      const partnerClause = partnerOnly ? ' kw:partner' : ''
+      const result = await searchCards(`${searchQuery} t:legendary t:creature${partnerClause}`)
       if (result?.data) {
         const names = result.data
           .filter(card => {
-            // If requiredColorIdentity is set, filter by color identity
-            if (requiredColorIdentity !== undefined) {
+            // Identity filter applies for swap mode (a single non-Partner
+            // commander). Skipped for Partner-add and unconstrained modes.
+            if (!partnerOnly && requiredColorIdentity !== undefined) {
               const cardColors = new Set(card.color_identity)
               const requiredColors = new Set(requiredColorIdentity)
               // Colors must match exactly for commander swap
@@ -105,7 +114,7 @@ export function SelectCommanderModal({
     }, AUTOCOMPLETE.DEBOUNCE_MS)
 
     return () => clearTimeout(timer)
-  }, [searchQuery, requiredColorIdentity])
+  }, [searchQuery, requiredColorIdentity, partnerOnly])
 
   const handleSelectSuggestion = useCallback(async (name: string) => {
     setIsLoading(true)

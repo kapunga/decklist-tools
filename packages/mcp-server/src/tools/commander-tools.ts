@@ -3,8 +3,9 @@ import {
   addCommander,
   removeCommander,
   swapCommander,
+  createCardIdentifier,
 } from '@mtg-deckbuilder/shared'
-import { getDeckOrThrow, fetchScryfallCard, createCardIdentifier } from './helpers.js'
+import { getDeckOrThrow, fetchScryfallCard } from './helpers.js'
 import type { ManageCommanderArgs } from './types.js'
 
 export async function manageCommander(storage: Storage, args: ManageCommanderArgs) {

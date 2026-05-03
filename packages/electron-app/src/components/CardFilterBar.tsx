@@ -11,8 +11,7 @@ import {
 } from '@/components/ui/dialog'
 import { ManaSymbol } from '@/components/ManaCost'
 import type { CardFilter, FilterGroup, FilterMode, EnrichedDeckCard } from '@mtg-deckbuilder/shared'
-import { FILTER_GROUP_TYPES } from '@mtg-deckbuilder/shared'
-import { getPrimaryType } from '@mtg-deckbuilder/shared'
+import { FILTER_GROUP_TYPES, getPrimaryType } from '@mtg-deckbuilder/shared'
 import type { Deck } from '@/types'
 import { OWNERSHIP_STATUS } from '@/types'
 import { getAllRoles } from '@/lib/constants'
@@ -74,9 +73,6 @@ function computeAvailableValues(cards: EnrichedDeckCard[]): AvailableValues {
       }
     }
 
-    // Prefer the entry's denormalized bucket; fall back to deriving from
-    // the resolved Scryfall card. This keeps the type filter populated
-    // even when the Scryfall cache is empty for a card.
     const primaryType = deckCard.primaryType ?? (typeLine ? getPrimaryType(typeLine) : 'Other')
     typeSet.add(primaryType)
 
