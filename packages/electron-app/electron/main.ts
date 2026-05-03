@@ -208,6 +208,7 @@ function sendMenuAction(action: string, payload?: unknown): void {
 }
 
 const GITHUB_URL = 'https://github.com/kapunga/decklist-tools'
+const DOCS_URL = 'https://kapunga.github.io/decklist-tools/'
 
 function buildAppMenu(): Menu {
   const isMac = process.platform === 'darwin'
@@ -267,7 +268,7 @@ function buildAppMenu(): Menu {
       },
     },
     { label: 'View on GitHub', click: () => shell.openExternal(GITHUB_URL) },
-    { label: 'Documentation', click: () => shell.openExternal(`${GITHUB_URL}#readme`) },
+    { label: 'Documentation', click: () => shell.openExternal(DOCS_URL) },
   ]
 
   const template: MenuItemConstructorOptions[] = [
@@ -568,7 +569,7 @@ function setupIpcHandlers() {
   })
 
   // Deck export — write a rendered decklist to a user-chosen file.
-  ipcMain.handle('deck:export-save', async (_, args: { deckId: string; format: string; includeSideboard?: boolean; includeMaybeboard?: boolean }) => {
+  ipcMain.handle('deck:export-save', async (_, args: { deckId: string; format: string; includeSideboard?: boolean; includeMaybeboard?: boolean; section?: 'mainboard' | 'sideboard' | 'maybeboard' }) => {
     try {
       if (!storage) return { success: false, error: 'Storage not initialized' }
       const deck = storage.getDeck(args.deckId)
@@ -579,12 +580,14 @@ function setupIpcHandlers() {
       const content = format.render(deck, {
         includeSideboard: args.includeSideboard ?? true,
         includeMaybeboard: args.includeMaybeboard ?? true,
+        section: args.section,
       })
 
       const safeName = deck.name.replace(/[^A-Za-z0-9._ -]+/g, '_').trim() || 'deck'
+      const sectionSuffix = args.section ? `.${args.section}` : ''
       const result = await dialog.showSaveDialog({
-        title: `Export Deck — ${format.name}`,
-        defaultPath: `${safeName}.${format.id}.txt`,
+        title: `Export Deck — ${format.name}${args.section ? ` (${args.section})` : ''}`,
+        defaultPath: `${safeName}.${format.id}${sectionSuffix}.txt`,
         filters: [
           { name: 'Text', extensions: ['txt'] },
           { name: 'All Files', extensions: ['*'] },

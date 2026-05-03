@@ -22,6 +22,10 @@ export interface DeckExportFormat {
 export interface RenderOptions {
   includeMaybeboard?: boolean
   includeSideboard?: boolean
+  // When set, emit only the named section. Used for tools (e.g. Moxfield) whose
+  // import UI accepts each section into a separate paste box. When omitted,
+  // the renderer emits the whole deck (existing behavior).
+  section?: 'mainboard' | 'sideboard' | 'maybeboard'
 }
 
 export interface DetectedFormat {

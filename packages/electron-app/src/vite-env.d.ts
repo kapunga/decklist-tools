@@ -49,12 +49,14 @@ export interface CollectionImportResult {
 }
 
 export type DeckExportFormatId = 'arena' | 'moxfield' | 'archidekt' | 'mtgo' | 'simple'
+export type DeckExportSection = 'mainboard' | 'sideboard' | 'maybeboard'
 
 export interface DeckExportArgs {
   deckId: string
   format: DeckExportFormatId
   includeSideboard?: boolean
   includeMaybeboard?: boolean
+  section?: DeckExportSection
 }
 
 export interface DeckExportResult {

@@ -28,13 +28,9 @@ export function detectFormat(text: string): DetectedFormat {
     return { format: archidektFormat, confidence: 'high' }
   }
 
-  // Moxfield CSV: starts with header
-  if (lines[0]?.toLowerCase().startsWith('count,')) {
-    return { format: moxfieldFormat, confidence: 'high' }
-  }
-
-  // Arena/Mythic Tools: has set code in parentheses with collector number
-  // Handles collector numbers like 123, 81p, 248s
+  // Arena/Mythic Tools/Moxfield share the plain-text grammar with set code in
+  // parentheses and a collector number. Arena is the most established label
+  // and its parser handles the same lines Moxfield emits, so we route there.
   if (lines.some(l => /\([A-Za-z0-9]+\)\s+\S+/.test(l))) {
     return { format: arenaFormat, confidence: 'high' }
   }

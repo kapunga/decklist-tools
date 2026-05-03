@@ -71,19 +71,39 @@ describe('arenaFormat.render', () => {
 })
 
 describe('moxfieldFormat.render', () => {
-  it('emits CSV header and tags categories', () => {
+  it('emits Moxfield\'s plain-text grammar — no CSV, no section headers', () => {
     const out = moxfieldFormat.render(buildFixture(), { includeSideboard: true, includeMaybeboard: true })
-    const lines = out.split('\n')
-    expect(lines[0]).toBe('Count,Name,Edition,Collector Number,Foil,Condition,Language,Category')
-    expect(out).toContain('1,Atraxa, Praetors\' Voice,cmr,270,,,English,Commander')
-    expect(out).toContain('4,Lightning Bolt,m21,199,,,English,Mainboard')
-    expect(out).toContain('2,Dispel,rtr,38,,,English,Sideboard')
-    expect(out).toContain('1,Demonic Tutor,2xm,95,,,English,Maybeboard')
+    // Documented grammar: AMOUNT CARDNAME (SETCODE) NUMBER
+    expect(out).toContain('1 Atraxa, Praetors\' Voice (CMR) 270')
+    expect(out).toContain('1 Sol Ring (CMR) 472')
+    expect(out).toContain('4 Lightning Bolt (M21) 199')
+    // No CSV header — that's the collection format, not the deck format.
+    expect(out).not.toContain('Count,Name,Edition')
+    // No section headers — Moxfield doesn't accept them in the documented grammar.
+    expect(out).not.toMatch(/^(Commander|Mainboard|Sideboard|Maybeboard):?$/m)
   })
 
-  it('omits sideboard rows when not requested', () => {
-    const out = moxfieldFormat.render(buildFixture(), { includeSideboard: false })
-    expect(out).not.toContain('Sideboard')
+  it('emits commanders + mainboard only when section: mainboard', () => {
+    const out = moxfieldFormat.render(buildFixture(), { section: 'mainboard' })
+    expect(out).toContain('1 Atraxa, Praetors\' Voice (CMR) 270')
+    expect(out).toContain('4 Lightning Bolt (M21) 199')
+    expect(out).not.toContain('Dispel')
+    expect(out).not.toContain('Demonic Tutor')
+  })
+
+  it('emits sideboard only when section: sideboard', () => {
+    const out = moxfieldFormat.render(buildFixture(), { section: 'sideboard' })
+    expect(out).toContain('2 Dispel (RTR) 38')
+    expect(out).not.toContain('Atraxa')
+    expect(out).not.toContain('Lightning Bolt')
+    expect(out).not.toContain('Demonic Tutor')
+  })
+
+  it('emits maybeboard only when section: maybeboard', () => {
+    const out = moxfieldFormat.render(buildFixture(), { section: 'maybeboard' })
+    expect(out).toContain('1 Demonic Tutor (2XM) 95')
+    expect(out).not.toContain('Atraxa')
+    expect(out).not.toContain('Lightning Bolt')
     expect(out).not.toContain('Dispel')
   })
 })

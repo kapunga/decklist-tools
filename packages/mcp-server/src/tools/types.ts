@@ -72,6 +72,7 @@ export interface DeckExportArgs {
   format: DeckExportFormatId
   include_sideboard?: boolean
   include_maybeboard?: boolean
+  section?: 'mainboard' | 'sideboard' | 'maybeboard'
 }
 
 export interface ManageRoleArgs {
@@ -217,13 +218,23 @@ export function validateDeckPullListArgs(args: Record<string, unknown>): DeckPul
 }
 
 const DECK_EXPORT_FORMATS = ['arena', 'moxfield', 'archidekt', 'mtgo', 'simple'] as const
+const DECK_EXPORT_SECTIONS = ['mainboard', 'sideboard', 'maybeboard'] as const
 
 export function validateDeckExportArgs(args: Record<string, unknown>): DeckExportArgs {
+  let section: DeckExportArgs['section']
+  if (args.section !== undefined) {
+    const s = args.section
+    if (typeof s !== 'string' || !DECK_EXPORT_SECTIONS.includes(s as typeof DECK_EXPORT_SECTIONS[number])) {
+      throw new Error(`'section' must be one of: ${DECK_EXPORT_SECTIONS.join(', ')} (got '${String(s)}')`)
+    }
+    section = s as DeckExportArgs['section']
+  }
   return {
     deck_id: requireString(args, 'deck_id'),
     format: requireEnum(args, 'format', DECK_EXPORT_FORMATS),
     include_sideboard: args.include_sideboard as boolean | undefined,
     include_maybeboard: args.include_maybeboard as boolean | undefined,
+    section,
   }
 }
 

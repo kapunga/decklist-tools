@@ -212,7 +212,7 @@ export function getToolDefinitions(): Tool[] {
     },
     {
       name: 'deck_export',
-      description: 'Export a deck as text in one of the supported decklist formats: arena (MTG Arena / Mythic Tools), moxfield (Moxfield CSV), archidekt (Archidekt with categories/tags), mtgo (plain text), simple (plain "N Card Name"). Output is suitable for pasting into the matching site.',
+      description: 'Export a deck as text in one of the supported decklist formats: arena (MTG Arena), moxfield (Moxfield deck-import grammar), archidekt (Archidekt), mtgo (plain text), simple (plain "N Card Name"). Output is suitable for pasting into the matching site. Use the `section` option for tools (e.g. Moxfield) whose import UI accepts each section into a separate paste box.',
       inputSchema: {
         type: 'object',
         properties: {
@@ -223,7 +223,12 @@ export function getToolDefinitions(): Tool[] {
             description: 'Target export format.',
           },
           include_sideboard: { type: 'boolean', description: 'Include sideboard section (default true).' },
-          include_maybeboard: { type: 'boolean', description: 'Include maybeboard section (default false).' },
+          include_maybeboard: { type: 'boolean', description: 'Include maybeboard section (default true).' },
+          section: {
+            type: 'string',
+            enum: ['mainboard', 'sideboard', 'maybeboard'],
+            description: 'Emit only the named section. Useful for Moxfield-style imports where each section pastes into a separate UI box. Omit to emit the full deck.',
+          },
         },
         required: ['deck_id', 'format'],
       },

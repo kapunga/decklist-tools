@@ -211,6 +211,7 @@ export function deckExport(storage: Storage, args: DeckExportArgs) {
   const content = format.render(deck, {
     includeSideboard: args.include_sideboard ?? true,
     includeMaybeboard: args.include_maybeboard ?? true,
+    section: args.section,
   })
   return {
     deckId: deck.id,
