@@ -69,6 +69,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Collection export/import
   exportCollection: () => ipcRenderer.invoke('collection:export'),
   importCollection: () => ipcRenderer.invoke('collection:import'),
+
+  // Deck export
+  exportDeck: (args: DeckExportArgs) => ipcRenderer.invoke('deck:export-save', args),
+
+  // Native menu integration
+  onMenuAction: (callback: (action: string, payload?: unknown) => void) => {
+    const handler = (_: unknown, action: string, payload?: unknown) => callback(action, payload)
+    ipcRenderer.on('menu:action', handler)
+    return () => ipcRenderer.removeListener('menu:action', handler)
+  },
+  setExportMenuEnabled: (enabled: boolean) => ipcRenderer.invoke('menu:set-export-enabled', enabled),
 })
 
 // Type definitions for the exposed API
@@ -126,6 +137,22 @@ export interface CollectionImportResult {
   error?: string
 }
 
+export type DeckExportFormatId = 'arena' | 'moxfield' | 'archidekt' | 'mtgo' | 'simple'
+
+export interface DeckExportArgs {
+  deckId: string
+  format: DeckExportFormatId
+  includeSideboard?: boolean
+  includeMaybeboard?: boolean
+}
+
+export interface DeckExportResult {
+  success: boolean
+  cancelled?: boolean
+  filePath?: string
+  error?: string
+}
+
 export interface ElectronAPI {
   listDecks: () => Promise<unknown[]>
   getDeck: (id: string) => Promise<unknown | null>
@@ -164,6 +191,9 @@ export interface ElectronAPI {
   cancelCacheLoad: () => Promise<void>
   exportCollection: () => Promise<CollectionExportResult>
   importCollection: () => Promise<CollectionImportResult>
+  exportDeck: (args: DeckExportArgs) => Promise<DeckExportResult>
+  onMenuAction: (callback: (action: string, payload?: unknown) => void) => () => void
+  setExportMenuEnabled: (enabled: boolean) => Promise<void>
 }
 
 declare global {

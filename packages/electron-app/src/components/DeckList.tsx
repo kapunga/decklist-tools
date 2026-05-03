@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -34,8 +34,13 @@ export function DeckList() {
   const selectDeck = useStore(state => state.selectDeck)
   const createDeck = useStore(state => state.createDeck)
   const deleteDeck = useStore(state => state.deleteDeck)
+  const newDeckToken = useStore(state => state.newDeckToken)
+  const importDeckToken = useStore(state => state.importDeckToken)
+  const focusSearchToken = useStore(state => state.focusSearchToken)
 
   const [showNewDeckDialog, setShowNewDeckDialog] = useState(false)
+  const [showImportDialog, setShowImportDialog] = useState(false)
+  const searchInputRef = useRef<HTMLInputElement | null>(null)
   const [showDeleteDialog, setShowDeleteDialog] = useState<string | null>(null)
   const [newDeckName, setNewDeckName] = useState('')
   const [newDeckFormat, setNewDeckFormat] = useState<FormatType>(FORMAT_TYPE.COMMANDER)
@@ -104,6 +109,34 @@ export function DeckList() {
     selectDeck(deck.id)
   }
 
+  // Native-menu drivers: Cmd+N opens the New Deck dialog, Cmd+I opens Import,
+  // Cmd+F focuses the search box. Each watches its dedicated counter and skips
+  // the initial 0 so we don't auto-trigger on mount.
+  const lastNewDeckToken = useRef(newDeckToken)
+  useEffect(() => {
+    if (newDeckToken !== lastNewDeckToken.current) {
+      lastNewDeckToken.current = newDeckToken
+      setShowNewDeckDialog(true)
+    }
+  }, [newDeckToken])
+
+  const lastImportToken = useRef(importDeckToken)
+  useEffect(() => {
+    if (importDeckToken !== lastImportToken.current) {
+      lastImportToken.current = importDeckToken
+      setShowImportDialog(true)
+    }
+  }, [importDeckToken])
+
+  const lastFocusSearchToken = useRef(focusSearchToken)
+  useEffect(() => {
+    if (focusSearchToken !== lastFocusSearchToken.current) {
+      lastFocusSearchToken.current = focusSearchToken
+      searchInputRef.current?.focus()
+      searchInputRef.current?.select()
+    }
+  }, [focusSearchToken])
+
   const handleDeleteDeck = async () => {
     if (showDeleteDialog) {
       await deleteDeck(showDeleteDialog)
@@ -118,7 +151,7 @@ export function DeckList() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">My Decks</h1>
         <div className="flex gap-2">
-          <ImportNewDeckDialog />
+          <ImportNewDeckDialog open={showImportDialog} onOpenChange={setShowImportDialog} />
           <Button onClick={() => setShowNewDeckDialog(true)}>
             <Plus className="w-4 h-4 mr-2" />
             New Deck
@@ -128,6 +161,7 @@ export function DeckList() {
 
       <div className="mb-6 flex items-center gap-2 flex-wrap">
         <Input
+          ref={searchInputRef}
           placeholder="Search decks..."
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}

@@ -210,6 +210,24 @@ export function getToolDefinitions(): Tool[] {
         required: ['deck_id'],
       },
     },
+    {
+      name: 'deck_export',
+      description: 'Export a deck as text in one of the supported decklist formats: arena (MTG Arena / Mythic Tools), moxfield (Moxfield CSV), archidekt (Archidekt with categories/tags), mtgo (plain text), simple (plain "N Card Name"). Output is suitable for pasting into the matching site.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          deck_id: { type: 'string' },
+          format: {
+            type: 'string',
+            enum: ['arena', 'moxfield', 'archidekt', 'mtgo', 'simple'],
+            description: 'Target export format.',
+          },
+          include_sideboard: { type: 'boolean', description: 'Include sideboard section (default true).' },
+          include_maybeboard: { type: 'boolean', description: 'Include maybeboard section (default false).' },
+        },
+        required: ['deck_id', 'format'],
+      },
+    },
 
     // Roles
     {

@@ -48,6 +48,22 @@ export interface CollectionImportResult {
   error?: string
 }
 
+export type DeckExportFormatId = 'arena' | 'moxfield' | 'archidekt' | 'mtgo' | 'simple'
+
+export interface DeckExportArgs {
+  deckId: string
+  format: DeckExportFormatId
+  includeSideboard?: boolean
+  includeMaybeboard?: boolean
+}
+
+export interface DeckExportResult {
+  success: boolean
+  cancelled?: boolean
+  filePath?: string
+  error?: string
+}
+
 export interface ElectronAPI {
   listDecks: () => Promise<unknown[]>
   getDeck: (id: string) => Promise<unknown | null>
@@ -86,6 +102,9 @@ export interface ElectronAPI {
   cancelCacheLoad: () => Promise<void>
   exportCollection: () => Promise<CollectionExportResult>
   importCollection: () => Promise<CollectionImportResult>
+  exportDeck: (args: DeckExportArgs) => Promise<DeckExportResult>
+  onMenuAction: (callback: (action: string, payload?: unknown) => void) => () => void
+  setExportMenuEnabled: (enabled: boolean) => Promise<void>
 }
 
 declare global {

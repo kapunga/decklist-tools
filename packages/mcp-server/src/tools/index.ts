@@ -8,6 +8,7 @@ import {
   deckCurve,
   deckNotes,
   deckPullList,
+  deckExport,
   searchDecksForCard,
 } from './deck-tools.js'
 import { manageCard, searchCardsHandler } from './card-tools.js'
@@ -25,6 +26,7 @@ import {
   validateDeckCurveArgs,
   validateDeckNotesArgs,
   validateDeckPullListArgs,
+  validateDeckExportArgs,
   validateManageRoleArgs,
   validateManageCommanderArgs,
   validateManageInterestListArgs,
@@ -64,6 +66,8 @@ export async function handleToolCall(
       return deckNotes(storage, validateDeckNotesArgs(args))
     case 'deck_pull_list':
       return deckPullList(storage, validateDeckPullListArgs(args))
+    case 'deck_export':
+      return deckExport(storage, validateDeckExportArgs(args))
     case 'list_roles':
       return listRoles(storage, args.deck_id as string | undefined)
     case 'manage_role':
