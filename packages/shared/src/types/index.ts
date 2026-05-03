@@ -405,6 +405,10 @@ export interface ScryfallCard {
   set: string
   set_name?: string  // Full set name (e.g., "Modern Horizons 2")
   collector_number: string
+  released_at?: string  // YYYY-MM-DD; per-printing release date
+  artist?: string
+  illustration_id?: string  // Identifies the unique artwork; printings sharing an illustration share this id
+  promo?: boolean  // True for promotional printings (prerelease, MSER, special-edition variants); used to prefer non-promo when picking canonical art representations
   power?: string
   toughness?: string
   rarity: string
@@ -426,6 +430,8 @@ export interface ScryfallCard {
     power?: string
     toughness?: string
     colors?: string[]
+    artist?: string
+    illustration_id?: string
     image_uris?: {
       small: string
       normal: string
