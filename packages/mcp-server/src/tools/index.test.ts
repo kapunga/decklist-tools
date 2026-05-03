@@ -62,8 +62,8 @@ function call(name: string, args: Record<string, unknown> = {}) {
 // ─── Tool Definitions ──────────────────────────────────────────
 
 describe('getToolDefinitions', () => {
-  it('returns 18 tools', () => {
-    expect(getToolDefinitions()).toHaveLength(18)
+  it('returns 19 tools', () => {
+    expect(getToolDefinitions()).toHaveLength(19)
   })
 
   it('exposes the four split deck views, not view_deck', () => {
@@ -704,6 +704,27 @@ describe('Views', () => {
 
     it('throws when deck not found', async () => {
       await expect(call('deck_pull_list', { deck_id: MISSING_UUID })).rejects.toThrow('Deck not found')
+    })
+  })
+
+  describe('deck_export', () => {
+    it('renders the deck in the requested format', async () => {
+      const deck = makeDeck({ name: 'Export Test' })
+      pushMainboard(deck, makeDeckCard('Lightning Bolt', { quantity: 4 }))
+      mock._decks.set(deck.id, deck)
+      const result = await call('deck_export', { deck_id: deck.id, format: 'simple' }) as { content: string; format: string }
+      expect(result.format).toBe('simple')
+      expect(result.content).toContain('4 Lightning Bolt')
+    })
+
+    it('throws on unknown format', async () => {
+      const deck = makeDeck()
+      mock._decks.set(deck.id, deck)
+      await expect(call('deck_export', { deck_id: deck.id, format: 'made-up' })).rejects.toThrow()
+    })
+
+    it('throws when deck not found', async () => {
+      await expect(call('deck_export', { deck_id: MISSING_UUID, format: 'simple' })).rejects.toThrow('Deck not found')
     })
   })
 

@@ -8,68 +8,43 @@ import { detectFormat } from './index.js'
 // ─── Moxfield ──────────────────────────────────────────────────
 
 describe('moxfieldFormat.parse', () => {
-  it('parses CSV with header', () => {
-    const text = `Count,Name,Edition,Collector Number,Foil,Condition,Language,Category
-1,Sol Ring,C21,263,,,English,Mainboard
-4,Lightning Bolt,M21,199,,,English,Mainboard`
-
-    const result = moxfieldFormat.parse(text)
-    expect(result).toHaveLength(2)
-    expect(result[0]).toMatchObject({ name: 'Sol Ring', setCode: 'c21', collectorNumber: '263', quantity: 1 })
-    expect(result[1]).toMatchObject({ name: 'Lightning Bolt', quantity: 4 })
-  })
-
-  it('detects sideboard category', () => {
-    const text = `Count,Name,Edition,Collector Number,Foil,Condition,Language,Category
-1,Swords to Plowshares,STA,10,,,English,Sideboard`
-
-    const result = moxfieldFormat.parse(text)
-    expect(result[0].isSideboard).toBe(true)
-  })
-
-  it('detects commander category', () => {
-    const text = `Count,Name,Edition,Collector Number,Foil,Condition,Language,Category
-1,Atraxa,ONE,226,,,English,Commander`
-
-    const result = moxfieldFormat.parse(text)
-    expect(result[0].isCommander).toBe(true)
-  })
-
-  it('detects maybeboard and considering categories', () => {
-    const text = `Count,Name,Edition,Collector Number,Foil,Condition,Language,Category
-1,Card A,SET,1,,,English,Maybeboard
-1,Card B,SET,2,,,English,Considering`
-
-    const result = moxfieldFormat.parse(text)
-    expect(result[0].isMaybeboard).toBe(true)
-    expect(result[1].isMaybeboard).toBe(true)
-  })
-
-  it('skips lines with fewer than 4 columns', () => {
-    const text = `Count,Name,Edition,Collector Number
-1,Sol Ring
-complete line,name,set,123`
-
-    const result = moxfieldFormat.parse(text)
-    // Only the complete line parses (first data line has only 2 columns)
+  it('parses "1 Counterspell (CMR) 632 *F*" — full form with foil marker', () => {
+    const result = moxfieldFormat.parse('1 Counterspell (CMR) 632 *F*')
     expect(result).toHaveLength(1)
+    expect(result[0]).toMatchObject({
+      name: 'Counterspell',
+      setCode: 'cmr',
+      collectorNumber: '632',
+      quantity: 1,
+      isCommander: false,
+      isSideboard: false,
+      isMaybeboard: false,
+    })
   })
 
-  it('skips lines with empty name', () => {
-    const text = `Count,Name,Edition,Collector Number
-1,,SET,123`
-
-    const result = moxfieldFormat.parse(text)
-    expect(result).toHaveLength(0)
+  it('parses "1 Sol Ring" — bare form with no set/collector', () => {
+    const result = moxfieldFormat.parse('1 Sol Ring')
+    expect(result).toHaveLength(1)
+    expect(result[0]).toMatchObject({ name: 'Sol Ring', quantity: 1 })
+    expect(result[0].setCode).toBeUndefined()
   })
 
-  it('handles quoted fields', () => {
-    const text = `"Count","Name","Edition","Collector Number"
-"1","Sol Ring","C21","263"`
+  it('parses "4x Lightning Bolt (M21) 199" — Nx prefix variant', () => {
+    const result = moxfieldFormat.parse('4x Lightning Bolt (M21) 199')
+    expect(result[0]).toMatchObject({ name: 'Lightning Bolt', setCode: 'm21', collectorNumber: '199', quantity: 4 })
+  })
 
+  it('skips comment lines starting with // or #', () => {
+    const text = `// header comment\n# another comment\n1 Sol Ring`
     const result = moxfieldFormat.parse(text)
     expect(result).toHaveLength(1)
     expect(result[0].name).toBe('Sol Ring')
+  })
+
+  it('skips empty lines', () => {
+    const text = `1 Sol Ring\n\n\n1 Arcane Signet *F*`
+    const result = moxfieldFormat.parse(text)
+    expect(result).toHaveLength(2)
   })
 })
 
@@ -213,13 +188,6 @@ describe('detectFormat', () => {
     const text = '1x Sol Ring (C21) 263 [Ramp] ^ramp^'
     const result = detectFormat(text)
     expect(result.format.id).toBe('archidekt')
-    expect(result.confidence).toBe('high')
-  })
-
-  it('detects moxfield CSV format', () => {
-    const text = 'Count,Name,Edition,Collector Number\n1,Sol Ring,C21,263'
-    const result = detectFormat(text)
-    expect(result.format.id).toBe('moxfield')
     expect(result.confidence).toBe('high')
   })
 

@@ -13,6 +13,7 @@ import { createConfigSlice } from '@/stores/configSlice'
 import { createSelectionSlice } from '@/stores/selectionSlice'
 import { createSetCollectionSlice } from '@/stores/setCollectionSlice'
 import { createPullListSlice } from '@/stores/pullListSlice'
+import { createUISlice } from '@/stores/uiSlice'
 
 export type { AppView } from '@/stores/types'
 
@@ -92,6 +93,7 @@ export const useStore = create<AppState>((set, get) => ({
   ...createSelectionSlice(set, get),
   ...createSetCollectionSlice(set, get),
   ...createPullListSlice(set, get),
+  ...createUISlice(set, get),
 }))
 
 // Selector hooks

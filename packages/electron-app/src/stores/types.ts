@@ -1,4 +1,5 @@
 import type { Deck, Taxonomy, CardList, Config, CardEntry, DeckNote, CardIdentifier, RoleDefinition, SetCollectionFile, SetCollectionEntry, CollectionLevel, PullListConfig, CardSetName, CardSource, ArtCardFace } from '@/types'
+import type { UISlice } from './uiSlice'
 
 export type AppView = 'decks' | 'deck-detail' | 'interest-list' | 'buy-list' | 'settings'
 
@@ -12,7 +13,8 @@ export interface AppState
     ConfigSlice,
     SelectionSlice,
     SetCollectionSlice,
-    PullListSlice {
+    PullListSlice,
+    UISlice {
   // Data
   decks: Deck[]
   taxonomy: Taxonomy | null

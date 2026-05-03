@@ -25,7 +25,9 @@ export const archidektFormat: DeckExportFormat = {
         const roles: string[] = []
         let tagMatch
         while ((tagMatch = tagPattern.exec(tagStr)) !== null) {
-          roles.push(tagMatch[1].toLowerCase().replace(/\s+/g, '-'))
+          // Archidekt color tags are `LabelName,#RRGGBB` — drop the color when present.
+          const label = tagMatch[1].split(',')[0]
+          roles.push(label.toLowerCase().replace(/\s+/g, '-'))
         }
 
         const category = match[5]?.toLowerCase()
@@ -55,37 +57,27 @@ export const archidektFormat: DeckExportFormat = {
   render(deck: Deck, options: RenderOptions): string {
     const lines: string[] = []
 
-    const renderCard = (c: CardEntry, category: string) => {
-      const roleStr = c.roles.map(r => `^${r}^`).join(' ')
-      let line = `${c.quantity}x ${c.card.name} (${(c.card.setCode || '???').toUpperCase()}) ${c.card.collectorNumber || '0'} [${category}]`
-      if (roleStr) line += ` ${roleStr}`
+    // Role tags are intentionally not emitted on Archidekt export. Archidekt's
+    // parser appears to greedy-match the first `^` to the last `^` on a line,
+    // which breaks any card with more than one tag. Their own native exports
+    // don't carry tags either — organizational intent flows through Archidekt's
+    // own category vocabulary, which we don't yet map onto. Tag alignment
+    // across deckbuilders is tracked in a separate ticket.
+    const renderCard = (c: CardEntry, structuralCategory?: string) => {
+      let line = `${c.quantity}x ${c.card.name} (${(c.card.setCode || '???').toUpperCase()}) ${c.card.collectorNumber || '0'}`
+      if (structuralCategory) line += ` [${structuralCategory}]`
       lines.push(line)
     }
 
-    const roleToCategoryMap: Record<string, string> = {
-      land: 'Lands',
-      ramp: 'Ramp',
-      'card-draw': 'Card Draw',
-      removal: 'Removal',
-      'board-wipe': 'Board Wipes',
-      protection: 'Protection',
-      recursion: 'Recursion',
-      finisher: 'Finishers'
-    }
-
-    // Commanders section
+    // Commanders section — `[Commander]` is structural (Archidekt uses it to
+    // identify the deck's commander), so we keep the bracket here.
     if (isCommanderLikeFormat(deck.format.type) && deck.commanders.length > 0) {
       deck.commanders.forEach(c => {
         lines.push(`1x ${c.name} (${(c.setCode || '???').toUpperCase()}) ${c.collectorNumber || '0'} [Commander]`)
       })
     }
 
-    getConfirmedCards(deck).forEach(c => {
-        // Use first role for category, fallback to 'Other'
-        const primaryRole = c.roles[0]
-        const category = primaryRole ? (roleToCategoryMap[primaryRole] || 'Other') : 'Other'
-        renderCard(c, category)
-      })
+    getConfirmedCards(deck).forEach(c => renderCard(c))
 
     const sideboard = getSideboardCards(deck)
     if (options.includeSideboard && sideboard.length > 0) {

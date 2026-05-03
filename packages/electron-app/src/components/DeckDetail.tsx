@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { ArrowLeft, Check, AlertTriangle, Settings, Crown, Download, Loader2, Pencil } from 'lucide-react'
+import { ExportDropdown, type ExportDropdownHandle } from '@/components/ExportDropdown'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -44,6 +45,8 @@ export function DeckDetail() {
   const clearSelection = useStore(state => state.clearSelection)
   const setCommanders = useStore(state => state.setCommanders)
   const addCommander = useStore(state => state.addCommander)
+  const exportDeckToken = useStore(state => state.exportDeckToken)
+  const exportRef = useRef<ExportDropdownHandle | null>(null)
 
   const [isEditingName, setIsEditingName] = useState(false)
   const [editedName, setEditedName] = useState('')
@@ -91,6 +94,24 @@ export function DeckDetail() {
       setEditedName(deck.name)
     }
   }, [deck?.id])
+
+  // Toggle the native menu's "Export Deck" item while a deck is open.
+  useEffect(() => {
+    window.electronAPI.setExportMenuEnabled(true)
+    return () => {
+      window.electronAPI.setExportMenuEnabled(false)
+    }
+  }, [])
+
+  // Open the export dropdown when Cmd+E is invoked from the native menu.
+  // Skip the initial 0 token so we don't auto-open on mount.
+  const lastExportToken = useRef(exportDeckToken)
+  useEffect(() => {
+    if (exportDeckToken !== lastExportToken.current) {
+      lastExportToken.current = exportDeckToken
+      exportRef.current?.open()
+    }
+  }, [exportDeckToken])
 
   // Detect Partner keyword on the solo commander to decide whether to show
   // "+ Partner". Only relevant at exactly one commander (0 = nothing to pair,
@@ -254,6 +275,7 @@ export function DeckDetail() {
               <Settings className="w-4 h-4 mr-1" />
               Roles
             </Button>
+            <ExportDropdown ref={exportRef} deck={deck} />
             <ImportDialog deckId={deck.id} sideboardSize={deck.format.sideboardSize} />
           </div>
         </div>

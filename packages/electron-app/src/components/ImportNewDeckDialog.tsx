@@ -26,8 +26,18 @@ import type { FormatType, Deck, CardEntry, CardIdentifier } from '@/types'
 import { formatDefaults, FORMAT_TYPE, CARD_SET, isCommanderLikeFormat } from '@/types'
 import { withDeckCardSet, getCardSetEntries } from '@mtg-deckbuilder/shared'
 
-export function ImportNewDeckDialog() {
-  const [open, setOpen] = useState(false)
+interface ImportNewDeckDialogProps {
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+}
+
+export function ImportNewDeckDialog({ open: controlledOpen, onOpenChange }: ImportNewDeckDialogProps = {}) {
+  const [internalOpen, setInternalOpen] = useState(false)
+  const open = controlledOpen ?? internalOpen
+  const setOpen = (next: boolean) => {
+    if (onOpenChange) onOpenChange(next)
+    if (controlledOpen === undefined) setInternalOpen(next)
+  }
   const [deckName, setDeckName] = useState('')
   const [deckFormat, setDeckFormat] = useState<FormatType>(FORMAT_TYPE.COMMANDER)
   const [importPhase, setImportPhase] = useState<'lookup' | 'saving'>('lookup')

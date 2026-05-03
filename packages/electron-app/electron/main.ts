@@ -1,8 +1,8 @@
-import { app, BrowserWindow, dialog, ipcMain, protocol, session } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, Menu, protocol, session, shell, type MenuItemConstructorOptions } from 'electron'
 import path from 'path'
 import fs from 'fs'
 import os from 'os'
-import { Storage, loadCardDeckLimits, buildArtCropUrlFromId } from '@mtg-deckbuilder/shared'
+import { Storage, loadCardDeckLimits, buildArtCropUrlFromId, getFormat } from '@mtg-deckbuilder/shared'
 import type { Deck, Taxonomy, CardList, Config, RoleDefinition, SetCollectionFile, PullListConfig } from '@mtg-deckbuilder/shared'
 import {
   watchForChanges,
@@ -199,6 +199,90 @@ const createWindow = () => {
 // Ensure the app menu shows the correct name (Electron uses package.json "name" by default)
 app.setName('MTG Deckbuilder')
 
+// Send a `menu:action` event to the active renderer. Listeners in
+// packages/electron-app/src/App.tsx switch on the action and dispatch the
+// matching store/UI change.
+function sendMenuAction(action: string, payload?: unknown): void {
+  if (!mainWindow) return
+  mainWindow.webContents.send('menu:action', action, payload)
+}
+
+const GITHUB_URL = 'https://github.com/kapunga/decklist-tools'
+const DOCS_URL = 'https://kapunga.github.io/decklist-tools/'
+
+function buildAppMenu(): Menu {
+  const isMac = process.platform === 'darwin'
+
+  const fileSubmenu: MenuItemConstructorOptions[] = [
+    { label: 'New Deck', accelerator: 'CmdOrCtrl+N', click: () => sendMenuAction('new-deck') },
+    { label: 'Import Deck…', accelerator: 'CmdOrCtrl+I', click: () => sendMenuAction('import-deck') },
+    { id: 'export-deck', label: 'Export Deck…', accelerator: 'CmdOrCtrl+E', enabled: false, click: () => sendMenuAction('export-deck') },
+    { type: 'separator' },
+    isMac ? { role: 'close' } : { role: 'quit' },
+  ]
+
+  const editSubmenu: MenuItemConstructorOptions[] = [
+    { role: 'undo' },
+    { role: 'redo' },
+    { type: 'separator' },
+    { role: 'cut' },
+    { role: 'copy' },
+    { role: 'paste' },
+    { role: 'selectAll' },
+    { type: 'separator' },
+    { label: 'Find', accelerator: 'CmdOrCtrl+F', click: () => sendMenuAction('focus-search') },
+  ]
+
+  const viewSubmenu: MenuItemConstructorOptions[] = [
+    {
+      label: 'Theme',
+      submenu: [
+        { label: 'Library', click: () => sendMenuAction('set-theme', 'library') },
+        { label: 'Fantasy', click: () => sendMenuAction('set-theme', 'fantasy') },
+        { label: 'Steampunk', click: () => sendMenuAction('set-theme', 'steampunk') },
+        { label: 'Ukiyoe', click: () => sendMenuAction('set-theme', 'ukiyoe') },
+        { label: 'Cyberpunk', click: () => sendMenuAction('set-theme', 'cyberpunk') },
+        { label: 'Gothic', click: () => sendMenuAction('set-theme', 'gothic') },
+      ],
+    },
+    { type: 'separator' },
+    { role: 'resetZoom' },
+    { role: 'zoomIn' },
+    { role: 'zoomOut' },
+    { type: 'separator' },
+    { role: 'togglefullscreen' },
+    { role: 'toggleDevTools' },
+  ]
+
+  const helpSubmenu: MenuItemConstructorOptions[] = [
+    {
+      label: 'About MTG Deckbuilder',
+      click: () => {
+        dialog.showMessageBox({
+          type: 'info',
+          title: 'About MTG Deckbuilder',
+          message: 'MTG Deckbuilder',
+          detail: `Version ${app.getVersion()}\nA local-first deck management tool for Magic: The Gathering.`,
+          buttons: ['OK'],
+        })
+      },
+    },
+    { label: 'View on GitHub', click: () => shell.openExternal(GITHUB_URL) },
+    { label: 'Documentation', click: () => shell.openExternal(DOCS_URL) },
+  ]
+
+  const template: MenuItemConstructorOptions[] = [
+    ...(isMac ? [{ role: 'appMenu' as const }] : []),
+    { label: 'File', submenu: fileSubmenu },
+    { label: 'Edit', submenu: editSubmenu },
+    { label: 'View', submenu: viewSubmenu },
+    { role: 'windowMenu' },
+    { role: 'help', submenu: helpSubmenu },
+  ]
+
+  return Menu.buildFromTemplate(template)
+}
+
 app.whenReady().then(async () => {
   storage = new Storage(getStorageDir())
 
@@ -273,6 +357,7 @@ app.whenReady().then(async () => {
   })
 
   setupIpcHandlers()
+  Menu.setApplicationMenu(buildAppMenu())
   createWindow()
 
   app.on('activate', () => {
@@ -481,6 +566,50 @@ function setupIpcHandlers() {
         error: error instanceof Error ? error.message : 'Unknown error'
       }
     }
+  })
+
+  // Deck export — write a rendered decklist to a user-chosen file.
+  ipcMain.handle('deck:export-save', async (_, args: { deckId: string; format: string; includeSideboard?: boolean; includeMaybeboard?: boolean; section?: 'mainboard' | 'sideboard' | 'maybeboard' }) => {
+    try {
+      if (!storage) return { success: false, error: 'Storage not initialized' }
+      const deck = storage.getDeck(args.deckId)
+      if (!deck) return { success: false, error: `Deck not found: ${args.deckId}` }
+      const format = getFormat(args.format)
+      if (!format) return { success: false, error: `Unknown format: ${args.format}` }
+
+      const content = format.render(deck, {
+        includeSideboard: args.includeSideboard ?? true,
+        includeMaybeboard: args.includeMaybeboard ?? true,
+        section: args.section,
+      })
+
+      const safeName = deck.name.replace(/[^A-Za-z0-9._ -]+/g, '_').trim() || 'deck'
+      const sectionSuffix = args.section ? `.${args.section}` : ''
+      const result = await dialog.showSaveDialog({
+        title: `Export Deck — ${format.name}${args.section ? ` (${args.section})` : ''}`,
+        defaultPath: `${safeName}.${format.id}${sectionSuffix}.txt`,
+        filters: [
+          { name: 'Text', extensions: ['txt'] },
+          { name: 'All Files', extensions: ['*'] },
+        ],
+      })
+
+      if (result.canceled || !result.filePath) {
+        return { success: false, cancelled: true }
+      }
+
+      fs.writeFileSync(result.filePath, content, 'utf-8')
+      return { success: true, filePath: result.filePath }
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
+    }
+  })
+
+  // Menu enable/disable for "Export Deck" item — renderer toggles this when
+  // entering or leaving a deck-detail view.
+  ipcMain.handle('menu:set-export-enabled', (_, enabled: boolean) => {
+    const item = Menu.getApplicationMenu()?.getMenuItemById('export-deck')
+    if (item) item.enabled = enabled
   })
 
   ipcMain.handle('collection:import', async () => {

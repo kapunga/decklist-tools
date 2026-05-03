@@ -65,6 +65,16 @@ export interface DeckPullListArgs {
   deck_id: string
 }
 
+export type DeckExportFormatId = 'arena' | 'moxfield' | 'archidekt' | 'mtgo' | 'simple'
+
+export interface DeckExportArgs {
+  deck_id: string
+  format: DeckExportFormatId
+  include_sideboard?: boolean
+  include_maybeboard?: boolean
+  section?: 'mainboard' | 'sideboard' | 'maybeboard'
+}
+
 export interface ManageRoleArgs {
   action: 'add_custom' | 'add_global' | 'update_global' | 'delete_global' | 'update_custom' | 'delete_custom'
   deck_id?: string
@@ -205,6 +215,27 @@ export function validateDeckNotesArgs(args: Record<string, unknown>): DeckNotesA
 
 export function validateDeckPullListArgs(args: Record<string, unknown>): DeckPullListArgs {
   return { deck_id: requireString(args, 'deck_id') }
+}
+
+const DECK_EXPORT_FORMATS = ['arena', 'moxfield', 'archidekt', 'mtgo', 'simple'] as const
+const DECK_EXPORT_SECTIONS = ['mainboard', 'sideboard', 'maybeboard'] as const
+
+export function validateDeckExportArgs(args: Record<string, unknown>): DeckExportArgs {
+  let section: DeckExportArgs['section']
+  if (args.section !== undefined) {
+    const s = args.section
+    if (typeof s !== 'string' || !DECK_EXPORT_SECTIONS.includes(s as typeof DECK_EXPORT_SECTIONS[number])) {
+      throw new Error(`'section' must be one of: ${DECK_EXPORT_SECTIONS.join(', ')} (got '${String(s)}')`)
+    }
+    section = s as DeckExportArgs['section']
+  }
+  return {
+    deck_id: requireString(args, 'deck_id'),
+    format: requireEnum(args, 'format', DECK_EXPORT_FORMATS),
+    include_sideboard: args.include_sideboard as boolean | undefined,
+    include_maybeboard: args.include_maybeboard as boolean | undefined,
+    section,
+  }
 }
 
 export function validateManageRoleArgs(args: Record<string, unknown>): ManageRoleArgs {

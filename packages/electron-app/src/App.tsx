@@ -17,6 +17,11 @@ export function App() {
   const currentView = useStore(state => state.currentView)
   const setView = useStore(state => state.setView)
   const theme = useStore(state => state.config?.theme)
+  const updateConfig = useStore(state => state.updateConfig)
+  const triggerNewDeck = useStore(state => state.triggerNewDeck)
+  const triggerImportDeck = useStore(state => state.triggerImportDeck)
+  const triggerExportDeck = useStore(state => state.triggerExportDeck)
+  const triggerFocusSearch = useStore(state => state.triggerFocusSearch)
 
   useEffect(() => {
     loadData()
@@ -30,6 +35,36 @@ export function App() {
       window.electronAPI.removeStorageListener()
     }
   }, [loadData])
+
+  // Wire native-menu actions to store triggers. Components owning each side
+  // effect (DeckList, DeckDetail) react via their respective token counters.
+  useEffect(() => {
+    const unsubscribe = window.electronAPI.onMenuAction((action, payload) => {
+      switch (action) {
+        case 'new-deck':
+          setView('decks')
+          triggerNewDeck()
+          break
+        case 'import-deck':
+          setView('decks')
+          triggerImportDeck()
+          break
+        case 'export-deck':
+          triggerExportDeck()
+          break
+        case 'focus-search':
+          setView('decks')
+          triggerFocusSearch()
+          break
+        case 'set-theme':
+          if (typeof payload === 'string') {
+            updateConfig({ theme: payload as typeof theme })
+          }
+          break
+      }
+    })
+    return unsubscribe
+  }, [setView, triggerNewDeck, triggerImportDeck, triggerExportDeck, triggerFocusSearch, updateConfig])
 
   // Sync theme class on <html>. Strips any prior theme-* class so switching works cleanly.
   useEffect(() => {

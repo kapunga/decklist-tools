@@ -16,6 +16,7 @@ import {
   enrichCards,
   applyFilters,
   getMainboard,
+  getFormat,
 } from '@mtg-deckbuilder/shared'
 import {
   renderFullView,
@@ -30,6 +31,7 @@ import type {
   DeckCurveArgs,
   DeckNotesArgs,
   DeckPullListArgs,
+  DeckExportArgs,
 } from './types.js'
 
 export function listDecks(storage: Storage) {
@@ -200,6 +202,25 @@ export function deckNotes(storage: Storage, args: DeckNotesArgs): string {
   const globalRoles = storage.getGlobalRoles()
   // No Scryfall cache needed — notes don't reference card oracle data.
   return renderNotesView(deck, globalRoles)
+}
+
+export function deckExport(storage: Storage, args: DeckExportArgs) {
+  const deck = getDeckOrThrow(storage, args.deck_id)
+  const format = getFormat(args.format)
+  if (!format) throw new Error(`Unknown format: ${args.format}`)
+  const content = format.render(deck, {
+    includeSideboard: args.include_sideboard ?? true,
+    includeMaybeboard: args.include_maybeboard ?? true,
+    section: args.section,
+  })
+  return {
+    deckId: deck.id,
+    deckName: deck.name,
+    format: format.id,
+    formatName: format.name,
+    content,
+    lineCount: content.split('\n').length,
+  }
 }
 
 export function deckPullList(storage: Storage, args: DeckPullListArgs): string {
