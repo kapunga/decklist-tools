@@ -365,17 +365,19 @@ export function DeckCardPreview({ deck, onClick, onDelete }: DeckCardPreviewProp
               Set deck art...
             </DropdownMenuItem>
             {canFlipFace && (
-              <DropdownMenuItem onClick={handleFlipFace}>
-                {isRotatable
-                  ? heroFace === 'flipped'
-                    ? 'Show upright'
-                    : 'Show flipped'
-                  : heroFace === 'back'
-                    ? 'Use front face'
-                    : 'Use back face'}
-              </DropdownMenuItem>
+              <>
+                <DropdownMenuItem onClick={handleFlipFace}>
+                  {isRotatable
+                    ? heroFace === 'flipped'
+                      ? 'Show upright'
+                      : 'Show flipped'
+                    : heroFace === 'back'
+                      ? 'Use front face'
+                      : 'Use back face'}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+              </>
             )}
-            <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={onDelete}
               className="text-destructive focus:text-destructive"
