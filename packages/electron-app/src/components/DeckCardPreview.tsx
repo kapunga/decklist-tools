@@ -1,6 +1,13 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { Trash2, FlipHorizontal2 } from 'lucide-react'
+import { MoreVertical } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { ColorPips } from '@/components/ColorPips'
 import type { Deck, DeckFormat, FormatType } from '@/types'
 import { getCardCount, FORMAT_TYPE } from '@/types'
@@ -337,35 +344,42 @@ export function DeckCardPreview({ deck, onClick, onDelete }: DeckCardPreviewProp
           {FORMAT_GLYPHS[deck.format.type]}
         </div>
 
-        {/* Delete button — hover-only, opposite corner from format glyph */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="absolute top-1 left-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8"
-          onClick={e => {
-            e.stopPropagation()
-            onDelete()
-          }}
-        >
-          <Trash2 className="w-4 h-4 text-destructive" />
-        </Button>
-
-        {/* Flip-face button — hover-only, only for layouts with a real back face */}
-        {canFlipFace && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute bottom-1 left-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8"
-            onClick={handleFlipFace}
-            title={
-              isRotatable
-                ? (heroFace === 'flipped' ? 'Show upright' : 'Show flipped')
-                : (heroFace === 'back' ? 'Show front face' : 'Show back face')
-            }
-          >
-            <FlipHorizontal2 className="w-4 h-4 text-foreground" />
-          </Button>
-        )}
+        {/* Action menu — hover-only, opposite corner from format glyph */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute top-1 left-1 z-10 opacity-0 group-hover:opacity-100 data-[state=open]:opacity-100 transition-opacity h-8 w-8"
+              onClick={e => e.stopPropagation()}
+              title="Deck actions"
+            >
+              <MoreVertical className="w-4 h-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" onClick={e => e.stopPropagation()}>
+            {canFlipFace && (
+              <>
+                <DropdownMenuItem onClick={handleFlipFace}>
+                  {isRotatable
+                    ? heroFace === 'flipped'
+                      ? 'Show upright'
+                      : 'Show flipped'
+                    : heroFace === 'back'
+                      ? 'Use front face'
+                      : 'Use back face'}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+              </>
+            )}
+            <DropdownMenuItem
+              onClick={onDelete}
+              className="text-destructive focus:text-destructive"
+            >
+              Delete deck
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Brass divider — theme-accent hairline */}
