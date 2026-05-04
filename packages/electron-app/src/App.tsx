@@ -1,7 +1,6 @@
 import { useEffect } from 'react'
-import { Library, Star, ShoppingCart, Settings } from 'lucide-react'
-import { useStore, type AppView } from '@/hooks/useStore'
-import { Button } from '@/components/ui/button'
+import { useStore } from '@/hooks/useStore'
+import { AppShell } from '@/components/AppShell'
 import { DeckList } from '@/components/DeckList'
 import { DeckDetail } from '@/components/DeckDetail'
 import { InterestListView } from '@/components/InterestListView'
@@ -99,78 +98,16 @@ export function App() {
 
   return (
     <div className="h-screen bg-background text-foreground flex flex-col">
-      {/* Titlebar drag region - spans full width, behind traffic lights */}
-      <div className="titlebar h-12 shrink-0 flex items-end">
-        {/* Navigation sits inside titlebar but buttons are no-drag via CSS */}
-        <header className="h-10 w-full border-b flex items-center justify-between pl-20 pr-4 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <nav className="flex items-center gap-1">
-          <NavButton
-            view="decks"
-            currentView={currentView}
-            onClick={() => setView('decks')}
-            icon={<Library className="w-4 h-4" />}
-            label="My Decks"
-          />
-          <NavButton
-            view="interest-list"
-            currentView={currentView}
-            onClick={() => setView('interest-list')}
-            icon={<Star className="w-4 h-4" />}
-            label="Interest List"
-          />
-          <NavButton
-            view="buy-list"
-            currentView={currentView}
-            onClick={() => setView('buy-list')}
-            icon={<ShoppingCart className="w-4 h-4" />}
-            label="Buy List"
-          />
-        </nav>
-        <Button
-          variant={currentView === 'settings' ? 'secondary' : 'ghost'}
-          size="sm"
-          onClick={() => setView('settings')}
-          className="gap-2"
-        >
-          <Settings className="w-4 h-4" />
-          Settings
-        </Button>
-        </header>
-      </div>
-
-      {/* Main Content */}
-      <div className="flex-1 overflow-hidden">
-        {currentView === 'decks' && <DeckList />}
-        {currentView === 'deck-detail' && <DeckDetail />}
-        {currentView === 'interest-list' && <InterestListView />}
-        {currentView === 'buy-list' && <BuyListView />}
-        {currentView === 'settings' && <SettingsPage />}
-      </div>
+      <div className="titlebar h-8 shrink-0" />
+      <AppShell>
+        <div className="h-full overflow-hidden">
+          {currentView === 'decks' && <DeckList />}
+          {currentView === 'deck-detail' && <DeckDetail />}
+          {currentView === 'interest-list' && <InterestListView />}
+          {currentView === 'buy-list' && <BuyListView />}
+          {currentView === 'settings' && <SettingsPage />}
+        </div>
+      </AppShell>
     </div>
-  )
-}
-
-interface NavButtonProps {
-  view: AppView
-  currentView: AppView
-  onClick: () => void
-  icon: React.ReactNode
-  label: string
-}
-
-function NavButton({ view, currentView, onClick, icon, label }: NavButtonProps) {
-  // deck-detail should highlight "decks" nav
-  const isActive = view === currentView || (view === 'decks' && currentView === 'deck-detail')
-
-  return (
-    <Button
-      variant={isActive ? 'secondary' : 'ghost'}
-      size="sm"
-      onClick={onClick}
-      className="gap-2"
-    >
-      {icon}
-      {label}
-    </Button>
   )
 }

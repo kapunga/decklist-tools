@@ -54,6 +54,12 @@
      * Each theme overrides these to set its own physical-context lighting. */
     --card-elevation: 0 1px 0 0 rgba(168,154,122,0.3), 0 12px 24px -16px rgba(28,25,21,0.18);
     --card-elevation-hover: 0 1px 0 0 rgba(168,154,122,0.4), 0 20px 36px -20px rgba(28,25,21,0.28);
+
+    /* Broadsheet shell tokens — page-level chrome (sidebar + masthead + action button).
+     * Themes override only what their identity demands; everything else inherits. */
+    --action-bg: var(--primary);
+    --action-fg: var(--primary-foreground);
+    --masthead-rule-color: var(--foreground);
   }
 
   .theme-library {
@@ -224,6 +230,13 @@
     --font-display: 'Space Grotesk', sans-serif;
     --font-body: 'JetBrains Mono', monospace;
 
+    /* Broadsheet — neon hot-pink action, cyan masthead rules. The dual-temperature
+     * neon move (chrome rules in cyan, action button in hot pink) is what gives
+     * cyberpunk its identity within the broadsheet grammar. */
+    --action-bg: var(--destructive);
+    --action-fg: var(--background);
+    --masthead-rule-color: var(--color-u);
+
     /* Cyberpunk — neon-sign backlight, per-deck color identity.
      * Components set --deck-color-1 (primary tube) and --deck-color-2 (halo)
      * inline based on the deck's color identity. Falls back to --ring if
@@ -299,5 +312,25 @@
       0 0 32px -2px color-mix(in srgb, var(--deck-color-1, var(--ring)) 55%, transparent),
       0 0 72px -8px color-mix(in srgb, var(--deck-color-2, var(--ring)) 32%, transparent),
       0 0 100px -12px rgba(232,223,212,0.14);
+  }
+
+  /* Cyberpunk pushes the broadsheet shell into a HUD register: nav labels become
+   * mono caps with tracking, the bottom-of-sidebar theme indicator switches from
+   * italic display serif to mono caps. The dual-temperature neon (cyan rules in
+   * --masthead-rule-color, hot-pink action in --action-bg) is set by tokens above. */
+  .theme-cyberpunk .sidebar-nav-label,
+  .theme-cyberpunk .sidebar-nav-row[data-active='true'] .sidebar-nav-label {
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-size: 11px;
+  }
+
+  .theme-cyberpunk .sidebar-theme-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-style: normal;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
   }
 }

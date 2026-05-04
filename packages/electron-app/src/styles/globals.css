@@ -47,3 +47,13 @@
 .titlebar input {
   -webkit-app-region: no-drag;
 }
+
+/* Sidebar typography baseline — theme classes (.theme-cyberpunk etc.)
+ * override these in themes.css for per-theme typographic voice. */
+.sidebar-nav-label {
+  font-weight: 500;
+}
+
+.sidebar-nav-row[data-active='true'] .sidebar-nav-label {
+  font-weight: 600;
+}

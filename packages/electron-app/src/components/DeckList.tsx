@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
-import { Plus } from 'lucide-react'
+import { Plus, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { numberToWords } from '@/lib/numberToWords'
 import {
   Dialog,
   DialogContent,
@@ -29,6 +30,21 @@ import { getDeckColorIdentity } from '@mtg-deckbuilder/shared'
 
 const COLOR_FILTER_OPTIONS = ['W', 'U', 'B', 'R', 'G', 'C'] as const
 
+const THEME_TAGLINES: Record<string, string> = {
+  library: 'library',
+  fantasy: 'codex',
+  steampunk: 'workshop',
+  ukiyoe: 'studio',
+  cyberpunk: 'grid',
+  gothic: 'crypt',
+}
+
+function libraryTagline(theme: string | undefined, count: number): string {
+  const noun = (theme && THEME_TAGLINES[theme]) || 'library'
+  if (count === 0) return `the ${noun} is empty`
+  return `${numberToWords(count)} in the ${noun}`
+}
+
 export function DeckList() {
   const decks = useStore(state => state.decks)
   const selectDeck = useStore(state => state.selectDeck)
@@ -37,6 +53,7 @@ export function DeckList() {
   const newDeckToken = useStore(state => state.newDeckToken)
   const importDeckToken = useStore(state => state.importDeckToken)
   const focusSearchToken = useStore(state => state.focusSearchToken)
+  const theme = useStore(state => state.config?.theme)
 
   const [showNewDeckDialog, setShowNewDeckDialog] = useState(false)
   const [showImportDialog, setShowImportDialog] = useState(false)
@@ -147,72 +164,141 @@ export function DeckList() {
   const deckToDelete = decks.find(d => d.id === showDeleteDialog)
 
   return (
-    <div className="h-full overflow-y-auto p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">My Decks</h1>
-        <div className="flex gap-2">
-          <ImportNewDeckDialog open={showImportDialog} onOpenChange={setShowImportDialog} />
-          <Button onClick={() => setShowNewDeckDialog(true)}>
-            <Plus className="w-4 h-4 mr-2" />
-            New Deck
-          </Button>
+    <div className="h-full overflow-y-auto">
+      <div
+        className="px-8 pt-7 pb-5"
+        style={{
+          borderBottom: '2px solid var(--masthead-rule-color)',
+        }}
+      >
+        <div className="flex items-end justify-between gap-6">
+          <div className="flex items-baseline gap-x-4 gap-y-1 flex-wrap min-w-0">
+            <h1
+              style={{
+                fontFamily: 'var(--font-display)',
+                fontSize: '52px',
+                fontWeight: 700,
+                fontStyle: 'italic',
+                letterSpacing: '-0.035em',
+                lineHeight: '52px',
+                color: 'var(--foreground)',
+              }}
+            >
+              Decks
+            </h1>
+            <span
+              style={{
+                fontFamily: 'var(--font-display)',
+                fontSize: '20px',
+                fontWeight: 400,
+                fontStyle: 'italic',
+                color: 'var(--muted-foreground)',
+                letterSpacing: '-0.01em',
+              }}
+            >
+              {libraryTagline(theme, decks.length)}
+            </span>
+          </div>
+          <div className="flex items-end gap-2 shrink-0">
+            <ImportNewDeckDialog open={showImportDialog} onOpenChange={setShowImportDialog} />
+            <button
+              onClick={() => setShowNewDeckDialog(true)}
+              className="h-9 px-4 flex items-center gap-2"
+              style={{
+                backgroundColor: 'var(--action-bg)',
+                color: 'var(--action-fg)',
+              }}
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span
+                style={{
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  letterSpacing: '0.14em',
+                  textTransform: 'uppercase',
+                }}
+              >
+                New deck
+              </span>
+            </button>
+          </div>
         </div>
       </div>
 
-      <div className="mb-6 flex items-center gap-2 flex-wrap">
-        <Input
-          ref={searchInputRef}
-          placeholder="Search decks..."
-          value={searchQuery}
-          onChange={e => setSearchQuery(e.target.value)}
-          className="max-w-sm"
-        />
-        <Select
-          value={formatFilter}
-          onValueChange={v => setFormatFilter(v as FormatType | 'all')}
+      <div
+        className="px-8 py-3 flex items-center gap-7 flex-wrap"
+        style={{ borderBottom: '1px solid var(--border)' }}
+      >
+        <div
+          className="flex items-center gap-2 flex-1 max-w-[280px]"
+          style={{ borderBottom: '1px solid var(--foreground)', paddingBottom: '4px' }}
         >
-          <SelectTrigger className="w-[180px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Formats</SelectItem>
-            <SelectItem value={FORMAT_TYPE.COMMANDER}>Commander</SelectItem>
-            <SelectItem value={FORMAT_TYPE.STANDARD}>Standard</SelectItem>
-            <SelectItem value={FORMAT_TYPE.PIONEER}>Pioneer</SelectItem>
-            <SelectItem value={FORMAT_TYPE.MODERN}>Modern</SelectItem>
-            <SelectItem value={FORMAT_TYPE.LEGACY}>Legacy</SelectItem>
-            <SelectItem value={FORMAT_TYPE.PAUPER}>Pauper</SelectItem>
-            <SelectItem value={FORMAT_TYPE.KITCHEN_TABLE}>Kitchen Table</SelectItem>
-          </SelectContent>
-        </Select>
-        <div className="flex" role="group" aria-label="Filter by completion status">
-          <Button
-            variant={statusFilter === 'all' ? 'default' : 'outline'}
-            onClick={() => setStatusFilter('all')}
-            aria-pressed={statusFilter === 'all'}
-            className="rounded-r-none"
-          >
-            All
-          </Button>
-          <Button
-            variant={statusFilter === 'complete' ? 'default' : 'outline'}
-            onClick={() => setStatusFilter('complete')}
-            aria-pressed={statusFilter === 'complete'}
-            className="rounded-none border-l-0"
-          >
-            Complete
-          </Button>
-          <Button
-            variant={statusFilter === 'incomplete' ? 'default' : 'outline'}
-            onClick={() => setStatusFilter('incomplete')}
-            aria-pressed={statusFilter === 'incomplete'}
-            className="rounded-l-none border-l-0"
-          >
-            Incomplete
-          </Button>
+          <Search className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--foreground)' }} />
+          <input
+            ref={searchInputRef}
+            placeholder={`search the ${THEME_TAGLINES[theme ?? 'library'] ?? 'library'}…`}
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            className="bg-transparent border-0 outline-none w-full"
+            style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: '14px',
+              fontStyle: 'italic',
+              color: 'var(--foreground)',
+            }}
+          />
         </div>
-        <div className="flex items-center gap-1" role="group" aria-label="Filter by color identity">
-          {COLOR_FILTER_OPTIONS.map(c => {
+        <FilterCell label="Format">
+          <Select
+            value={formatFilter}
+            onValueChange={v => setFormatFilter(v as FormatType | 'all')}
+          >
+            <SelectTrigger
+              className="border-0 bg-transparent shadow-none px-1 h-auto gap-1.5 focus:ring-0 focus:ring-offset-0"
+              style={{
+                fontFamily: 'var(--font-body)',
+                fontSize: '13px',
+                fontWeight: 500,
+                color: 'var(--foreground)',
+              }}
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value={FORMAT_TYPE.COMMANDER}>Commander</SelectItem>
+              <SelectItem value={FORMAT_TYPE.STANDARD}>Standard</SelectItem>
+              <SelectItem value={FORMAT_TYPE.PIONEER}>Pioneer</SelectItem>
+              <SelectItem value={FORMAT_TYPE.MODERN}>Modern</SelectItem>
+              <SelectItem value={FORMAT_TYPE.LEGACY}>Legacy</SelectItem>
+              <SelectItem value={FORMAT_TYPE.PAUPER}>Pauper</SelectItem>
+              <SelectItem value={FORMAT_TYPE.KITCHEN_TABLE}>Kitchen Table</SelectItem>
+            </SelectContent>
+          </Select>
+        </FilterCell>
+        <FilterCell label="Status">
+          <div className="flex items-center gap-3" role="group" aria-label="Filter by completion status">
+            {(['all', 'complete', 'incomplete'] as const).map(opt => (
+              <button
+                key={opt}
+                onClick={() => setStatusFilter(opt)}
+                aria-pressed={statusFilter === opt}
+                style={{
+                  fontFamily: 'var(--font-body)',
+                  fontSize: '13px',
+                  fontWeight: statusFilter === opt ? 600 : 500,
+                  color: statusFilter === opt ? 'var(--foreground)' : 'var(--muted-foreground)',
+                  textTransform: 'capitalize',
+                }}
+              >
+                {opt}
+              </button>
+            ))}
+          </div>
+        </FilterCell>
+        <FilterCell label="Colors">
+          <div className="flex items-center gap-1" role="group" aria-label="Filter by color identity">
+            {COLOR_FILTER_OPTIONS.map(c => {
             const isC = c === 'C'
             const mode = isC ? (colorlessOnly ? 'require' : undefined) : colorFilter[c]
             const active = mode !== undefined
@@ -243,11 +329,12 @@ export function DeckList() {
               </button>
             )
           })}
-        </div>
+          </div>
+        </FilterCell>
       </div>
 
       {filteredDecks.length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground">
+        <div className="px-8 pt-6 text-center py-12 text-muted-foreground">
           {decks.length === 0 ? (
             <p>No decks yet. Create your first deck to get started!</p>
           ) : (
@@ -255,7 +342,14 @@ export function DeckList() {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-10 gap-y-12">
+        <div
+          className="px-8 pt-6 pb-8 grid"
+          style={{
+            gridTemplateColumns: 'repeat(auto-fill, minmax(clamp(180px, 16vw, 260px), 1fr))',
+            columnGap: '40px',
+            rowGap: '48px',
+          }}
+        >
           {filteredDecks.map(deck => (
             <DeckCardPreview
               key={deck.id}
@@ -337,6 +431,31 @@ export function DeckList() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  )
+}
+
+interface FilterCellProps {
+  label: string
+  children: React.ReactNode
+}
+
+function FilterCell({ label, children }: FilterCellProps) {
+  return (
+    <div className="flex items-center gap-2.5">
+      <span
+        style={{
+          fontFamily: 'var(--font-body)',
+          fontSize: '11px',
+          fontWeight: 600,
+          color: 'var(--muted-foreground)',
+          letterSpacing: '0.12em',
+          textTransform: 'uppercase',
+        }}
+      >
+        {label}
+      </span>
+      {children}
     </div>
   )
 }
