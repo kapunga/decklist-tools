@@ -15,6 +15,10 @@ export interface UISlice {
   triggerImportDeck: () => void
   triggerExportDeck: () => void
   triggerFocusSearch: () => void
+
+  isSidebarCollapsed: boolean
+  toggleSidebar: () => void
+  setSidebarCollapsed: (collapsed: boolean) => void
 }
 
 export const createUISlice: SliceCreator<UISlice> = (set) => ({
@@ -26,4 +30,8 @@ export const createUISlice: SliceCreator<UISlice> = (set) => ({
   triggerImportDeck: () => set(state => ({ importDeckToken: state.importDeckToken + 1 })),
   triggerExportDeck: () => set(state => ({ exportDeckToken: state.exportDeckToken + 1 })),
   triggerFocusSearch: () => set(state => ({ focusSearchToken: state.focusSearchToken + 1 })),
+
+  isSidebarCollapsed: false,
+  toggleSidebar: () => set(state => ({ isSidebarCollapsed: !state.isSidebarCollapsed })),
+  setSidebarCollapsed: (collapsed) => set({ isSidebarCollapsed: collapsed }),
 })
