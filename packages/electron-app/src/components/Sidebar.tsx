@@ -1,12 +1,30 @@
-import { Library, Star, ShoppingCart, Settings, ChevronLeft, type LucideIcon } from 'lucide-react'
+import type { ReactNode } from 'react'
+import { Bookmark, Coins, Settings, ChevronLeft } from 'lucide-react'
 import { useStore, type AppView } from '@/hooks/useStore'
 import { THEMES } from '@/lib/themes'
 import type { ThemeId } from '@/types'
 
-const NAV_ITEMS: { view: AppView; label: string; icon: LucideIcon }[] = [
-  { view: 'decks', label: 'Decks', icon: Library },
-  { view: 'interest-list', label: 'Interest List', icon: Star },
-  { view: 'buy-list', label: 'Buy List', icon: ShoppingCart },
+function DeckStackIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="3" y="7" width="13" height="15" rx="2" />
+      <rect x="8" y="2" width="13" height="15" rx="2" />
+    </svg>
+  )
+}
+
+const NAV_ITEMS: { view: AppView; label: string; icon: ReactNode }[] = [
+  { view: 'decks', label: 'Decks', icon: <DeckStackIcon className="w-4 h-4 shrink-0" /> },
+  { view: 'interest-list', label: 'Interest List', icon: <Bookmark className="w-4 h-4 shrink-0" /> },
+  { view: 'buy-list', label: 'Buy List', icon: <Coins className="w-4 h-4 shrink-0" /> },
 ]
 
 function isViewActive(item: AppView, current: AppView): boolean {
@@ -93,13 +111,13 @@ function BrandRow({ isCollapsed, onToggle }: BrandRowProps) {
 
 interface NavRowProps {
   label: string
-  icon: LucideIcon
+  icon: ReactNode
   isActive: boolean
   isCollapsed: boolean
   onClick: () => void
 }
 
-function NavRow({ label, icon: Icon, isActive, isCollapsed, onClick }: NavRowProps) {
+function NavRow({ label, icon, isActive, isCollapsed, onClick }: NavRowProps) {
   return (
     <button
       onClick={onClick}
@@ -123,7 +141,7 @@ function NavRow({ label, icon: Icon, isActive, isCollapsed, onClick }: NavRowPro
           }}
         />
       )}
-      <Icon className="w-4 h-4 shrink-0" />
+      {icon}
       {!isCollapsed && (
         <span
           className="sidebar-nav-label truncate"
@@ -152,7 +170,7 @@ function BottomDock({ isCollapsed, isSettingsActive, onSettingsClick, themeName 
     <div className="px-2 pb-4 pt-2 flex flex-col gap-2">
       <NavRow
         label="Settings"
-        icon={Settings}
+        icon={<Settings className="w-4 h-4 shrink-0" />}
         isActive={isSettingsActive}
         isCollapsed={isCollapsed}
         onClick={onSettingsClick}
