@@ -1,12 +1,12 @@
 import { useEffect } from 'react'
 import { useStore } from '@/hooks/useStore'
+import { useApplyTheme } from '@/hooks/useApplyTheme'
+import { useStorageSync } from '@/hooks/useStorageSync'
 import { AppShell } from '@/components/AppShell'
 import { DeckList } from '@/components/DeckList'
 import { DeckDetail } from '@/components/DeckDetail'
 import { InterestListView } from '@/components/InterestListView'
 import { BuyListView } from '@/components/BuyListView'
-import { SettingsPage } from '@/components/SettingsPage'
-import { ALL_THEMES } from '@/types'
 
 export function App() {
   const loadData = useStore(state => state.loadData)
@@ -22,18 +22,8 @@ export function App() {
   const triggerExportDeck = useStore(state => state.triggerExportDeck)
   const triggerFocusSearch = useStore(state => state.triggerFocusSearch)
 
-  useEffect(() => {
-    loadData()
-
-    // Listen for storage changes from MCP server
-    window.electronAPI.onStorageChanged(() => {
-      loadData()
-    })
-
-    return () => {
-      window.electronAPI.removeStorageListener()
-    }
-  }, [loadData])
+  useStorageSync(loadData)
+  useApplyTheme(theme)
 
   // Wire native-menu actions to store triggers. Components owning each side
   // effect (DeckList, DeckDetail) react via their respective token counters.
@@ -64,14 +54,6 @@ export function App() {
     })
     return unsubscribe
   }, [setView, triggerNewDeck, triggerImportDeck, triggerExportDeck, triggerFocusSearch, updateConfig])
-
-  // Sync theme class on <html>. Strips any prior theme-* class so switching works cleanly.
-  useEffect(() => {
-    if (!theme) return
-    const root = document.documentElement
-    for (const t of ALL_THEMES) root.classList.remove(`theme-${t}`)
-    root.classList.add(`theme-${theme}`)
-  }, [theme])
 
   // Only show global loading spinner on initial app load, not during operations
   if (isLoading && !hasInitialized) {
@@ -105,7 +87,6 @@ export function App() {
           {currentView === 'deck-detail' && <DeckDetail />}
           {currentView === 'interest-list' && <InterestListView />}
           {currentView === 'buy-list' && <BuyListView />}
-          {currentView === 'settings' && <SettingsPage />}
         </div>
       </AppShell>
     </div>

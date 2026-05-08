@@ -107,6 +107,8 @@ export interface ElectronAPI {
   exportDeck: (args: DeckExportArgs) => Promise<DeckExportResult>
   onMenuAction: (callback: (action: string, payload?: unknown) => void) => () => void
   setExportMenuEnabled: (enabled: boolean) => Promise<void>
+  openSettings: () => Promise<void>
+  saveSettingsActiveSection: (section: string) => Promise<void>
 }
 
 declare global {
