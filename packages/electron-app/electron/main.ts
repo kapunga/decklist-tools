@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, Menu, protocol, session, shell, type MenuItemConstructorOptions } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, protocol, session, shell, type MenuItemConstructorOptions } from 'electron'
 import path from 'path'
 import fs from 'fs'
 import os from 'os'
@@ -11,6 +11,10 @@ import {
   preCacheDeck,
   loadAllCardsToCache,
   cancelCacheLoad,
+  readSettingsWindowState,
+  writeSettingsWindowState,
+  updateSettingsActiveSection,
+  SETTINGS_WINDOW_DEFAULTS,
 } from './storage-extensions'
 
 // MCP client integration
@@ -151,6 +155,7 @@ process.on('unhandledRejection', (reason) => {
 })
 
 let mainWindow: BrowserWindow | null = null
+let settingsWindow: BrowserWindow | null = null
 let storage: Storage | null = null
 
 // Register custom protocol for serving cached images
@@ -196,15 +201,109 @@ const createWindow = () => {
   })
 }
 
+function createOrFocusMainWindow(): void {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    if (mainWindow.isMinimized()) mainWindow.restore()
+    mainWindow.focus()
+    return
+  }
+  createWindow()
+}
+
+// Open the Settings window, or focus it if it already exists. Triggered by
+// the menu's Settings… item (Cmd+,) and the gear icon's `settings:open` IPC.
+function createOrFocusSettingsWindow(): void {
+  if (settingsWindow && !settingsWindow.isDestroyed()) {
+    if (settingsWindow.isMinimized()) settingsWindow.restore()
+    settingsWindow.focus()
+    return
+  }
+  createSettingsWindow()
+}
+
+function createSettingsWindow(): void {
+  const persisted = storage ? readSettingsWindowState(storage) : null
+
+  const windowOptions: Electron.BrowserWindowConstructorOptions = {
+    title: 'Settings',
+    width: persisted?.width ?? SETTINGS_WINDOW_DEFAULTS.width,
+    height: persisted?.height ?? SETTINGS_WINDOW_DEFAULTS.height,
+    minWidth: SETTINGS_WINDOW_DEFAULTS.minWidth,
+    minHeight: SETTINGS_WINDOW_DEFAULTS.minHeight,
+    backgroundColor: nativeTheme.shouldUseDarkColors ? '#1d1d1f' : '#f6f6f6',
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+    },
+  }
+
+  if (typeof persisted?.x === 'number' && typeof persisted?.y === 'number') {
+    windowOptions.x = persisted.x
+    windowOptions.y = persisted.y
+  }
+
+  settingsWindow = new BrowserWindow(windowOptions)
+
+  const initialSection = persisted?.activeSection
+  const searchSuffix = initialSection ? `&section=${encodeURIComponent(initialSection)}` : ''
+
+  if (process.env.VITE_DEV_SERVER_URL) {
+    settingsWindow.loadURL(`${process.env.VITE_DEV_SERVER_URL}?view=settings${searchSuffix}`)
+  } else {
+    settingsWindow.loadFile(path.join(__dirname, '../dist/index.html'), {
+      search: `view=settings${searchSuffix}`,
+    })
+  }
+
+  // The shared index.html has <title>MTG Deckbuilder</title>. Prevent it
+  // from overriding the constructor's title so the Window menu and switcher
+  // can distinguish this window as "Settings".
+  settingsWindow.on('page-title-updated', (event) => {
+    event.preventDefault()
+  })
+
+  settingsWindow.on('close', () => {
+    if (!storage || !settingsWindow) return
+    const bounds = settingsWindow.getBounds()
+    const existing = readSettingsWindowState(storage)
+    try {
+      writeSettingsWindowState(storage, {
+        ...bounds,
+        activeSection: existing?.activeSection,
+      })
+    } catch (error) {
+      console.error('Failed to persist settings window state:', error)
+    }
+  })
+
+  settingsWindow.on('closed', () => {
+    settingsWindow = null
+  })
+}
+
 // Ensure the app menu shows the correct name (Electron uses package.json "name" by default)
 app.setName('MTG Deckbuilder')
 
 // Send a `menu:action` event to the active renderer. Listeners in
 // packages/electron-app/src/App.tsx switch on the action and dispatch the
-// matching store/UI change.
+// matching store/UI change. Targets the main window only — menu actions
+// drive deck operations, not Settings.
 function sendMenuAction(action: string, payload?: unknown): void {
   if (!mainWindow) return
   mainWindow.webContents.send('menu:action', action, payload)
+}
+
+// Broadcast an IPC event to every renderer window. Used for state-sync
+// channels (`storage:changed`, `cache:load-progress`) that any window may
+// be listening to.
+function broadcast(channel: string, ...args: unknown[]): void {
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed()) {
+      win.webContents.send(channel, ...args)
+    }
+  }
 }
 
 const GITHUB_URL = 'https://github.com/kapunga/decklist-tools'
@@ -212,6 +311,22 @@ const DOCS_URL = 'https://kapunga.github.io/decklist-tools/'
 
 function buildAppMenu(): Menu {
   const isMac = process.platform === 'darwin'
+
+  // macOS App menu — built manually so we can insert Settings… (Cmd+,)
+  // between About and Services, the conventional macOS Preferences slot.
+  const macAppSubmenu: MenuItemConstructorOptions[] = [
+    { role: 'about' },
+    { type: 'separator' },
+    { label: 'Settings…', accelerator: 'Cmd+,', click: () => createOrFocusSettingsWindow() },
+    { type: 'separator' },
+    { role: 'services' },
+    { type: 'separator' },
+    { role: 'hide' },
+    { role: 'hideOthers' },
+    { role: 'unhide' },
+    { type: 'separator' },
+    { role: 'quit' },
+  ]
 
   const fileSubmenu: MenuItemConstructorOptions[] = [
     { label: 'New Deck', accelerator: 'CmdOrCtrl+N', click: () => sendMenuAction('new-deck') },
@@ -231,6 +346,12 @@ function buildAppMenu(): Menu {
     { role: 'selectAll' },
     { type: 'separator' },
     { label: 'Find', accelerator: 'CmdOrCtrl+F', click: () => sendMenuAction('focus-search') },
+    ...(isMac
+      ? []
+      : [
+          { type: 'separator' as const },
+          { label: 'Preferences…', accelerator: 'Ctrl+,', click: () => createOrFocusSettingsWindow() },
+        ]),
   ]
 
   const viewSubmenu: MenuItemConstructorOptions[] = [
@@ -254,6 +375,16 @@ function buildAppMenu(): Menu {
     { role: 'toggleDevTools' },
   ]
 
+  const windowSubmenu: MenuItemConstructorOptions[] = [
+    { role: 'minimize' },
+    { role: 'zoom' },
+    ...(isMac
+      ? [{ type: 'separator' as const }, { role: 'front' as const }]
+      : []),
+    { type: 'separator' },
+    { label: 'MTG Deckbuilder', click: () => createOrFocusMainWindow() },
+  ]
+
   const helpSubmenu: MenuItemConstructorOptions[] = [
     {
       label: 'About MTG Deckbuilder',
@@ -272,11 +403,11 @@ function buildAppMenu(): Menu {
   ]
 
   const template: MenuItemConstructorOptions[] = [
-    ...(isMac ? [{ role: 'appMenu' as const }] : []),
+    ...(isMac ? [{ label: app.name, submenu: macAppSubmenu }] : []),
     { label: 'File', submenu: fileSubmenu },
     { label: 'Edit', submenu: editSubmenu },
     { label: 'View', submenu: viewSubmenu },
-    { role: 'windowMenu' },
+    { label: 'Window', submenu: windowSubmenu, role: 'window' },
     { role: 'help', submenu: helpSubmenu },
   ]
 
@@ -361,9 +492,7 @@ app.whenReady().then(async () => {
   createWindow()
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow()
-    }
+    createOrFocusMainWindow()
   })
 })
 
@@ -457,9 +586,7 @@ function setupIpcHandlers() {
 
   // Watch for file changes
   watchForChanges(storage, (event, filename) => {
-    if (mainWindow) {
-      mainWindow.webContents.send('storage:changed', { event, filename })
-    }
+    broadcast('storage:changed', { event, filename })
   })
 
   // MCP client integrations
@@ -529,9 +656,8 @@ function setupIpcHandlers() {
   })
 
   ipcMain.handle('cache:load-all', async (_, includeImages: boolean) => {
-    if (!mainWindow) return
     await loadAllCardsToCache(storage!, includeImages, (progress) => {
-      mainWindow?.webContents.send('cache:load-progress', progress)
+      broadcast('cache:load-progress', progress)
     })
   })
 
@@ -610,6 +736,19 @@ function setupIpcHandlers() {
   ipcMain.handle('menu:set-export-enabled', (_, enabled: boolean) => {
     const item = Menu.getApplicationMenu()?.getMenuItemById('export-deck')
     if (item) item.enabled = enabled
+  })
+
+  ipcMain.handle('settings:open', () => {
+    createOrFocusSettingsWindow()
+  })
+
+  ipcMain.handle('settings:save-active-section', (_, section: string) => {
+    if (!storage) return
+    try {
+      updateSettingsActiveSection(storage, section)
+    } catch (error) {
+      console.error('Failed to persist settings active section:', error)
+    }
   })
 
   ipcMain.handle('collection:import', async () => {

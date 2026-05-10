@@ -476,3 +476,56 @@ async function cacheCardImages(storage: Storage, card: ScryfallCard): Promise<vo
     }
   }
 }
+
+// ── Window State Persistence ───────────────────────────────────────────────
+
+export interface SettingsWindowState {
+  x?: number
+  y?: number
+  width: number
+  height: number
+  activeSection?: string
+}
+
+export const SETTINGS_WINDOW_DEFAULTS = {
+  width: 1000,
+  height: 700,
+  minWidth: 800,
+  minHeight: 600,
+} as const
+
+const SETTINGS_WINDOW_STATE_FILE = 'settings-window-state.json'
+
+function getSettingsWindowStatePath(storage: Storage): string {
+  return path.join(storage.getBasePath(), SETTINGS_WINDOW_STATE_FILE)
+}
+
+export function readSettingsWindowState(storage: Storage): SettingsWindowState | null {
+  const filePath = getSettingsWindowStatePath(storage)
+  try {
+    const parsed = JSON.parse(fs.readFileSync(filePath, 'utf-8')) as Partial<SettingsWindowState>
+    if (typeof parsed.width !== 'number' || typeof parsed.height !== 'number') return null
+    return {
+      x: typeof parsed.x === 'number' ? parsed.x : undefined,
+      y: typeof parsed.y === 'number' ? parsed.y : undefined,
+      width: parsed.width,
+      height: parsed.height,
+      activeSection: typeof parsed.activeSection === 'string' ? parsed.activeSection : undefined,
+    }
+  } catch {
+    return null
+  }
+}
+
+export function writeSettingsWindowState(storage: Storage, state: SettingsWindowState): void {
+  const filePath = getSettingsWindowStatePath(storage)
+  fs.writeFileSync(filePath, JSON.stringify(state, null, 2), 'utf-8')
+}
+
+export function updateSettingsActiveSection(storage: Storage, section: string): void {
+  const current = readSettingsWindowState(storage)
+  const next: SettingsWindowState = current
+    ? { ...current, activeSection: section }
+    : { width: SETTINGS_WINDOW_DEFAULTS.width, height: SETTINGS_WINDOW_DEFAULTS.height, activeSection: section }
+  writeSettingsWindowState(storage, next)
+}

@@ -64,8 +64,7 @@ export function Sidebar() {
       <div className="flex-1" />
       <BottomDock
         isCollapsed={isCollapsed}
-        isSettingsActive={currentView === 'settings'}
-        onSettingsClick={() => setView('settings')}
+        onSettingsClick={() => window.electronAPI.openSettings()}
         themeName={themeName}
       />
     </aside>
@@ -160,18 +159,17 @@ function NavRow({ label, icon, isActive, isCollapsed, onClick }: NavRowProps) {
 
 interface BottomDockProps {
   isCollapsed: boolean
-  isSettingsActive: boolean
   onSettingsClick: () => void
   themeName: string
 }
 
-function BottomDock({ isCollapsed, isSettingsActive, onSettingsClick, themeName }: BottomDockProps) {
+function BottomDock({ isCollapsed, onSettingsClick, themeName }: BottomDockProps) {
   return (
     <div className="px-2 pb-4 pt-2 flex flex-col gap-2">
       <NavRow
         label="Settings"
         icon={<Settings className="w-4 h-4 shrink-0" />}
-        isActive={isSettingsActive}
+        isActive={false}
         isCollapsed={isCollapsed}
         onClick={onSettingsClick}
       />

@@ -80,6 +80,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeListener('menu:action', handler)
   },
   setExportMenuEnabled: (enabled: boolean) => ipcRenderer.invoke('menu:set-export-enabled', enabled),
+
+  // Settings window
+  openSettings: () => ipcRenderer.invoke('settings:open'),
+  saveSettingsActiveSection: (section: string) => ipcRenderer.invoke('settings:save-active-section', section),
 })
 
 // Type definitions for the exposed API
@@ -196,6 +200,8 @@ export interface ElectronAPI {
   exportDeck: (args: DeckExportArgs) => Promise<DeckExportResult>
   onMenuAction: (callback: (action: string, payload?: unknown) => void) => () => void
   setExportMenuEnabled: (enabled: boolean) => Promise<void>
+  openSettings: () => Promise<void>
+  saveSettingsActiveSection: (section: string) => Promise<void>
 }
 
 declare global {
