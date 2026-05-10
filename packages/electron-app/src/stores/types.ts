@@ -1,7 +1,7 @@
-import type { Deck, Taxonomy, CardList, Config, CardEntry, DeckNote, CardIdentifier, RoleDefinition, SetCollectionFile, SetCollectionEntry, CollectionLevel, PullListConfig, CardSetName, CardSource, ArtCardFace } from '@/types'
+import type { Deck, Taxonomy, CardList, CardListKind, Config, CardEntry, DeckNote, CardIdentifier, RoleDefinition, SetCollectionFile, SetCollectionEntry, CollectionLevel, PullListConfig, CardSetName, CardSource, ArtCardFace } from '@/types'
 import type { UISlice } from './uiSlice'
 
-export type AppView = 'decks' | 'deck-detail' | 'interest-list' | 'buy-list'
+export type AppView = 'decks' | 'deck-detail' | 'lists' | 'list-detail' | 'buy-list'
 
 export interface AppState
   extends DeckSlice,
@@ -9,7 +9,7 @@ export interface AppState
     CommanderSlice,
     RoleSlice,
     NoteSlice,
-    InterestListSlice,
+    CardListsSlice,
     ConfigSlice,
     SelectionSlice,
     SetCollectionSlice,
@@ -26,6 +26,7 @@ export interface AppState
 
   // UI State
   selectedDeckId: string | null
+  selectedCardListId: string | null
   currentView: AppView
   isLoading: boolean
   hasInitialized: boolean
@@ -34,6 +35,7 @@ export interface AppState
   // Core actions
   loadData: () => Promise<void>
   selectDeck: (id: string | null) => void
+  selectCardList: (id: string | null) => void
   setView: (view: AppView) => void
 }
 
@@ -76,10 +78,14 @@ export interface NoteSlice {
   deleteNote: (deckId: string, noteId: string, removeRole?: boolean) => Promise<void>
 }
 
-export interface InterestListSlice {
-  addToInterestList: (card: CardIdentifier, notes?: string, source?: CardSource) => Promise<void>
-  removeFromInterestList: (cardName: string) => Promise<void>
-  updateInterestItem: (cardName: string, updates: { notes?: string; potentialDecks?: string[] }) => Promise<void>
+export interface CardListsSlice {
+  createCardList: (input: { name: string; kind?: CardListKind; description?: string }) => Promise<CardList>
+  renameCardList: (id: string, updates: { name?: string; description?: string }) => Promise<void>
+  deleteCardList: (id: string) => Promise<void>
+  addCardToList: (listId: string, card: CardIdentifier, notes?: string, source?: CardSource) => Promise<void>
+  removeCardFromList: (listId: string, cardName: string) => Promise<void>
+  updateCardInList: (listId: string, cardName: string, updates: { notes?: string; potentialDecks?: string[] }) => Promise<void>
+  addEntryToList: (listId: string, entry: CardEntry) => Promise<void>
 }
 
 export interface ConfigSlice {

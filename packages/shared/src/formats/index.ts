@@ -5,6 +5,7 @@ import { moxfieldFormat } from './moxfield.js'
 import { mtgoFormat } from './mtgo.js'
 import { simpleFormat } from './simple.js'
 import { archidektFormat } from './archidekt.js'
+import { mythicToolsCsvFormat, looksLikeMythicToolsCsv } from './mythic-tools-csv.js'
 import type { DeckExportFormat, DetectedFormat } from './types.js'
 
 // All formats
@@ -13,7 +14,8 @@ export const formats: DeckExportFormat[] = [
   moxfieldFormat,
   archidektFormat,
   mtgoFormat,
-  simpleFormat
+  simpleFormat,
+  mythicToolsCsvFormat,
 ]
 
 export function getFormat(id: string): DeckExportFormat | undefined {
@@ -22,6 +24,11 @@ export function getFormat(id: string): DeckExportFormat | undefined {
 
 export function detectFormat(text: string): DetectedFormat {
   const lines = text.split('\n').map(l => l.trim()).filter(l => l)
+
+  // Mythic Tools CSV: detect by header row
+  if (looksLikeMythicToolsCsv(text)) {
+    return { format: mythicToolsCsvFormat, confidence: 'high' }
+  }
 
   // Archidekt: has [Category] and ^tag^
   if (lines.some(l => l.includes('[') && l.includes(']') && l.includes('x '))) {
@@ -45,3 +52,4 @@ export { moxfieldFormat } from './moxfield.js'
 export { mtgoFormat } from './mtgo.js'
 export { simpleFormat } from './simple.js'
 export { archidektFormat } from './archidekt.js'
+export { mythicToolsCsvFormat } from './mythic-tools-csv.js'

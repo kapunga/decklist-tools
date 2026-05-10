@@ -1,4 +1,4 @@
-import type { ScryfallCard } from '../types/index.js'
+import type { FormatType, ScryfallCard } from '../types/index.js'
 import { FORMAT_TYPE } from '../types/index.js'
 import { SCRYFALL } from '../constants/index.js'
 
@@ -234,6 +234,53 @@ export function isLegalInFormat(card: ScryfallCard, format: string): boolean {
   const formatKey = format.toLowerCase().replace('_', '')
   const legality = card.legalities[formatKey]
   return legality === 'legal' || legality === 'restricted'
+}
+
+export interface ListLegalitiesResult {
+  /** Formats where every card is legal (or restricted). */
+  intersection: FormatType[]
+  /** Formats where at least one but not all cards are legal — disjoint from intersection. */
+  someLegal: FormatType[]
+  /** Formats where at least one card is explicitly banned. */
+  someBanned: FormatType[]
+}
+
+const LEGALITY_CHECKED_FORMATS: FormatType[] = [
+  FORMAT_TYPE.STANDARD,
+  FORMAT_TYPE.PIONEER,
+  FORMAT_TYPE.MODERN,
+  FORMAT_TYPE.PAUPER,
+  FORMAT_TYPE.LEGACY,
+  FORMAT_TYPE.COMMANDER,
+]
+
+/**
+ * Compute legality slices for a list of cards: which formats every card is
+ * legal in (intersection), which formats some-but-not-all cards are legal in,
+ * and which formats have at least one explicitly banned card. Kitchen-table
+ * is omitted — always trivially legal.
+ */
+export function listLegalities(cards: ScryfallCard[]): ListLegalitiesResult {
+  if (cards.length === 0) return { intersection: [], someLegal: [], someBanned: [] }
+  const intersection: FormatType[] = []
+  const someLegal: FormatType[] = []
+  const someBanned: FormatType[] = []
+  for (const format of LEGALITY_CHECKED_FORMATS) {
+    const formatKey = format.toLowerCase().replace('_', '')
+    let anyLegal = false
+    let allLegal = true
+    let anyBanned = false
+    for (const card of cards) {
+      const status = card.legalities[formatKey]
+      if (status === 'legal' || status === 'restricted') anyLegal = true
+      else allLegal = false
+      if (status === 'banned') anyBanned = true
+    }
+    if (allLegal) intersection.push(format)
+    else if (anyLegal) someLegal.push(format)
+    if (anyBanned) someBanned.push(format)
+  }
+  return { intersection, someLegal, someBanned }
 }
 
 // Check if a card's color identity is a subset of allowed colors

@@ -20,7 +20,10 @@ import {
 } from '@/components/ui/select'
 import { useStore } from '@/hooks/useStore'
 import { useImportCards } from '@/hooks/useImportCards'
-import { formats } from '@/lib/formats'
+import { formats } from '@mtg-deckbuilder/shared'
+import { ImportFileButton } from '@/components/ImportFileButton'
+
+const deckImportFormats = formats.filter(f => !f.listOnly)
 import { getCardById } from '@/lib/scryfall'
 import type { FormatType, Deck, CardEntry, CardIdentifier } from '@/types'
 import { formatDefaults, FORMAT_TYPE, CARD_SET, isCommanderLikeFormat } from '@/types'
@@ -247,11 +250,12 @@ export function ImportNewDeckDialog({ open: controlledOpen, onOpenChange }: Impo
                 <SelectItem value="auto">
                   Auto-detect {detectedFormat ? `(${detectedFormat.format.name})` : ''}
                 </SelectItem>
-                {formats.map(f => (
+                {deckImportFormats.map(f => (
                   <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            <ImportFileButton onFileLoaded={handleTextChange} disabled={isImporting} />
           </div>
 
           {/* Textarea for pasting */}

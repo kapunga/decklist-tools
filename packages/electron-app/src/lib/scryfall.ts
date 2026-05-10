@@ -23,6 +23,7 @@ export {
   getColorIdentityString,
   sortColorsWUBRG,
   isLegalInFormat,
+  listLegalities,
   matchesColorIdentity,
   searchCardsWithFilters,
   getCardPrices,

@@ -1,4 +1,4 @@
-import type { ParsedCard, DetectedFormat } from '@/lib/formats'
+import type { ParsedCard, DetectedFormat } from '@mtg-deckbuilder/shared'
 import type { CardEntry, CardSetName, PulledPrinting, PullListItem as BasePullListItem, PullListGroup as BasePullListGroup } from '@/types'
 
 export interface ImportProgress {

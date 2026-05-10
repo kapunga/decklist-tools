@@ -298,26 +298,44 @@ export function getToolDefinitions(): Tool[] {
       },
     },
 
-    // Interest List
+    // Card Lists
     {
-      name: 'get_interest_list',
-      description: 'Get the full interest list',
+      name: 'list_card_lists',
+      description: 'List all saved card lists with id, name, kind, description, and card count. Card lists are generic named card collections used for purposes like an interest list, a scanned partial-set pool, a wishlist, or a tracked collection.',
       inputSchema: {
         type: 'object',
         properties: {},
       },
     },
     {
-      name: 'manage_interest_list',
-      description: 'Add or remove cards from the interest list.',
+      name: 'get_card_list',
+      description: 'Get a single card list with all entries. The identifier may be the list UUID or the (case-insensitive) list name.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          identifier: { type: 'string', description: 'List UUID or name' },
+        },
+        required: ['identifier'],
+      },
+    },
+    {
+      name: 'manage_card_list',
+      description: 'Create, rename, or delete a card list, or add/remove cards within a list.\n\n**Actions:**\n- create: requires `name`; optional `kind` (interest, collection, scan, wishlist, custom — defaults to custom) and `description`.\n- delete: requires `id`. The well-known interest list cannot be deleted.\n- rename: requires `id` and `name`; optional `description`.\n- add: requires `id` and `name` (card name). Set/collector are optional. Optional `quantity`, `notes`, `potential_decks`, `source`.\n- remove: requires `id` and `card_name`.',
       inputSchema: {
         type: 'object',
         properties: {
           action: {
             type: 'string',
-            enum: ['add', 'remove'],
+            enum: ['create', 'delete', 'rename', 'add', 'remove'],
           },
-          name: { type: 'string', description: 'Card name (required for add)' },
+          id: { type: 'string', description: 'List UUID (required for delete, rename, add, remove)' },
+          name: { type: 'string', description: 'For create/rename: the list name. For add: the card name to add.' },
+          description: { type: 'string' },
+          kind: {
+            type: 'string',
+            enum: ['interest', 'collection', 'scan', 'wishlist', 'custom'],
+            description: 'List kind (create only). Defaults to custom.',
+          },
           card_name: { type: 'string', description: 'Card name to remove (required for remove)' },
           set_code: { type: 'string' },
           collector_number: { type: 'string' },
@@ -327,6 +345,7 @@ export function getToolDefinitions(): Tool[] {
             items: { type: 'string' },
           },
           source: { type: 'string' },
+          quantity: { type: 'number' },
           force: {
             type: 'boolean',
             description: 'Skip the name/set+collector_number mismatch check. By default, supplying all three will error if the resolved printing does not match the supplied name. Set true to override.',

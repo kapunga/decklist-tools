@@ -335,14 +335,45 @@ export interface Taxonomy {
 // Card List — generic named collection of cards (replaces InterestList)
 export const INTEREST_LIST_ID = '00000000-0000-4000-8000-000000000001'
 
+export const CARD_LIST_KIND = {
+  INTEREST: 'interest',
+  COLLECTION: 'collection',
+  SCAN: 'scan',
+  WISHLIST: 'wishlist',
+  CUSTOM: 'custom',
+} as const
+export type CardListKind = typeof CARD_LIST_KIND[keyof typeof CARD_LIST_KIND]
+
+export const CARD_LIST_KIND_LABELS: Record<CardListKind, string> = {
+  interest: 'Interest',
+  collection: 'Collection',
+  scan: 'Scan',
+  wishlist: 'Wishlist',
+  custom: 'Custom',
+}
+
+export const CARD_LIST_KIND_DEFAULT_DESCRIPTIONS: Record<CardListKind, string> = {
+  interest: 'Cards I want to brew with someday.',
+  collection: 'Authoritative list of cards I own.',
+  scan: 'A scanned pool of physical cards (e.g. a partial set, an event pool).',
+  wishlist: 'Cards I want to acquire.',
+  custom: '',
+}
+
 export interface CardList {
   id: string
   name: string
   description?: string
+  kind?: CardListKind
   version: number
   createdAt: string
   updatedAt: string
   cardSets: CardSet[]
+}
+
+/** Returns the kind, falling back to 'custom' for legacy lists with no kind set. */
+export function getCardListKind(list: CardList): CardListKind {
+  return list.kind ?? CARD_LIST_KIND.CUSTOM
 }
 
 // Themes

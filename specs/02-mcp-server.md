@@ -185,29 +185,46 @@ Add, remove, or swap commanders for a Commander format deck. The deck's `colorId
 
 ---
 
-## Interest list
+## Card lists
 
-The interest list is a single global `CardList` (UUID `00000000-0000-4000-8000-000000000001`) where the user collects cards they're considering for future decks.
+A `CardList` is a generic named card collection. Each list has a `kind` —
+`interest` | `collection` | `scan` | `wishlist` | `custom` — that drives default
+descriptions and UI affordances. The well-known interest list (UUID
+`00000000-0000-4000-8000-000000000001`) is reserved and cannot be deleted, but
+otherwise behaves like any other list.
 
-### `get_interest_list`
+### `list_card_lists`
 
-Returns the full interest list.
+Returns a summary of all saved card lists: id, name, kind, description, card count, updatedAt.
 
 **Input:** none.
 
-### `manage_interest_list`
+### `get_card_list`
 
-Add or remove cards from the interest list.
+Returns a single card list with all entries.
 
 **Input:**
-- `action` *(string, required)* — `add` | `remove`.
-- `name` *(string)* — required for `add`.
+- `identifier` *(string, required)* — UUID or case-insensitive name.
+
+### `manage_card_list`
+
+Create, rename, or delete a list, or add/remove cards within one.
+
+**Input:**
+- `action` *(string, required)* — `create` | `delete` | `rename` | `add` | `remove`.
+- `id` *(string)* — required for everything except `create`.
+- `name` *(string)* — for `create`/`rename`: list name. For `add`: card name.
+- `description` *(string, optional)*.
+- `kind` *(string, optional)* — `interest` | `collection` | `scan` | `wishlist` | `custom`. Used on `create`. Defaults to `custom`.
 - `card_name` *(string)* — required for `remove`.
-- `set_code`, `collector_number` *(string, optional)* — narrows to a specific printing on `add`.
-- `notes` *(string, optional)* — free-text notes attached to the entry.
+- `set_code`, `collector_number` *(string, optional)* — narrow to a specific printing on `add`.
+- `quantity` *(number, optional)* — quantity on `add`.
+- `notes` *(string, optional)* — free-text notes on the entry.
 - `potential_decks` *(string[])* — deck IDs the user is considering this card for.
 - `source` *(string, optional)* — `user` | `import` | `claude`. Defaults to `user`.
-- `force` *(boolean, optional)* — when `name`, `set_code`, and `collector_number` are all supplied on `add`, the resolved printing's name is cross-checked against the supplied `name` (matches against canonical name, flavor name, or any face name). On mismatch the call errors. Pass `force: true` to override — useful for deliberately adding a card by a flavor/face name the validation doesn't recognize.
+- `force` *(boolean, optional)* — same name/set+collector mismatch override as `manage_card`.
+
+The well-known interest-list id cannot be deleted; that action errors.
 
 ---
 

@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react'
-import { formats, detectFormat, type ParsedCard } from '@/lib/formats'
+import { formats, detectFormat, type ParsedCard } from '@mtg-deckbuilder/shared'
 import { searchCardByName, getCardBySetAndNumber } from '@/lib/scryfall'
 import { SCRYFALL, IMPORT_PREVIEW } from '@/lib/constants'
 import { OWNERSHIP_STATUS, CARD_SOURCE, CARD_SET, makeCardEntry, getPrimaryType, createCardIdentifier } from '@/types'
@@ -64,6 +64,7 @@ export function useImportCards(sideboardSize?: number): UseImportCardsResult {
 
     const newErrors: string[] = []
     const resolvedCards: ResolvedCard[] = []
+    const fetchedScryfallCards: unknown[] = []
 
     let lastProgressUpdate = 0
     for (let i = 0; i < parsedCards.length; i++) {
@@ -92,6 +93,8 @@ export function useImportCards(sideboardSize?: number): UseImportCardsResult {
           newErrors.push(`Card not found: ${parsed.name}`)
           continue
         }
+
+        fetchedScryfallCards.push(scryfallCard)
 
         // Use any roles from the parsed data
         const roles = [...(parsed.roles || [])]
@@ -122,6 +125,14 @@ export function useImportCards(sideboardSize?: number): UseImportCardsResult {
         }
       } catch (error) {
         newErrors.push(`Error looking up ${parsed.name}: ${error}`)
+      }
+    }
+
+    if (fetchedScryfallCards.length > 0) {
+      try {
+        await window.electronAPI.saveCachedCards(fetchedScryfallCards)
+      } catch (error) {
+        console.error('Failed to persist imported cards to local cache:', error)
       }
     }
 

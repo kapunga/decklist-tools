@@ -8,7 +8,7 @@ import { createCardSlice } from '@/stores/cardSlice'
 import { createCommanderSlice } from '@/stores/commanderSlice'
 import { createRoleSlice } from '@/stores/roleSlice'
 import { createNoteSlice } from '@/stores/noteSlice'
-import { createInterestListSlice } from '@/stores/interestListSlice'
+import { createCardListsSlice } from '@/stores/cardListsSlice'
 import { createConfigSlice } from '@/stores/configSlice'
 import { createSelectionSlice } from '@/stores/selectionSlice'
 import { createSetCollectionSlice } from '@/stores/setCollectionSlice'
@@ -27,6 +27,7 @@ export const useStore = create<AppState>((set, get) => ({
   setCollection: null,
   pullListConfig: null,
   selectedDeckId: null,
+  selectedCardListId: null,
   currentView: 'decks',
   isLoading: false,
   hasInitialized: false,
@@ -73,10 +74,20 @@ export const useStore = create<AppState>((set, get) => ({
     })
   },
 
+  selectCardList: (id) => {
+    set({
+      selectedCardListId: id,
+      currentView: id ? 'list-detail' : 'lists',
+      selectedCards: new Set<string>(),
+      focusedCardId: null
+    })
+  },
+
   setView: (view) => {
     set({
       currentView: view,
       selectedDeckId: view === 'deck-detail' ? get().selectedDeckId : null,
+      selectedCardListId: view === 'list-detail' ? get().selectedCardListId : null,
       selectedCards: new Set<string>(),
       focusedCardId: null
     })
@@ -88,7 +99,7 @@ export const useStore = create<AppState>((set, get) => ({
   ...createCommanderSlice(set, get),
   ...createRoleSlice(set, get),
   ...createNoteSlice(set, get),
-  ...createInterestListSlice(set, get),
+  ...createCardListsSlice(set, get),
   ...createConfigSlice(set, get),
   ...createSelectionSlice(set, get),
   ...createSetCollectionSlice(set, get),
