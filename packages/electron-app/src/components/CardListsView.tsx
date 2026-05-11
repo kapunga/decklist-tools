@@ -24,8 +24,9 @@ import {
   CARD_LIST_KIND_DEFAULT_DESCRIPTIONS,
   CARD_LIST_KIND_LABELS,
   getCardListKind,
+  getCardListEntries,
 } from '@/types'
-import type { CardList, CardListKind } from '@/types'
+import type { CardListKind } from '@/types'
 
 const KIND_ICONS: Record<CardListKind, typeof Bookmark> = {
   interest: Bookmark,
@@ -33,10 +34,6 @@ const KIND_ICONS: Record<CardListKind, typeof Bookmark> = {
   scan: ScanLine,
   wishlist: Heart,
   custom: Sparkles,
-}
-
-function listEntryCount(list: CardList): number {
-  return list.cardSets[0]?.entries.length ?? 0
 }
 
 export function CardListsView() {
@@ -66,6 +63,7 @@ export function CardListsView() {
             {sorted.map(list => {
               const kind = getCardListKind(list)
               const Icon = KIND_ICONS[kind]
+              const count = getCardListEntries(list).length
               return (
                 <button
                   key={list.id}
@@ -83,7 +81,7 @@ export function CardListsView() {
                     <p className="text-sm text-muted-foreground line-clamp-2">{list.description}</p>
                   )}
                   <div className="text-xs text-muted-foreground mt-auto">
-                    {listEntryCount(list)} {listEntryCount(list) === 1 ? 'card' : 'cards'}
+                    {count} {count === 1 ? 'card' : 'cards'}
                   </div>
                 </button>
               )

@@ -86,6 +86,7 @@ export interface CardListsSlice {
   removeCardFromList: (listId: string, cardName: string) => Promise<void>
   updateCardInList: (listId: string, cardName: string, updates: { notes?: string; potentialDecks?: string[] }) => Promise<void>
   addEntryToList: (listId: string, entry: CardEntry) => Promise<void>
+  addEntriesToList: (listId: string, entries: CardEntry[]) => Promise<void>
 }
 
 export interface ConfigSlice {

@@ -1,15 +1,13 @@
-import type { CardEntry, CardIdentifier, CardList, CardListKind, CardSource } from '@/types'
-import { CARD_SET, CARD_SOURCE, CARD_LIST_KIND_DEFAULT_DESCRIPTIONS, makeCardEntry } from '@/types'
+import type { CardIdentifier, CardList, CardListKind, CardSource } from '@/types'
+import {
+  CARD_SET,
+  CARD_SOURCE,
+  CARD_LIST_KIND_DEFAULT_DESCRIPTIONS,
+  getCardListEntries,
+  withCardListEntries,
+  makeCardEntry,
+} from '@/types'
 import type { CardListsSlice, SliceCreator } from './types'
-
-function getMainEntries(list: CardList): CardEntry[] {
-  return list.cardSets[0]?.entries ?? []
-}
-
-function withMainEntries(list: CardList, entries: CardEntry[]): CardList {
-  const setName = list.cardSets[0]?.name ?? CARD_SET.MAINBOARD
-  return { ...list, cardSets: [{ name: setName, entries }] }
-}
 
 function bumpVersion(list: CardList): CardList {
   return { ...list, version: list.version + 1 }
@@ -79,33 +77,38 @@ export const createCardListsSlice: SliceCreator<CardListsSlice> = (set, get) => 
         notes,
         source: source ?? CARD_SOURCE.USER,
       })
-      const updated = withMainEntries(list, [...getMainEntries(list), entry])
-      await persist(updated)
+      await persist(withCardListEntries(list, [...getCardListEntries(list), entry]))
     },
 
     removeCardFromList: async (listId, cardName) => {
       const list = getList(listId)
       if (!list) return
-      const filtered = getMainEntries(list).filter(
+      const filtered = getCardListEntries(list).filter(
         e => e.card.name.toLowerCase() !== cardName.toLowerCase(),
       )
-      await persist(withMainEntries(list, filtered))
+      await persist(withCardListEntries(list, filtered))
     },
 
     updateCardInList: async (listId, cardName, updates) => {
       const list = getList(listId)
       if (!list) return
-      const entries = getMainEntries(list).map(e =>
+      const entries = getCardListEntries(list).map(e =>
         e.card.name.toLowerCase() === cardName.toLowerCase() ? { ...e, ...updates } : e,
       )
-      await persist(withMainEntries(list, entries))
+      await persist(withCardListEntries(list, entries))
     },
 
     addEntryToList: async (listId, entry) => {
       const list = getList(listId)
       if (!list) return
-      const updated = withMainEntries(list, [...getMainEntries(list), entry])
-      await persist(updated)
+      await persist(withCardListEntries(list, [...getCardListEntries(list), entry]))
+    },
+
+    addEntriesToList: async (listId, entries) => {
+      if (entries.length === 0) return
+      const list = getList(listId)
+      if (!list) return
+      await persist(withCardListEntries(list, [...getCardListEntries(list), ...entries]))
     },
   }
 }

@@ -656,12 +656,10 @@ function setupIpcHandlers() {
   })
 
   ipcMain.handle('cache:save-cards', async (_, cards: unknown[]) => {
-    for (const card of cards) {
-      try {
-        storage!.cacheCardWithIndex(card as Parameters<typeof storage.cacheCardWithIndex>[0])
-      } catch (error) {
-        console.error('Failed to cache scryfall card:', error)
-      }
+    try {
+      storage!.cacheCardsWithIndex(cards as Parameters<typeof storage.cacheCardsWithIndex>[0])
+    } catch (error) {
+      console.error('Failed to cache scryfall cards:', error)
     }
   })
 

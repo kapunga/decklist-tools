@@ -9,6 +9,8 @@ export {
   searchCardByNameExact,
   getCardBySetAndNumber,
   getCardById,
+  getCardsByIds,
+  lookupCardsByIdentifiers,
   autocomplete,
   searchCards,
   getCardPrintings,

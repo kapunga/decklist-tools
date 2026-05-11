@@ -30,7 +30,7 @@ interface ImportToListDialogProps {
 
 export function ImportToListDialog({ listId, triggerLabel = 'Import' }: ImportToListDialogProps) {
   const [open, setOpen] = useState(false)
-  const addEntryToList = useStore(state => state.addEntryToList)
+  const addEntriesToList = useStore(state => state.addEntriesToList)
 
   const {
     text, formatId, parsedCards, isImporting, importProgress, errors,
@@ -41,12 +41,11 @@ export function ImportToListDialog({ listId, triggerLabel = 'Import' }: ImportTo
   const handleImport = useCallback(async () => {
     const { resolvedCards, errors: importErrors } = await lookupCards()
     if (importErrors.length === 0 && resolvedCards.length > 0) {
-      for (const { card } of resolvedCards) {
-        await addEntryToList(listId, card)
-      }
-      setTimeout(() => { setOpen(false); reset() }, 500)
+      await addEntriesToList(listId, resolvedCards.map(r => r.card))
+      setOpen(false)
+      reset()
     }
-  }, [lookupCards, listId, addEntryToList, reset])
+  }, [lookupCards, listId, addEntriesToList, reset])
 
   const handleClose = (isOpen: boolean) => {
     if (!isImporting) {

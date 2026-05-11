@@ -11,15 +11,15 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useStore } from '@/hooks/useStore'
-import { autocomplete, searchCardByName, getCardById, getCardImageUrl, listLegalities } from '@/lib/scryfall'
+import { autocomplete, searchCardByName, getCardsByIds, getCardImageUrl, listLegalities } from '@/lib/scryfall'
 import { AUTOCOMPLETE } from '@/lib/constants'
 import type { CardEntry, CardList, ScryfallCard, FormatType } from '@/types'
 import {
   CARD_LIST_KIND_LABELS,
-  INTEREST_LIST_ID,
   createCardIdentifier,
   getCardListKind,
   getPotentialDecks,
+  isWellKnownList,
 } from '@/types'
 import { ImportToListDialog } from '@/components/ImportToListDialog'
 
@@ -29,6 +29,16 @@ export function CardListView() {
   const list = useMemo<CardList | null>(
     () => cardLists.find(l => l.id === selectedCardListId) ?? null,
     [cardLists, selectedCardListId],
+  )
+  // `cardLists` is reconstructed by every loadData (including the one fired
+  // when LegalityPanel writes cards into the on-disk cache via the recursive
+  // file watcher), so `list` ref churns even when its data is unchanged. Pin
+  // the entries array to (id, version) so downstream effects (LegalityPanel)
+  // don't re-fire on each spurious reload — that triggered an infinite
+  // fetch→write→reload loop.
+  const items = useMemo(
+    () => list?.cardSets[0]?.entries ?? [],
+    [list?.id, list?.version],
   )
 
   const decks = useStore(state => state.decks)
@@ -82,7 +92,6 @@ export function CardListView() {
       setActiveImageUrl(null)
       return
     }
-    const items = list?.cardSets[0]?.entries ?? []
     const item = items.find(i => i.card.name === activeCard)
     if (!item) return
     if (item.card.scryfallId) {
@@ -92,7 +101,7 @@ export function CardListView() {
         if (card) setActiveImageUrl(getCardImageUrl(card))
       })
     }
-  }, [activeCard, list])
+  }, [activeCard, items])
 
   const handleAddCard = useCallback(async (name: string) => {
     if (!list) return
@@ -137,8 +146,7 @@ export function CardListView() {
   }, [list, nameDraft, renameCardList])
 
   const handleDelete = useCallback(async () => {
-    if (!list) return
-    if (list.id === INTEREST_LIST_ID) return
+    if (!list || isWellKnownList(list)) return
     if (!confirm(`Delete list "${list.name}"? This cannot be undone.`)) return
     await deleteCardList(list.id)
     selectCardList(null)
@@ -152,9 +160,7 @@ export function CardListView() {
     )
   }
 
-  const items = list.cardSets[0]?.entries ?? []
   const kindLabel = CARD_LIST_KIND_LABELS[getCardListKind(list)]
-  const isWellKnownInterest = list.id === INTEREST_LIST_ID
 
   return (
     <div className="h-full flex flex-col">
@@ -200,7 +206,7 @@ export function CardListView() {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={handleDelete}
-                  disabled={isWellKnownInterest}
+                  disabled={isWellKnownList(list)}
                   className="text-destructive"
                 >
                   <Trash2 className="w-4 h-4 mr-2" /> Delete list
@@ -321,12 +327,7 @@ function LegalityPanel({ entries }: LegalityPanelProps) {
         return
       }
 
-      const fetched: ScryfallCard[] = []
-      for (const id of missingIds) {
-        if (cancelled) return
-        const card = await getCardById(id)
-        if (card) fetched.push(card as ScryfallCard)
-      }
+      const fetched = await getCardsByIds(missingIds)
       if (cancelled) return
       if (fetched.length > 0) {
         window.electronAPI.saveCachedCards(fetched).catch((err: unknown) =>

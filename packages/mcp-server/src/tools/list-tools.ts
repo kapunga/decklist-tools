@@ -10,9 +10,10 @@ import {
   getPrimaryType,
   createCardIdentifier,
   getCardListKind,
+  getCardListEntries,
+  withCardListEntries,
 } from '@mtg-deckbuilder/shared'
 import type {
-  CardEntry,
   CardList,
   CardListKind,
   CardSource,
@@ -20,16 +21,6 @@ import type {
 import { randomUUID } from 'node:crypto'
 import { fetchScryfallCard } from './helpers.js'
 import type { ManageCardListArgs } from './types.js'
-
-function getMainEntries(list: CardList): CardEntry[] {
-  return list.cardSets[0]?.entries ?? []
-}
-
-function setMainEntries(list: CardList, entries: CardEntry[]): CardList {
-  const firstSet = list.cardSets[0]
-  const setName = firstSet?.name ?? CARD_SET.MAINBOARD
-  return { ...list, cardSets: [{ name: setName, entries }] }
-}
 
 function findListByIdentifier(storage: Storage, identifier: string): CardList | null {
   if (isValidUUID(identifier)) {
@@ -51,7 +42,7 @@ export function listCardLists(storage: Storage) {
     name: list.name,
     kind: getCardListKind(list),
     description: list.description ?? '',
-    cardCount: getMainEntries(list).length,
+    cardCount: getCardListEntries(list).length,
     updatedAt: list.updatedAt,
   }))
 }
@@ -125,7 +116,7 @@ export async function manageCardList(storage: Storage, args: ManageCardListArgs)
         source,
         primaryType: getPrimaryType(card.type_line),
       })
-      const updated = setMainEntries(list, [...getMainEntries(list), entry])
+      const updated = withCardListEntries(list, [...getCardListEntries(list), entry])
       storage.saveCardList(updated)
       return { success: true, item: entry }
     }
@@ -133,13 +124,13 @@ export async function manageCardList(storage: Storage, args: ManageCardListArgs)
       if (!args.id) throw new Error('id is required for remove')
       if (!args.card_name) throw new Error('card_name is required for remove')
       const list = getListOrThrow(storage, args.id)
-      const entries = getMainEntries(list)
+      const entries = getCardListEntries(list)
       const idx = entries.findIndex(
         e => e.card.name.toLowerCase() === args.card_name!.toLowerCase(),
       )
       if (idx === -1) throw new Error(`Card not found in list: ${args.card_name}`)
       const next = entries.filter((_, i) => i !== idx)
-      storage.saveCardList(setMainEntries(list, next))
+      storage.saveCardList(withCardListEntries(list, next))
       return { success: true }
     }
     default:
