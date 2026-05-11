@@ -14,7 +14,7 @@ import {
 import { manageCard, searchCardsHandler } from './card-tools.js'
 import { listRoles, manageRole } from './role-tools.js'
 import { manageCommander } from './commander-tools.js'
-import { getInterestList, manageInterestList } from './interest-tools.js'
+import { listCardLists, getCardList, manageCardList } from './list-tools.js'
 import { listDeckNotes, manageDeckNote } from './note-tools.js'
 import { getCollectionFilter } from './collection-tools.js'
 import { validateInputLengths } from './helpers.js'
@@ -29,7 +29,7 @@ import {
   validateDeckExportArgs,
   validateManageRoleArgs,
   validateManageCommanderArgs,
-  validateManageInterestListArgs,
+  validateManageCardListArgs,
   validateManageDeckNoteArgs,
 } from './types.js'
 
@@ -74,10 +74,12 @@ export async function handleToolCall(
       return manageRole(storage, validateManageRoleArgs(args))
     case 'manage_commander':
       return manageCommander(storage, validateManageCommanderArgs(args))
-    case 'get_interest_list':
-      return getInterestList(storage)
-    case 'manage_interest_list':
-      return manageInterestList(storage, validateManageInterestListArgs(args))
+    case 'list_card_lists':
+      return listCardLists(storage)
+    case 'get_card_list':
+      return getCardList(storage, args.identifier as string)
+    case 'manage_card_list':
+      return manageCardList(storage, validateManageCardListArgs(args))
     case 'list_deck_notes':
       return listDeckNotes(storage, args.deck_id as string)
     case 'manage_deck_note':

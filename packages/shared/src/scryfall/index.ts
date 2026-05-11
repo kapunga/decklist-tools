@@ -1,4 +1,4 @@
-import type { ScryfallCard } from '../types/index.js'
+import type { FormatType, ScryfallCard } from '../types/index.js'
 import { FORMAT_TYPE } from '../types/index.js'
 import { SCRYFALL } from '../constants/index.js'
 
@@ -11,18 +11,19 @@ const USER_AGENT = 'MTGDeckbuilder/1.0'
 // Simple request queue for rate limiting
 let lastRequestTime = 0
 
-async function rateLimitedFetch(url: string): Promise<Response> {
+async function awaitRateLimit(): Promise<void> {
   const now = Date.now()
   const timeSinceLastRequest = now - lastRequestTime
-
   if (timeSinceLastRequest < SCRYFALL.MIN_REQUEST_INTERVAL_MS) {
     await new Promise(resolve =>
       setTimeout(resolve, SCRYFALL.MIN_REQUEST_INTERVAL_MS - timeSinceLastRequest)
     )
   }
-
   lastRequestTime = Date.now()
+}
 
+async function rateLimitedFetch(url: string): Promise<Response> {
+  await awaitRateLimit()
   return fetch(url, {
     headers: {
       'User-Agent': USER_AGENT
@@ -138,6 +139,86 @@ export async function getCardById(scryfallId: string): Promise<ScryfallCard | nu
   )
 }
 
+/**
+ * Identifiers accepted by Scryfall's POST /cards/collection endpoint. Mix
+ * shapes freely within a single batch.
+ */
+export type ScryfallIdentifier =
+  | { id: string }
+  | { name: string }
+  | { name: string; set: string }
+  | { set: string; collector_number: string }
+
+interface CollectionResponse {
+  data: ScryfallCard[]
+  not_found?: ScryfallIdentifier[]
+}
+
+const SCRYFALL_COLLECTION_MAX = 75
+
+function identifierKey(id: ScryfallIdentifier): string {
+  if ('id' in id) return `id:${id.id}`
+  if ('set' in id && 'collector_number' in id) {
+    return `sc:${id.set.toLowerCase()}|${id.collector_number}`
+  }
+  if ('set' in id) return `ns:${id.name.toLowerCase()}|${id.set.toLowerCase()}`
+  return `n:${id.name.toLowerCase()}`
+}
+
+/**
+ * Batch-fetch cards via POST /cards/collection (≤75 identifiers per request).
+ * Returns a same-length array in input order; entries Scryfall cannot resolve
+ * become `null`. Mixed identifier shapes are supported in one call.
+ *
+ * `onChunkProgress` is invoked after each completed chunk with the cumulative
+ * input count processed — useful for driving an import progress UI.
+ */
+export async function lookupCardsByIdentifiers(
+  identifiers: ScryfallIdentifier[],
+  onChunkProgress?: (processed: number) => void,
+): Promise<(ScryfallCard | null)[]> {
+  if (identifiers.length === 0) return []
+  const result: (ScryfallCard | null)[] = new Array(identifiers.length).fill(null)
+  for (let i = 0; i < identifiers.length; i += SCRYFALL_COLLECTION_MAX) {
+    const chunk = identifiers.slice(i, i + SCRYFALL_COLLECTION_MAX)
+    try {
+      await awaitRateLimit()
+      const response = await fetch(`${BASE_URL}/cards/collection`, {
+        method: 'POST',
+        headers: { 'User-Agent': USER_AGENT, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifiers: chunk }),
+      })
+      if (!response.ok) {
+        console.error(`Scryfall collection error: ${response.status}`)
+        onChunkProgress?.(Math.min(i + chunk.length, identifiers.length))
+        continue
+      }
+      const body = await response.json() as CollectionResponse
+      const notFoundKeys = new Set((body.not_found ?? []).map(identifierKey))
+      const data = body.data ?? []
+      let dataIdx = 0
+      for (let j = 0; j < chunk.length; j++) {
+        if (notFoundKeys.has(identifierKey(chunk[j]))) continue
+        result[i + j] = data[dataIdx++] ?? null
+      }
+    } catch (error) {
+      console.error('Error fetching card collection:', error)
+    }
+    onChunkProgress?.(Math.min(i + chunk.length, identifiers.length))
+  }
+  return result
+}
+
+/**
+ * Batch-fetch cards by Scryfall id. Cards Scryfall cannot resolve are dropped
+ * from the result (use `lookupCardsByIdentifiers` directly if you need to
+ * preserve input correspondence).
+ */
+export async function getCardsByIds(scryfallIds: string[]): Promise<ScryfallCard[]> {
+  const results = await lookupCardsByIdentifiers(scryfallIds.map(id => ({ id })))
+  return results.filter((c): c is ScryfallCard => c !== null)
+}
+
 export interface AutocompleteResult {
   data: string[]
 }
@@ -234,6 +315,53 @@ export function isLegalInFormat(card: ScryfallCard, format: string): boolean {
   const formatKey = format.toLowerCase().replace('_', '')
   const legality = card.legalities[formatKey]
   return legality === 'legal' || legality === 'restricted'
+}
+
+export interface ListLegalitiesResult {
+  /** Formats where every card is legal (or restricted). */
+  intersection: FormatType[]
+  /** Formats where at least one but not all cards are legal — disjoint from intersection. */
+  someLegal: FormatType[]
+  /** Formats where at least one card is explicitly banned. */
+  someBanned: FormatType[]
+}
+
+const LEGALITY_CHECKED_FORMATS: FormatType[] = [
+  FORMAT_TYPE.STANDARD,
+  FORMAT_TYPE.PIONEER,
+  FORMAT_TYPE.MODERN,
+  FORMAT_TYPE.PAUPER,
+  FORMAT_TYPE.LEGACY,
+  FORMAT_TYPE.COMMANDER,
+]
+
+/**
+ * Compute legality slices for a list of cards: which formats every card is
+ * legal in (intersection), which formats some-but-not-all cards are legal in,
+ * and which formats have at least one explicitly banned card. Kitchen-table
+ * is omitted — always trivially legal.
+ */
+export function listLegalities(cards: ScryfallCard[]): ListLegalitiesResult {
+  if (cards.length === 0) return { intersection: [], someLegal: [], someBanned: [] }
+  const intersection: FormatType[] = []
+  const someLegal: FormatType[] = []
+  const someBanned: FormatType[] = []
+  for (const format of LEGALITY_CHECKED_FORMATS) {
+    const formatKey = format.toLowerCase().replace('_', '')
+    let anyLegal = false
+    let allLegal = true
+    let anyBanned = false
+    for (const card of cards) {
+      const status = card.legalities[formatKey]
+      if (status === 'legal' || status === 'restricted') anyLegal = true
+      else allLegal = false
+      if (status === 'banned') anyBanned = true
+    }
+    if (allLegal) intersection.push(format)
+    else if (anyLegal) someLegal.push(format)
+    if (anyBanned) someBanned.push(format)
+  }
+  return { intersection, someLegal, someBanned }
 }
 
 // Check if a card's color identity is a subset of allowed colors

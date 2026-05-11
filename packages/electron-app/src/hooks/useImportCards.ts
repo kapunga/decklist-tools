@@ -1,8 +1,8 @@
 import { useState, useCallback, useRef } from 'react'
-import { formats, detectFormat, type ParsedCard } from '@/lib/formats'
-import { searchCardByName, getCardBySetAndNumber } from '@/lib/scryfall'
-import { SCRYFALL, IMPORT_PREVIEW } from '@/lib/constants'
+import { formats, detectFormat, type ParsedCard, type ScryfallIdentifier } from '@mtg-deckbuilder/shared'
+import { searchCardByName, lookupCardsByIdentifiers } from '@/lib/scryfall'
 import { OWNERSHIP_STATUS, CARD_SOURCE, CARD_SET, makeCardEntry, getPrimaryType, createCardIdentifier } from '@/types'
+import type { ScryfallCard } from '@/types'
 import type { ImportProgress, ResolvedCard, UseImportCardsResult } from './types'
 
 export type { ImportProgress, ResolvedCard, UseImportCardsResult } from './types'
@@ -51,6 +51,12 @@ export function useImportCards(sideboardSize?: number): UseImportCardsResult {
   /**
    * Look up all parsed cards on Scryfall and construct CardEntry objects.
    * Returns resolved cards and any errors encountered.
+   *
+   * Strategy: one batched POST /cards/collection (75 cards/request) covers the
+   * happy path. Identifiers entered with set + collector_number get a specific
+   * printing; the rest go in by name (exact match). Anything Scryfall couldn't
+   * resolve falls back to per-card fuzzy `searchCardByName` — the slow path,
+   * but realistically only hit by typos in hand-typed lists.
    */
   const lookupCards = useCallback(async (): Promise<{ resolvedCards: ResolvedCard[]; errors: string[] }> => {
     if (parsedCards.length === 0) {
@@ -62,66 +68,64 @@ export function useImportCards(sideboardSize?: number): UseImportCardsResult {
     progressRef.current = { current: 0, total: parsedCards.length }
     setImportProgress({ current: 0, total: parsedCards.length })
 
+    const identifiers: ScryfallIdentifier[] = parsedCards.map(p =>
+      p.setCode && p.collectorNumber
+        ? { set: p.setCode, collector_number: p.collectorNumber }
+        : { name: p.name },
+    )
+
+    const batched = await lookupCardsByIdentifiers(identifiers, (processed) => {
+      progressRef.current = { current: processed, total: parsedCards.length }
+      setImportProgress({ ...progressRef.current })
+    })
+
+    const resolved: (ScryfallCard | null)[] = await Promise.all(
+      batched.map(async (card, i) =>
+        card ?? (await searchCardByName(parsedCards[i].name)) as ScryfallCard | null,
+      ),
+    )
+
     const newErrors: string[] = []
     const resolvedCards: ResolvedCard[] = []
+    const fetchedScryfallCards: ScryfallCard[] = []
 
-    let lastProgressUpdate = 0
+    const hasSideboard = sideboardSize !== undefined && sideboardSize > 0
+
     for (let i = 0; i < parsedCards.length; i++) {
       const parsed = parsedCards[i]
-      progressRef.current = { current: i + 1, total: parsedCards.length }
-
-      // Only update UI periodically to reduce flickering
-      if (i - lastProgressUpdate >= IMPORT_PREVIEW.PROGRESS_UPDATE_INTERVAL || i === parsedCards.length - 1) {
-        setImportProgress({ ...progressRef.current })
-        lastProgressUpdate = i
+      const scryfallCard = resolved[i]
+      if (!scryfallCard) {
+        newErrors.push(`Card not found: ${parsed.name}`)
+        continue
       }
 
+      fetchedScryfallCards.push(scryfallCard)
+
+      const deckCard = makeCardEntry({
+        card: createCardIdentifier(scryfallCard, {
+          setCode: parsed.setCode,
+          collectorNumber: parsed.collectorNumber,
+        }),
+        quantity: parsed.quantity,
+        ownership: OWNERSHIP_STATUS.OWNED,
+        roles: [...(parsed.roles || [])],
+        source: CARD_SOURCE.IMPORT,
+        primaryType: getPrimaryType(scryfallCard.type_line),
+      })
+
+      const listType = parsed.isSideboard
+        ? (hasSideboard ? CARD_SET.SIDEBOARD : CARD_SET.ALTERNATES)
+        : parsed.isMaybeboard ? CARD_SET.ALTERNATES
+        : CARD_SET.MAINBOARD
+
+      resolvedCards.push({ card: deckCard, listType })
+    }
+
+    if (fetchedScryfallCards.length > 0) {
       try {
-        // Try to fetch specific printing first if set and collector number are available
-        let scryfallCard = null
-        if (parsed.setCode && parsed.collectorNumber) {
-          scryfallCard = await getCardBySetAndNumber(parsed.setCode, parsed.collectorNumber)
-        }
-
-        // Fall back to name search if specific printing not found
-        if (!scryfallCard) {
-          scryfallCard = await searchCardByName(parsed.name)
-        }
-
-        if (!scryfallCard) {
-          newErrors.push(`Card not found: ${parsed.name}`)
-          continue
-        }
-
-        // Use any roles from the parsed data
-        const roles = [...(parsed.roles || [])]
-
-        const deckCard = makeCardEntry({
-          card: createCardIdentifier(scryfallCard, {
-            setCode: parsed.setCode,
-            collectorNumber: parsed.collectorNumber,
-          }),
-          quantity: parsed.quantity,
-          ownership: OWNERSHIP_STATUS.OWNED,
-          roles,
-          source: CARD_SOURCE.IMPORT,
-          primaryType: getPrimaryType(scryfallCard.type_line),
-        })
-
-        const hasSideboard = sideboardSize !== undefined && sideboardSize > 0
-        const listType = parsed.isSideboard
-          ? (hasSideboard ? CARD_SET.SIDEBOARD : CARD_SET.ALTERNATES)
-          : parsed.isMaybeboard ? CARD_SET.ALTERNATES
-          : CARD_SET.MAINBOARD
-
-        resolvedCards.push({ card: deckCard, listType })
-
-        // Small delay to avoid rate limiting Scryfall
-        if (i < parsedCards.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, SCRYFALL.IMPORT_DELAY_MS))
-        }
+        await window.electronAPI.saveCachedCards(fetchedScryfallCards)
       } catch (error) {
-        newErrors.push(`Error looking up ${parsed.name}: ${error}`)
+        console.error('Failed to persist imported cards to local cache:', error)
       }
     }
 
@@ -129,7 +133,7 @@ export function useImportCards(sideboardSize?: number): UseImportCardsResult {
     setIsImporting(false)
 
     return { resolvedCards, errors: newErrors }
-  }, [parsedCards])
+  }, [parsedCards, sideboardSize])
 
   const reset = useCallback(() => {
     setText('')

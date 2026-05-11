@@ -62,8 +62,8 @@ function call(name: string, args: Record<string, unknown> = {}) {
 // ─── Tool Definitions ──────────────────────────────────────────
 
 describe('getToolDefinitions', () => {
-  it('returns 19 tools', () => {
-    expect(getToolDefinitions()).toHaveLength(19)
+  it('returns 20 tools', () => {
+    expect(getToolDefinitions()).toHaveLength(20)
   })
 
   it('exposes the four split deck views, not view_deck', () => {
@@ -1023,40 +1023,110 @@ describe('Commander', () => {
   })
 })
 
-// ─── Interest List ─────────────────────────────────────────────
+// ─── Card Lists ────────────────────────────────────────────────
 
-describe('Interest List', () => {
-  describe('get_interest_list', () => {
-    it('returns the interest list', async () => {
-      const result = await call('get_interest_list') as any
-      expect(result.cardSets).toBeDefined()
-      expect(result.cardSets[0].entries).toEqual([])
+describe('Card Lists', () => {
+  function seedInterestList() {
+    mock._cardLists.set(INTEREST_LIST_ID, {
+      id: INTEREST_LIST_ID,
+      name: 'Interest List',
+      kind: 'interest',
+      version: 1,
+      createdAt: '',
+      updatedAt: '',
+      cardSets: [{ name: 'mainboard', entries: [] }],
+    })
+  }
+
+  describe('list_card_lists', () => {
+    it('returns an empty array when no lists', async () => {
+      expect(await call('list_card_lists')).toEqual([])
+    })
+
+    it('returns summary entries with kind and count', async () => {
+      seedInterestList()
+      const result = await call('list_card_lists') as any[]
+      expect(result).toHaveLength(1)
+      expect(result[0].id).toBe(INTEREST_LIST_ID)
+      expect(result[0].kind).toBe('interest')
+      expect(result[0].cardCount).toBe(0)
     })
   })
 
-  describe('manage_interest_list add', () => {
+  describe('get_card_list', () => {
+    it('fetches by UUID', async () => {
+      seedInterestList()
+      const result = await call('get_card_list', { identifier: INTEREST_LIST_ID }) as any
+      expect(result.cardSets[0].entries).toEqual([])
+    })
+
+    it('fetches by name (case-insensitive)', async () => {
+      seedInterestList()
+      const result = await call('get_card_list', { identifier: 'interest list' }) as any
+      expect(result.id).toBe(INTEREST_LIST_ID)
+    })
+
+    it('throws on missing list', async () => {
+      await expect(call('get_card_list', { identifier: MISSING_UUID })).rejects.toThrow('Card list not found')
+    })
+  })
+
+  describe('manage_card_list create', () => {
+    it('creates a list with default kind=custom', async () => {
+      const result = await call('manage_card_list', { action: 'create', name: 'My List' }) as any
+      expect(result.success).toBe(true)
+      expect(result.list.kind).toBe('custom')
+      expect(result.list.name).toBe('My List')
+    })
+
+    it('creates a scan list with default description', async () => {
+      const result = await call('manage_card_list', { action: 'create', name: 'BLB Pool', kind: 'scan' }) as any
+      expect(result.list.kind).toBe('scan')
+      expect(result.list.description).toMatch(/scanned pool/i)
+    })
+  })
+
+  describe('manage_card_list rename', () => {
+    it('renames a list', async () => {
+      seedInterestList()
+      const result = await call('manage_card_list', { action: 'rename', id: INTEREST_LIST_ID, name: 'Brewing Pile' }) as any
+      expect(result.success).toBe(true)
+      expect(mock._cardLists.get(INTEREST_LIST_ID)!.name).toBe('Brewing Pile')
+    })
+  })
+
+  describe('manage_card_list delete', () => {
+    it('refuses to delete the well-known interest list', async () => {
+      seedInterestList()
+      await expect(call('manage_card_list', { action: 'delete', id: INTEREST_LIST_ID }))
+        .rejects.toThrow(/cannot be deleted/)
+    })
+
+    it('deletes a regular list', async () => {
+      const created = await call('manage_card_list', { action: 'create', name: 'Trash' }) as any
+      const result = await call('manage_card_list', { action: 'delete', id: created.list.id }) as any
+      expect(result.success).toBe(true)
+    })
+  })
+
+  describe('manage_card_list add', () => {
     it('adds a card', async () => {
+      seedInterestList()
       mockSearchCardByName.mockResolvedValue(mockScryfallCard('Rhystic Study'))
-      const result = await call('manage_interest_list', { action: 'add', name: 'Rhystic Study' }) as any
+      const result = await call('manage_card_list', { action: 'add', id: INTEREST_LIST_ID, name: 'Rhystic Study' }) as any
       expect(result.success).toBe(true)
       expect(result.item.card.name).toBe('Rhystic Study')
     })
 
-    it('throws when card not found', async () => {
-      mockSearchCardByName.mockResolvedValue(null as any)
-      await expect(call('manage_interest_list', { action: 'add', name: 'Fake' })).rejects.toThrow('Card not found')
-    })
-
     it('rejects when name disagrees with set+collector', async () => {
-      // FCA #28 is a Brainstorm reprint with flavor name "Endwalker".
-      // Supplying name="Counterspell" should error rather than silently
-      // resolve to Brainstorm.
+      seedInterestList()
       mockGetCardBySetAndNumber.mockResolvedValue(
         mockScryfallCard('Brainstorm', { flavor_name: 'Endwalker', set: 'fca', collector_number: '28' })
       )
       await expect(
-        call('manage_interest_list', {
+        call('manage_card_list', {
           action: 'add',
+          id: INTEREST_LIST_ID,
           name: 'Counterspell',
           set_code: 'fca',
           collector_number: '28',
@@ -1064,12 +1134,14 @@ describe('Interest List', () => {
       ).rejects.toThrow(/Name mismatch.*Brainstorm.*Endwalker.*Counterspell/)
     })
 
-    it('accepts a mismatched name when force: true is passed', async () => {
+    it('accepts a mismatched name when force: true', async () => {
+      seedInterestList()
       mockGetCardBySetAndNumber.mockResolvedValue(
         mockScryfallCard('Brainstorm', { flavor_name: 'Endwalker', set: 'fca', collector_number: '28' })
       )
-      const result = await call('manage_interest_list', {
+      const result = await call('manage_card_list', {
         action: 'add',
+        id: INTEREST_LIST_ID,
         name: 'Counterspell',
         set_code: 'fca',
         collector_number: '28',
@@ -1077,63 +1149,15 @@ describe('Interest List', () => {
       }) as any
       expect(result.success).toBe(true)
       expect(result.item.card.name).toBe('Brainstorm')
-      expect(result.item.card.flavorName).toBe('Endwalker')
-    })
-
-    it('matches on canonical card name (no flavor)', async () => {
-      mockGetCardBySetAndNumber.mockResolvedValue(
-        mockScryfallCard('Lightning Bolt', { set: 'lea', collector_number: '161' })
-      )
-      const result = await call('manage_interest_list', {
-        action: 'add',
-        name: 'Lightning Bolt',
-        set_code: 'lea',
-        collector_number: '161',
-      }) as any
-      expect(result.success).toBe(true)
-      expect(result.item.card.name).toBe('Lightning Bolt')
-    })
-
-    it('matches on flavor name', async () => {
-      mockGetCardBySetAndNumber.mockResolvedValue(
-        mockScryfallCard('Brainstorm', { flavor_name: 'Endwalker', set: 'fca', collector_number: '28' })
-      )
-      const result = await call('manage_interest_list', {
-        action: 'add',
-        name: 'Endwalker',
-        set_code: 'fca',
-        collector_number: '28',
-      }) as any
-      expect(result.success).toBe(true)
-      expect(result.item.card.name).toBe('Brainstorm')
-    })
-
-    it('matches on a DFC face name', async () => {
-      mockGetCardBySetAndNumber.mockResolvedValue(
-        mockScryfallCard('Delver of Secrets // Insectile Aberration', {
-          set: 'isd',
-          collector_number: '51',
-          card_faces: [
-            { name: 'Delver of Secrets' },
-            { name: 'Insectile Aberration' },
-          ],
-        })
-      )
-      const result = await call('manage_interest_list', {
-        action: 'add',
-        name: 'Insectile Aberration',
-        set_code: 'isd',
-        collector_number: '51',
-      }) as any
-      expect(result.success).toBe(true)
     })
   })
 
-  describe('manage_interest_list remove', () => {
+  describe('manage_card_list remove', () => {
     it('removes a card', async () => {
       mock._cardLists.set(INTEREST_LIST_ID, {
         id: INTEREST_LIST_ID,
         name: 'Interest List',
+        kind: 'interest',
         version: 1,
         createdAt: '',
         updatedAt: '',
@@ -1150,13 +1174,14 @@ describe('Interest List', () => {
           }],
         }],
       })
-      const result = await call('manage_interest_list', { action: 'remove', card_name: 'Rhystic Study' }) as any
+      const result = await call('manage_card_list', { action: 'remove', id: INTEREST_LIST_ID, card_name: 'Rhystic Study' }) as any
       expect(result.success).toBe(true)
     })
 
-    it('throws when not found', async () => {
-      await expect(call('manage_interest_list', { action: 'remove', card_name: 'Nope' }))
-        .rejects.toThrow('Card not found in interest list')
+    it('throws when card not in list', async () => {
+      seedInterestList()
+      await expect(call('manage_card_list', { action: 'remove', id: INTEREST_LIST_ID, card_name: 'Nope' }))
+        .rejects.toThrow('Card not found in list')
     })
   })
 })

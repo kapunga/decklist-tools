@@ -96,16 +96,24 @@ export interface ManageCommanderArgs {
   force?: boolean
 }
 
-export interface ManageInterestListArgs {
-  action: 'add' | 'remove'
+export interface ManageCardListArgs {
+  action: 'create' | 'delete' | 'rename' | 'add' | 'remove'
+  // Common
+  id?: string
+  // create / rename
   name?: string
-  card_name?: string
+  description?: string
+  kind?: string
+  // add
   set_code?: string
   collector_number?: string
   notes?: string
   potential_decks?: string[]
   source?: string
+  quantity?: number
   force?: boolean
+  // remove
+  card_name?: string
 }
 
 export interface ManageDeckNoteArgs {
@@ -263,17 +271,21 @@ export function validateManageCommanderArgs(args: Record<string, unknown>): Mana
   }
 }
 
-export function validateManageInterestListArgs(args: Record<string, unknown>): ManageInterestListArgs {
+export function validateManageCardListArgs(args: Record<string, unknown>): ManageCardListArgs {
   return {
-    action: requireEnum(args, 'action', ['add', 'remove'] as const),
+    action: requireEnum(args, 'action', ['create', 'delete', 'rename', 'add', 'remove'] as const),
+    id: args.id as string | undefined,
     name: args.name as string | undefined,
-    card_name: args.card_name as string | undefined,
+    description: args.description as string | undefined,
+    kind: args.kind as string | undefined,
     set_code: args.set_code as string | undefined,
     collector_number: args.collector_number as string | undefined,
     notes: args.notes as string | undefined,
     potential_decks: args.potential_decks as string[] | undefined,
     source: args.source as string | undefined,
+    quantity: args.quantity as number | undefined,
     force: args.force as boolean | undefined,
+    card_name: args.card_name as string | undefined,
   }
 }
 

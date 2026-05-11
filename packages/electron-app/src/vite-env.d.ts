@@ -99,6 +99,7 @@ export interface ElectronAPI {
   getCachedImagePath: (scryfallId: string, face?: string) => Promise<string | null>
   getOrFetchArtCrop: (scryfallId: string, face?: 'front' | 'back') => Promise<string | null>
   getCachedCards: (scryfallIds: string[]) => Promise<Record<string, unknown>>
+  saveCachedCards: (cards: unknown[]) => Promise<void>
   loadAllCardsToCache: (includeImages: boolean) => Promise<void>
   onCacheProgress: (callback: (progress: CacheLoadProgress) => void) => () => void
   cancelCacheLoad: () => Promise<void>

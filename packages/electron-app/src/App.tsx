@@ -5,7 +5,8 @@ import { useStorageSync } from '@/hooks/useStorageSync'
 import { AppShell } from '@/components/AppShell'
 import { DeckList } from '@/components/DeckList'
 import { DeckDetail } from '@/components/DeckDetail'
-import { InterestListView } from '@/components/InterestListView'
+import { CardListsView } from '@/components/CardListsView'
+import { CardListView } from '@/components/CardListView'
 import { BuyListView } from '@/components/BuyListView'
 
 export function App() {
@@ -85,7 +86,8 @@ export function App() {
         <div className="h-full overflow-hidden">
           {currentView === 'decks' && <DeckList />}
           {currentView === 'deck-detail' && <DeckDetail />}
-          {currentView === 'interest-list' && <InterestListView />}
+          {currentView === 'lists' && <CardListsView />}
+          {currentView === 'list-detail' && <CardListView />}
           {currentView === 'buy-list' && <BuyListView />}
         </div>
       </AppShell>

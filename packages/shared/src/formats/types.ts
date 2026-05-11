@@ -17,6 +17,8 @@ export interface DeckExportFormat {
   description: string
   parse: (text: string) => ParsedCard[]
   render: (deck: Deck, options: RenderOptions) => string
+  /** When true, the format is offered for list imports only (not deck imports). */
+  listOnly?: boolean
 }
 
 export interface RenderOptions {

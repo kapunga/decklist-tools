@@ -3,6 +3,7 @@ import { moxfieldFormat } from './moxfield.js'
 import { archidektFormat } from './archidekt.js'
 import { mtgoFormat } from './mtgo.js'
 import { simpleFormat } from './simple.js'
+import { mythicToolsCsvFormat } from './mythic-tools-csv.js'
 import { detectFormat } from './index.js'
 
 // ─── Moxfield ──────────────────────────────────────────────────
@@ -203,5 +204,68 @@ describe('detectFormat', () => {
     const result = detectFormat(text)
     expect(result.format.id).toBe('simple')
     expect(result.confidence).toBe('low')
+  })
+
+  it('detects Mythic Tools CSV by header', () => {
+    const text = [
+      'Card Name,Set Code,Set Name,Collector Number,Rarity,Language,Quantity,Condition,Finish,Altered,Signed,Misprint,Price (USD),Scryfall ID',
+      '"Sol Ring","cmm","Commander Masters","410","uncommon","en",1,"NM","nonfoil",false,false,false,1.50,"abc-123"',
+    ].join('\n')
+    const result = detectFormat(text)
+    expect(result.format.id).toBe('mythic-tools-csv')
+    expect(result.confidence).toBe('high')
+  })
+})
+
+// ─── Mythic Tools CSV ──────────────────────────────────────────
+
+describe('mythicToolsCsvFormat.parse', () => {
+  it('extracts name, set, collector, and quantity; ignores price/condition/etc', () => {
+    const text = [
+      'Card Name,Set Code,Set Name,Collector Number,Rarity,Language,Quantity,Condition,Finish,Altered,Signed,Misprint,Price (USD),Price (EUR),Scryfall ID,Container Type,Container Name',
+      '"Phyrexian Obliterator","one","Phyrexia: All Will Be One","105","mythic","en",1,"NM","nonfoil",false,false,false,9.17,7.52,"67a9c38b-6b3a-4056-a87c-fc48446f854f","list","All Will Be One"',
+      '"Furnace Strider","one","Phyrexia: All Will Be One","133","common","en",2,"NM","nonfoil",false,false,false,0.06,0.05,"aa625ab0-1e79-4497-a5da-98fe1abfd024","list","All Will Be One"',
+    ].join('\n')
+    const result = mythicToolsCsvFormat.parse(text)
+    expect(result).toHaveLength(2)
+    expect(result[0]).toMatchObject({
+      name: 'Phyrexian Obliterator',
+      setCode: 'one',
+      collectorNumber: '105',
+      quantity: 1,
+      isSideboard: false,
+      isMaybeboard: false,
+      isCommander: false,
+    })
+    expect(result[1]).toMatchObject({
+      name: 'Furnace Strider',
+      setCode: 'one',
+      collectorNumber: '133',
+      quantity: 2,
+    })
+  })
+
+  it('returns empty for non-CSV text', () => {
+    expect(mythicToolsCsvFormat.parse('4 Lightning Bolt')).toEqual([])
+  })
+
+  it('returns empty when required columns are missing', () => {
+    const text = 'Card Name,Set Name\n"Sol Ring","Commander Masters"'
+    expect(mythicToolsCsvFormat.parse(text)).toEqual([])
+  })
+
+  it('skips rows with missing identifiers', () => {
+    const text = [
+      'Card Name,Set Code,Collector Number,Quantity',
+      '"Sol Ring","","",1',
+      '"Lightning Bolt","m21","199",1',
+    ].join('\n')
+    const result = mythicToolsCsvFormat.parse(text)
+    expect(result).toHaveLength(1)
+    expect(result[0].name).toBe('Lightning Bolt')
+  })
+
+  it('render throws — import-only format', () => {
+    expect(() => mythicToolsCsvFormat.render({} as never, {} as never)).toThrow(/import-only/i)
   })
 })

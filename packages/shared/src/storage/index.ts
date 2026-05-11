@@ -468,42 +468,50 @@ export class Storage {
   }
 
   cacheCardWithIndex(card: ScryfallCard): void {
-    // Cache the card JSON
-    this.cacheCard(card.id, card)
+    this.cacheCardsWithIndex([card])
+  }
 
-    // Update the index
+  /**
+   * Batch variant: writes each card's JSON file and updates the cache index
+   * once for the whole batch. Prefer this over a loop of `cacheCardWithIndex`
+   * — it avoids re-reading and re-writing the index file per card.
+   */
+  cacheCardsWithIndex(cards: ScryfallCard[]): void {
+    if (cards.length === 0) return
+
     let index = this.getCacheIndex()
     if (!index) {
       index = this.createEmptyCacheIndex()
     }
 
-    // Get JSON file size
-    const cachePath = path.join(this.cacheDir, `${card.id}.json`)
-    let jsonSize = 0
-    try {
-      const stats = fs.statSync(cachePath)
-      jsonSize = stats.size
-    } catch {
-      // File might not exist yet
-    }
+    for (const card of cards) {
+      this.cacheCard(card.id, card)
 
-    // Create entry metadata
-    const entry: CacheEntryMeta = {
-      scryfallId: card.id,
-      name: card.name,
-      setCode: card.set,
-      collectorNumber: card.collector_number,
-      cachedAt: new Date().toISOString(),
-      jsonSize,
-      hasImage: this.hasImageCached(card.id),
-      imageSize: this.getImageSize(card.id),
-      imageFaces: isDoubleFacedCard(card) ? 2 : 1
-    }
+      const cachePath = path.join(this.cacheDir, `${card.id}.json`)
+      let jsonSize = 0
+      try {
+        const stats = fs.statSync(cachePath)
+        jsonSize = stats.size
+      } catch {
+        // File might not exist yet
+      }
 
-    // Update index entries
-    index.byName[card.name.toLowerCase()] = card.id
-    index.bySetCollector[`${card.set.toLowerCase()}|${card.collector_number}`] = card.id
-    index.entries[card.id] = entry
+      const entry: CacheEntryMeta = {
+        scryfallId: card.id,
+        name: card.name,
+        setCode: card.set,
+        collectorNumber: card.collector_number,
+        cachedAt: new Date().toISOString(),
+        jsonSize,
+        hasImage: this.hasImageCached(card.id),
+        imageSize: this.getImageSize(card.id),
+        imageFaces: isDoubleFacedCard(card) ? 2 : 1
+      }
+
+      index.byName[card.name.toLowerCase()] = card.id
+      index.bySetCollector[`${card.set.toLowerCase()}|${card.collector_number}`] = card.id
+      index.entries[card.id] = entry
+    }
 
     this.saveCacheIndex(index)
   }

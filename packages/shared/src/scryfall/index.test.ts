@@ -6,6 +6,7 @@ import {
   formatManaCost,
   getColorIdentityString,
   buildArtCropUrlFromId,
+  listLegalities,
   WUBRG_ORDER,
 } from './index.js'
 import type { ScryfallCard } from '../types/index.js'
@@ -229,5 +230,51 @@ describe('getColorIdentityString', () => {
   it('joins colors', () => {
     expect(getColorIdentityString(['W', 'U'])).toBe('WU')
     expect(getColorIdentityString(['R', 'G', 'B'])).toBe('RGB')
+  })
+})
+
+describe('listLegalities', () => {
+  function card(legalities: Record<string, string>): ScryfallCard {
+    return { id: 'x', name: 'Test', cmc: 0, type_line: '', color_identity: [], colors: [], set: 'x', collector_number: '0', rarity: 'common', mana_cost: '', oracle_text: '', legalities }
+  }
+
+  it('empty input returns empty arrays', () => {
+    expect(listLegalities([])).toEqual({ intersection: [], someLegal: [], someBanned: [] })
+  })
+
+  it('intersection captures formats every card is legal in', () => {
+    const result = listLegalities([
+      card({ standard: 'legal', modern: 'legal' }),
+      card({ standard: 'legal', modern: 'not_legal' }),
+    ])
+    expect(result.intersection).toEqual(['standard'])
+  })
+
+  it('someLegal is disjoint from intersection', () => {
+    const result = listLegalities([
+      card({ standard: 'legal', modern: 'legal' }),
+      card({ standard: 'legal', modern: 'not_legal' }),
+    ])
+    expect(result.intersection).toContain('standard')
+    expect(result.someLegal).not.toContain('standard')
+    expect(result.someLegal).toContain('modern')
+  })
+
+  it('someBanned surfaces explicit ban only', () => {
+    const result = listLegalities([
+      card({ modern: 'banned', legacy: 'not_legal' }),
+    ])
+    expect(result.someBanned).toContain('modern')
+    expect(result.someBanned).not.toContain('legacy')
+  })
+
+  it('a banned card can also have someLegal in other formats', () => {
+    const result = listLegalities([
+      card({ modern: 'banned', commander: 'legal' }),
+      card({ modern: 'legal', commander: 'legal' }),
+    ])
+    expect(result.someBanned).toContain('modern')
+    expect(result.intersection).toContain('commander')
+    expect(result.someLegal).toContain('modern')
   })
 })
