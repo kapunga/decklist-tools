@@ -80,10 +80,27 @@ export function ImportDialog({ deckId, sideboardSize }: ImportDialogProps) {
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          <Upload className="w-4 h-4 mr-2" />
+        <button
+          type="button"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '9px 16px',
+            backgroundColor: 'var(--action-bg)',
+            color: 'var(--action-fg)',
+            fontFamily: 'var(--font-body)',
+            fontSize: '11px',
+            fontWeight: 600,
+            letterSpacing: '0.14em',
+            textTransform: 'uppercase',
+            border: 'none',
+            cursor: 'pointer',
+          }}
+        >
+          <Upload className="w-3.5 h-3.5" />
           Import
-        </Button>
+        </button>
       </DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
         <DialogHeader>

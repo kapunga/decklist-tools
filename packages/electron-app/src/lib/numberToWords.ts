@@ -14,5 +14,6 @@ export function numberToWords(n: number): string {
     const o = n % 10
     return o === 0 ? TENS[t] : `${TENS[t]}-${ONES[o]}`
   }
+  if (n === 100) return 'one hundred'
   return String(n)
 }
