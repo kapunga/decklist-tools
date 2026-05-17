@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { getFormat, getMainboard, getSideboard, getAlternates } from '@mtg-deckbuilder/shared'
+import { captionTagStyle } from '@/lib/mastheadStyles'
 import type { Deck } from '@/types'
 import type { DeckExportFormatId, DeckExportSection } from '@/vite-env'
 
@@ -102,24 +103,7 @@ export const ExportDropdown = forwardRef<ExportDropdownHandle, Props>(function E
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
-        <button
-          type="button"
-          style={{
-            fontFamily: 'var(--font-body)',
-            fontSize: '11px',
-            fontWeight: 600,
-            letterSpacing: '0.14em',
-            textTransform: 'uppercase',
-            color: 'var(--muted-foreground)',
-            background: 'transparent',
-            border: 'none',
-            cursor: 'pointer',
-            padding: 0,
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px',
-          }}
-        >
+        <button type="button" style={captionTagStyle}>
           {copiedLabel ? (
             <>
               <Check className="w-3 h-3" />

@@ -24,6 +24,7 @@ import { getDeckColorIdentity, showColorlessPip, getAlternates, getSideboard, ge
 import { getCardCount, getCardDisplayName, CARD_SET, isCommanderLikeFormat } from '@/types'
 import type { RoleDefinition, CardSetName, ScryfallCard } from '@/types'
 import { formatDeckTagline, formatDeckStatus } from '@/lib/deckTagline'
+import { captionTagStyle } from '@/lib/mastheadStyles'
 
 type CommanderModalMode = 'set' | 'swap' | 'addPartner'
 
@@ -34,23 +35,6 @@ const COMMANDER_MODAL_TITLES: Record<CommanderModalMode, string> = {
 }
 
 const PAGE_X_PAD = '56px'
-
-// Caption-tag style for the masthead's secondary action buttons (Cache, Roles, Export).
-const captionTagStyle: React.CSSProperties = {
-  fontFamily: 'var(--font-body)',
-  fontSize: '11px',
-  fontWeight: 600,
-  letterSpacing: '0.14em',
-  textTransform: 'uppercase',
-  color: 'var(--muted-foreground)',
-  background: 'transparent',
-  border: 'none',
-  cursor: 'pointer',
-  padding: 0,
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: '6px',
-}
 
 const taglineStyle: React.CSSProperties = {
   fontFamily: 'var(--font-tagline)',
