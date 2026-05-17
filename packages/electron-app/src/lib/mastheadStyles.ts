@@ -39,3 +39,27 @@ export const filledActionButtonStyle: CSSProperties = {
   border: 'none',
   cursor: 'pointer',
 }
+
+// Caption label — same caps/tracking as captionTagStyle but for a span (no
+// button affordances). Used for filter labels, group-header eyebrows, and
+// caption rows in the focused-card panel.
+export const captionLabelStyle: CSSProperties = {
+  fontFamily: 'var(--font-body)',
+  fontSize: '11px',
+  fontWeight: 600,
+  letterSpacing: '0.14em',
+  textTransform: 'uppercase',
+  color: 'var(--muted-foreground)',
+}
+
+// Italic editorial body text — used for filter values, notes, status counts,
+// and any inline copy that reads like a tagline rather than a label.
+// Uses --font-tagline so Cyberpunk falls through to JetBrains Mono italic.
+export const editorialTextStyle: CSSProperties = {
+  fontFamily: 'var(--font-tagline)',
+  fontSize: '14px',
+  fontStyle: 'italic',
+  fontWeight: 400,
+  color: 'var(--foreground)',
+  letterSpacing: '-0.005em',
+}

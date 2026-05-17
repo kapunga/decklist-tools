@@ -1,9 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Trash2, Plus, Minus, Loader2, Pencil } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { Plus, Minus, Loader2 } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Badge } from '@/components/ui/badge'
 import { CardImage } from '@/components/CardImage'
+import { ManaCost } from '@/components/ManaCost'
 import { CollapsibleSection } from '@/components/CollapsibleSection'
 import { BatchOperationsToolbar } from '@/components/BatchOperationsToolbar'
 import { RolePill } from '@/components/RolePill'
@@ -13,9 +12,10 @@ import { CardFilterBar } from '@/components/CardFilterBar'
 import { useStore, useGlobalRoles } from '@/hooks/useStore'
 import { useScryfallCache } from '@/hooks/useScryfallCache'
 import { getCardById } from '@/lib/scryfall'
+import { captionLabelStyle, editorialTextStyle } from '@/lib/mastheadStyles'
 import type { CardEntry, ScryfallCard, Deck, CardSetName } from '@/types'
 import { getCardLimit, isCardFullyPulled, getCardDisplayName, getCanonicalSuffix, OWNERSHIP_STATUS, CARD_SOURCE, CARD_SET } from '@/types'
-import { CARD_TYPE_SORT_ORDER } from '@/lib/constants'
+import { CARD_TYPE_SORT_ORDER, getAllRoles } from '@/lib/constants'
 import type { CardFilter } from '@mtg-deckbuilder/shared'
 import { enrichCards, applyFilters, getMainboard, getCardSetEntries, getEntryPrimaryType } from '@mtg-deckbuilder/shared'
 
@@ -218,21 +218,75 @@ export function DeckListView({ deck, listType }: DeckListViewProps) {
 
   const selectedCardNames = Array.from(selectedCards)
 
+  const focusedRoleNames = focusedCardEntry
+    ? getAllRoles(globalRoles, deck.customRoles)
+        .filter(r => focusedCardEntry.roles.includes(r.id))
+        .map(r => r.name)
+    : []
+
   return (
     <div className="flex h-full">
-      {/* Left column - Focused card image */}
-      <div className="w-72 shrink-0 border-r p-4 flex flex-col items-center">
-        {loadingCard && (
-          <div className="flex items-center justify-center h-96">
-            <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      {/* Left column — focused card with editorial framing */}
+      <div className="w-80 shrink-0 flex flex-col gap-4 p-6" style={{ borderRight: '1px solid var(--border)' }}>
+        <span style={captionLabelStyle}>Currently viewing</span>
+
+        {loadingCard ? (
+          <div className="flex items-center justify-center" style={{ height: '380px' }}>
+            <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--muted-foreground)' }} />
           </div>
-        )}
-        {!loadingCard && focusedScryfallCard && (
-          <CardImage card={focusedScryfallCard} size="large" />
-        )}
-        {!loadingCard && !focusedScryfallCard && (
-          <div className="flex items-center justify-center h-96 text-muted-foreground text-sm">
-            Click a card to preview
+        ) : focusedScryfallCard ? (
+          <div className="flex flex-col gap-4">
+            <CardImage card={focusedScryfallCard} size="large" />
+            <div className="flex flex-col gap-1">
+              <span
+                style={{
+                  fontFamily: 'var(--font-display)',
+                  fontSize: '22px',
+                  fontWeight: 600,
+                  fontStyle: 'italic',
+                  color: 'var(--foreground)',
+                  letterSpacing: '-0.015em',
+                  lineHeight: '26px',
+                }}
+              >
+                {focusedScryfallCard.name}
+              </span>
+              {focusedScryfallCard.type_line && (
+                <span style={captionLabelStyle}>{focusedScryfallCard.type_line}</span>
+              )}
+            </div>
+            <div className="flex flex-col gap-1.5 pt-1">
+              {focusedScryfallCard.mana_cost && (
+                <MetaRow label="Cost">
+                  <ManaCost cost={focusedScryfallCard.mana_cost} size="sm" />
+                </MetaRow>
+              )}
+              {focusedScryfallCard.set_name && (
+                <MetaRow label="Printing">
+                  <span style={editorialTextStyle}>{focusedScryfallCard.set_name}</span>
+                </MetaRow>
+              )}
+              {focusedRoleNames.length > 0 && (
+                <MetaRow label="Roles">
+                  <span style={editorialTextStyle}>
+                    {focusedRoleNames.map(n => n.toLowerCase()).join(' · ')}
+                  </span>
+                </MetaRow>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div
+            className="flex items-center justify-center"
+            style={{
+              height: '380px',
+              fontFamily: 'var(--font-tagline)',
+              fontStyle: 'italic',
+              fontSize: '14px',
+              color: 'var(--muted-foreground)',
+            }}
+          >
+            click a card to preview
           </div>
         )}
       </div>
@@ -256,7 +310,7 @@ export function DeckListView({ deck, listType }: DeckListViewProps) {
               <CollapsibleSection
                 key={typeName}
                 title={
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3">
                     {!isCommanderGroup && (
                       <Checkbox
                         checked={groupSelected}
@@ -265,12 +319,21 @@ export function DeckListView({ deck, listType }: DeckListViewProps) {
                       />
                     )}
                     {isCommanderGroup && <div className="w-4" />}
-                    <Badge variant={isCommanderGroup ? 'default' : 'secondary'}>
+                    <span
+                      style={{
+                        fontFamily: 'var(--font-body)',
+                        fontSize: '11px',
+                        fontWeight: isCommanderGroup ? 700 : 600,
+                        letterSpacing: '0.18em',
+                        textTransform: 'uppercase',
+                        color: isCommanderGroup ? 'var(--foreground)' : 'var(--muted-foreground)',
+                      }}
+                    >
                       {typeName}
-                    </Badge>
+                    </span>
                   </div>
                 }
-                badge={`${groupCount}`}
+                badge={groupCount}
                 defaultOpen={true}
               >
                 <div className="space-y-1">
@@ -301,8 +364,16 @@ export function DeckListView({ deck, listType }: DeckListViewProps) {
           })}
 
           {cards.length === 0 && (
-            <div className="flex items-center justify-center h-32 text-muted-foreground">
-              No cards in this list yet.
+            <div
+              className="flex items-center justify-center h-32"
+              style={{
+                fontFamily: 'var(--font-tagline)',
+                fontStyle: 'italic',
+                fontSize: '16px',
+                color: 'var(--muted-foreground)',
+              }}
+            >
+              no cards in this list yet
             </div>
           )}
         </div>
@@ -379,9 +450,16 @@ function CardRow({
 
   return (
     <div
-      className={`flex items-start gap-2 p-2 rounded-md cursor-pointer transition-colors ${
-        isFocused ? 'bg-accent' : isSelected ? 'bg-accent/50' : 'hover:bg-accent/30'
-      }`}
+      className="flex items-center gap-2 cursor-pointer transition-colors"
+      style={{
+        padding: '8px 4px',
+        borderBottom: '1px solid color-mix(in srgb, var(--border) 60%, transparent)',
+        backgroundColor: isFocused
+          ? 'color-mix(in srgb, var(--foreground) 8%, transparent)'
+          : isSelected
+            ? 'color-mix(in srgb, var(--foreground) 4%, transparent)'
+            : 'transparent',
+      }}
       onClick={onFocus}
     >
       {/* Checkbox - hidden for commanders */}
@@ -396,11 +474,21 @@ function CardRow({
       )}
 
       {/* Quantity controls - disabled for commanders */}
-      <div className="flex items-center gap-1">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6"
+      <div
+        className="flex items-center gap-1.5"
+        style={{ opacity: isCommander ? 0.4 : 1 }}
+      >
+        <button
+          type="button"
+          className="flex items-center justify-center hover:opacity-70 transition-opacity disabled:cursor-not-allowed disabled:opacity-30"
+          style={{
+            width: '20px',
+            height: '20px',
+            background: 'transparent',
+            border: 'none',
+            cursor: 'pointer',
+            color: 'var(--muted-foreground)',
+          }}
           onClick={e => {
             e.stopPropagation()
             onQuantityChange(card.card.name, -1)
@@ -408,12 +496,30 @@ function CardRow({
           disabled={isCommander || card.quantity <= 1}
         >
           <Minus className="w-3 h-3" />
-        </Button>
-        <span className="w-5 text-center text-sm font-medium">{card.quantity}</span>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6"
+        </button>
+        <span
+          style={{
+            width: '16px',
+            textAlign: 'center',
+            fontFamily: 'var(--font-body)',
+            fontSize: '13px',
+            fontWeight: 600,
+            color: 'var(--foreground)',
+          }}
+        >
+          {card.quantity}
+        </span>
+        <button
+          type="button"
+          className="flex items-center justify-center hover:opacity-70 transition-opacity disabled:cursor-not-allowed disabled:opacity-30"
+          style={{
+            width: '20px',
+            height: '20px',
+            background: 'transparent',
+            border: 'none',
+            cursor: 'pointer',
+            color: 'var(--muted-foreground)',
+          }}
           onClick={e => {
             e.stopPropagation()
             onQuantityChange(card.card.name, 1)
@@ -421,7 +527,7 @@ function CardRow({
           disabled={isCommander || (maxQty !== Infinity && card.quantity >= maxQty)}
         >
           <Plus className="w-3 h-3" />
-        </Button>
+        </button>
       </div>
 
       {/* Card name - fixed width with truncation */}
@@ -471,19 +577,37 @@ function CardRow({
                 setIsEditingNotes(false)
               }
             }}
-            placeholder="Add notes..."
+            placeholder="add notes…"
             autoFocus
             rows={3}
-            className="w-full text-xs rounded-md border border-input bg-background px-2 py-1 ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-none"
+            className="w-full resize-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+            style={{
+              fontFamily: 'var(--font-body)',
+              fontSize: '12px',
+              padding: '4px 8px',
+              border: '1px solid var(--input)',
+              backgroundColor: 'var(--background)',
+              color: 'var(--foreground)',
+            }}
           />
         ) : (
           <button
             onClick={() => setIsEditingNotes(true)}
-            className={`text-xs text-muted-foreground hover:text-foreground text-left w-full whitespace-pre-wrap ${
-              isFocused ? '' : 'line-clamp-2'
+            className={`text-left w-full hover:opacity-80 transition-opacity ${
+              isFocused ? 'whitespace-pre-wrap' : 'truncate'
             }`}
+            style={{
+              fontFamily: 'var(--font-tagline)',
+              fontSize: '12px',
+              fontStyle: 'italic',
+              color: card.notes ? 'var(--foreground)' : 'var(--muted-foreground)',
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              padding: 0,
+            }}
           >
-            {card.notes || <span className="italic opacity-50">Add notes...</span>}
+            {card.notes || 'add notes…'}
           </button>
         )}
       </div>
@@ -491,45 +615,85 @@ function CardRow({
       {/* Ownership indicator - fixed width to prevent layout shift */}
       <div className="w-16 flex-shrink-0 flex justify-end">
         {card.ownership === OWNERSHIP_STATUS.NEED_TO_BUY && (
-          <Badge variant="outline" className="text-yellow-500 border-yellow-500 text-xs">
+          <span
+            style={{
+              padding: '2px 8px',
+              border: '1px solid var(--ring)',
+              color: 'var(--ring)',
+              fontFamily: 'var(--font-body)',
+              fontSize: '10px',
+              fontWeight: 600,
+              letterSpacing: '0.14em',
+              textTransform: 'uppercase',
+            }}
+          >
             Buy
-          </Badge>
+          </span>
         )}
         {isCardFullyPulled(card) && (
-          <Badge variant="outline" className="text-blue-500 border-blue-500 text-xs">
+          <span
+            style={{
+              fontFamily: 'var(--font-body)',
+              fontSize: '10px',
+              fontWeight: 600,
+              letterSpacing: '0.14em',
+              textTransform: 'uppercase',
+              color: 'var(--muted-foreground)',
+            }}
+          >
             Pulled
-          </Badge>
+          </span>
         )}
       </div>
 
       {/* Actions - hidden for commanders */}
-      {!isCommander && (
-        <div className="flex items-center gap-0.5 flex-shrink-0">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 text-muted-foreground hover:text-foreground"
+      {!isCommander ? (
+        <div className="flex items-center gap-3 flex-shrink-0 justify-end" style={{ width: '52px' }}>
+          <button
+            type="button"
+            className="hover:opacity-80 transition-opacity"
+            style={{
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              padding: 0,
+              fontFamily: 'var(--font-body)',
+              fontSize: '11px',
+              color: 'var(--muted-foreground)',
+            }}
             onClick={e => {
               e.stopPropagation()
               setIsEditModalOpen(true)
             }}
             title="Edit card"
           >
-            <Pencil className="w-3 h-3" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 text-destructive flex-shrink-0"
+            edit
+          </button>
+          <button
+            type="button"
+            className="hover:opacity-80 transition-opacity"
+            style={{
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              padding: 0,
+              fontFamily: 'var(--font-body)',
+              fontSize: '14px',
+              fontWeight: 500,
+              color: 'var(--destructive)',
+              lineHeight: 1,
+            }}
             onClick={e => {
               e.stopPropagation()
               onDelete(card.card.name)
             }}
             title="Remove card"
           >
-            <Trash2 className="w-3 h-3" />
-          </Button>
+            ×
+          </button>
         </div>
+      ) : (
+        <div className="flex-shrink-0" style={{ width: '52px' }} />
       )}
 
       {/* Edit Card Modal */}
@@ -540,6 +704,16 @@ function CardRow({
         deckId={deck.id}
         listType={listType}
       />
+    </div>
+  )
+}
+
+// Caption label + value row used by the focused-card panel for Cost / Printing / Roles.
+function MetaRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-baseline gap-3">
+      <span style={{ ...captionLabelStyle, minWidth: '56px' }}>{label}</span>
+      {children}
     </div>
   )
 }
