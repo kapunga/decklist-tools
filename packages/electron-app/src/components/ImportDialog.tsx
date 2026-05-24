@@ -21,6 +21,7 @@ import { useStore } from '@/hooks/useStore'
 import { useImportCards } from '@/hooks/useImportCards'
 import { formats } from '@mtg-deckbuilder/shared'
 import { ImportFileButton } from '@/components/ImportFileButton'
+import { filledActionButtonStyle } from '@/lib/mastheadStyles'
 
 const deckImportFormats = formats.filter(f => !f.listOnly)
 
@@ -80,10 +81,10 @@ export function ImportDialog({ deckId, sideboardSize }: ImportDialogProps) {
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          <Upload className="w-4 h-4 mr-2" />
+        <button type="button" style={filledActionButtonStyle}>
+          <Upload className="w-3.5 h-3.5" />
           Import
-        </Button>
+        </button>
       </DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
         <DialogHeader>

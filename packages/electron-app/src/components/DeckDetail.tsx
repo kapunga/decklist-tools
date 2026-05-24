@@ -1,9 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { ArrowLeft, Check, AlertTriangle, Settings, Crown, Download, Loader2, Pencil } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { ExportDropdown, type ExportDropdownHandle } from '@/components/ExportDropdown'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   DropdownMenu,
@@ -25,17 +23,67 @@ import { PullListView } from '@/components/PullListView'
 import { getDeckColorIdentity, showColorlessPip, getAlternates, getSideboard, getCutList, getEntriesTotalQuantity, createCardIdentifier } from '@mtg-deckbuilder/shared'
 import { getCardCount, getCardDisplayName, CARD_SET, isCommanderLikeFormat } from '@/types'
 import type { RoleDefinition, CardSetName, ScryfallCard } from '@/types'
+import { formatDeckTagline, formatDeckStatus } from '@/lib/deckTagline'
+import { captionTagStyle } from '@/lib/mastheadStyles'
 
-// Modal mode encodes both open-state and behavior:
-//   'set'         — first commander on an empty deck (no constraints)
-//   'swap'        — replace the existing commander, identity-locked
-//   'addPartner'  — append a second commander, Partner-only, no identity lock
 type CommanderModalMode = 'set' | 'swap' | 'addPartner'
 
 const COMMANDER_MODAL_TITLES: Record<CommanderModalMode, string> = {
   set: 'Set Commander',
   swap: 'Change Commander',
   addPartner: 'Add Partner',
+}
+
+const PAGE_X_PAD = '56px'
+
+const taglineStyle: React.CSSProperties = {
+  fontFamily: 'var(--font-tagline)',
+  fontSize: '17px',
+  fontStyle: 'italic',
+  fontWeight: 400,
+  color: 'var(--muted-foreground)',
+  letterSpacing: '-0.005em',
+}
+
+const bylineLedStyle: React.CSSProperties = {
+  fontFamily: 'var(--font-body)',
+  fontSize: '10px',
+  fontWeight: 600,
+  letterSpacing: '0.18em',
+  textTransform: 'uppercase',
+  color: 'var(--muted-foreground)',
+}
+
+const bylineNameStyle: React.CSSProperties = {
+  fontFamily: 'var(--font-tagline)',
+  fontSize: '17px',
+  fontStyle: 'italic',
+  fontWeight: 500,
+  color: 'var(--foreground)',
+  letterSpacing: '-0.005em',
+}
+
+const bylineCapStyle: React.CSSProperties = {
+  fontFamily: 'var(--font-body)',
+  fontSize: '10px',
+  fontWeight: 600,
+  letterSpacing: '0.14em',
+  textTransform: 'uppercase',
+  color: 'var(--muted-foreground)',
+  background: 'transparent',
+  border: 'none',
+  cursor: 'pointer',
+  padding: 0,
+}
+
+const titleStyle: React.CSSProperties = {
+  fontFamily: 'var(--font-display)',
+  fontSize: '44px',
+  fontWeight: 700,
+  fontStyle: 'italic',
+  letterSpacing: '-0.03em',
+  lineHeight: '44px',
+  color: 'var(--foreground)',
 }
 
 export function DeckDetail() {
@@ -53,14 +101,13 @@ export function DeckDetail() {
   const [activeTab, setActiveTab] = useState<CardSetName>(CARD_SET.MAINBOARD)
   const [showRoleModal, setShowRoleModal] = useState(false)
   const [commanderModalMode, setCommanderModalMode] = useState<CommanderModalMode | null>(null)
-  // Partner-eligibility of the existing solo commander; gates the "+ Partner" button.
   const [commanderHasPartner, setCommanderHasPartner] = useState(false)
   const [isCaching, setIsCaching] = useState(false)
   const [cacheResult, setCacheResult] = useState<{ success: boolean; cachedCards: number; cachedImages: number; errors: string[] } | null>(null)
 
   const handleTabChange = useCallback((value: string) => {
     setActiveTab(value as CardSetName)
-    clearSelection() // Clear selection when switching tabs
+    clearSelection()
   }, [clearSelection])
 
   const handleSaveCustomRoles = useCallback(async (customRoles: RoleDefinition[]) => {
@@ -95,7 +142,6 @@ export function DeckDetail() {
     }
   }, [deck?.id])
 
-  // Toggle the native menu's "Export Deck" item while a deck is open.
   useEffect(() => {
     window.electronAPI.setExportMenuEnabled(true)
     return () => {
@@ -103,8 +149,6 @@ export function DeckDetail() {
     }
   }, [])
 
-  // Open the export dropdown when Cmd+E is invoked from the native menu.
-  // Skip the initial 0 token so we don't auto-open on mount.
   const lastExportToken = useRef(exportDeckToken)
   useEffect(() => {
     if (exportDeckToken !== lastExportToken.current) {
@@ -114,8 +158,7 @@ export function DeckDetail() {
   }, [exportDeckToken])
 
   // Detect Partner keyword on the solo commander to decide whether to show
-  // "+ Partner". Only relevant at exactly one commander (0 = nothing to pair,
-  // 2 = already at cap).
+  // "+ Partner". Only relevant at exactly one commander.
   const soloCommanderId = deck?.commanders.length === 1 ? deck.commanders[0]?.scryfallId : undefined
   useEffect(() => {
     if (!soloCommanderId) {
@@ -138,21 +181,34 @@ export function DeckDetail() {
 
   if (!deck) {
     return (
-      <div className="flex items-center justify-center h-full text-muted-foreground">
-        Select a deck to view details
+      <div
+        className="flex items-center justify-center h-full"
+        style={{ ...taglineStyle, fontSize: '20px' }}
+      >
+        select a deck
       </div>
     )
   }
 
-  const cardCount = getCardCount(deck)
-  const isComplete = cardCount >= deck.format.deckSize
-  const hasWarnings = cardCount !== deck.format.deckSize
+  const tagline = formatDeckTagline(deck)
+  const statusLine = formatDeckStatus(deck)
+  const colorIdentity = getDeckColorIdentity(deck)
+  const isCommanderFormat = isCommanderLikeFormat(deck.format.type)
 
   return (
     <div className="h-full flex flex-col">
       {/* Cache result notification */}
       {cacheResult && (
-        <div className={`px-4 py-2 text-sm flex items-center justify-between ${cacheResult.success ? 'bg-green-500/10 text-green-700' : 'bg-yellow-500/10 text-yellow-700'}`}>
+        <div
+          className="flex items-center justify-between text-sm"
+          style={{
+            padding: `8px ${PAGE_X_PAD}`,
+            backgroundColor: cacheResult.success
+              ? 'color-mix(in srgb, var(--foreground) 8%, transparent)'
+              : 'color-mix(in srgb, var(--destructive) 12%, transparent)',
+            color: cacheResult.success ? 'var(--foreground)' : 'var(--destructive)',
+          }}
+        >
           <span>
             {cacheResult.success
               ? `Cached ${cacheResult.cachedCards} cards${cacheResult.cachedImages > 0 ? ` and ${cacheResult.cachedImages} images` : ''}`
@@ -161,106 +217,137 @@ export function DeckDetail() {
           <button
             onClick={() => setCacheResult(null)}
             className="text-xs hover:underline"
+            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'inherit' }}
           >
             Dismiss
           </button>
         </div>
       )}
-      {/* Header */}
-      <div className="border-b p-4 flex-shrink-0">
-        <div className="flex items-center gap-4 mb-4">
-          <Button variant="ghost" size="icon" onClick={() => selectDeck(null)}>
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
 
-          {isEditingName ? (
-            <Input
-              value={editedName}
-              onChange={e => setEditedName(e.target.value)}
-              onBlur={handleNameSave}
-              onKeyDown={e => {
-                if (e.key === 'Enter') handleNameSave()
-                if (e.key === 'Escape') {
-                  setEditedName(deck.name)
-                  setIsEditingName(false)
-                }
-              }}
-              autoFocus
-              className="text-xl font-bold max-w-md"
-            />
-          ) : (
-            <h1
-              className="text-xl font-bold cursor-pointer hover:text-primary"
-              onClick={() => setIsEditingName(true)}
-            >
-              {deck.name}
-            </h1>
-          )}
+      {/* Back link */}
+      <div style={{ padding: `20px ${PAGE_X_PAD} 4px ${PAGE_X_PAD}` }} className="flex-shrink-0">
+        <button
+          type="button"
+          onClick={() => selectDeck(null)}
+          className="hover:opacity-80 transition-opacity"
+          style={{
+            fontFamily: 'var(--font-tagline)',
+            fontSize: '13px',
+            fontStyle: 'italic',
+            color: 'var(--muted-foreground)',
+            background: 'transparent',
+            border: 'none',
+            cursor: 'pointer',
+            padding: 0,
+          }}
+        >
+          ← back to decks
+        </button>
+      </div>
 
-          <Badge variant="outline" className="capitalize">
-            {deck.format.type.replace('_', ' ')}
-          </Badge>
-
-          <ColorPips
-            colors={getDeckColorIdentity(deck)}
-            size="sm"
-            showColorless={showColorlessPip(deck)}
-          />
-
-          {isCommanderLikeFormat(deck.format.type) && (
-            deck.commanders.length > 0 ? (
-              <div className="flex items-center gap-1">
-                <Crown className="w-4 h-4 text-yellow-500" />
-                <span className="text-sm">
-                  {deck.commanders.map(c => getCardDisplayName(c)).join(' & ')}
-                </span>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6"
-                  onClick={() => setCommanderModalMode('swap')}
-                  title="Change commander"
+      {/* Masthead — title block with 2px rule */}
+      <div
+        className="flex-shrink-0"
+        style={{
+          padding: `4px ${PAGE_X_PAD} 22px ${PAGE_X_PAD}`,
+          borderBottom: '2px solid var(--masthead-rule-color)',
+        }}
+      >
+        <div className="flex items-end justify-between gap-8 flex-wrap">
+          {/* Identity column */}
+          <div className="flex flex-col gap-1.5 min-w-0">
+            {/* Title + color pips */}
+            <div className="flex items-baseline gap-4 flex-wrap">
+              {isEditingName ? (
+                <Input
+                  value={editedName}
+                  onChange={e => setEditedName(e.target.value)}
+                  onBlur={handleNameSave}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') handleNameSave()
+                    if (e.key === 'Escape') {
+                      setEditedName(deck.name)
+                      setIsEditingName(false)
+                    }
+                  }}
+                  autoFocus
+                  className="max-w-2xl"
+                  style={titleStyle}
+                />
+              ) : (
+                <h1
+                  onClick={() => setIsEditingName(true)}
+                  className="cursor-text hover:opacity-80 transition-opacity"
+                  style={titleStyle}
+                  title="Click to rename"
                 >
-                  <Pencil className="w-3 h-3" />
-                </Button>
-                {commanderHasPartner && deck.commanders.length === 1 && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-6 px-2 text-xs"
-                    onClick={() => setCommanderModalMode('addPartner')}
+                  {deck.name}
+                </h1>
+              )}
+              {colorIdentity && (
+                <ColorPips
+                  colors={colorIdentity}
+                  size="md"
+                  showColorless={showColorlessPip(deck)}
+                />
+              )}
+            </div>
+
+            {/* Tagline */}
+            <span style={taglineStyle}>{tagline}</span>
+
+            {/* Byline — commander attribution */}
+            {isCommanderFormat && (
+              deck.commanders.length > 0 ? (
+                <div className="flex items-baseline gap-2.5 flex-wrap">
+                  <span style={bylineLedStyle}>Led by</span>
+                  <span style={bylineNameStyle}>
+                    {deck.commanders.map(c => getCardDisplayName(c)).join(' and ')}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setCommanderModalMode('swap')}
+                    className="hover:opacity-80 transition-opacity"
+                    style={bylineCapStyle}
                   >
-                    + Partner
-                  </Button>
-                )}
-              </div>
-            ) : (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCommanderModalMode('set')}
-              >
-                <Crown className="w-4 h-4 mr-1 text-yellow-500" />
-                Set Commander
-              </Button>
-            )
-          )}
+                    change
+                  </button>
+                  {commanderHasPartner && deck.commanders.length === 1 && (
+                    <button
+                      type="button"
+                      onClick={() => setCommanderModalMode('addPartner')}
+                      className="hover:opacity-80 transition-opacity"
+                      style={bylineCapStyle}
+                    >
+                      + partner
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setCommanderModalMode('set')}
+                  className="hover:opacity-80 transition-opacity self-start"
+                  style={{ ...bylineCapStyle, fontSize: '11px', color: 'var(--foreground)' }}
+                >
+                  Set commander
+                </button>
+              )
+            )}
+          </div>
 
-          {deck.archetype && (
-            <Badge variant="secondary">{deck.archetype}</Badge>
-          )}
-
-          <div className="ml-auto flex items-center gap-2">
+          {/* Action cluster */}
+          <div className="flex items-center gap-5 flex-shrink-0" style={{ paddingBottom: '6px' }}>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" disabled={isCaching}>
-                  {isCaching ? (
-                    <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                  ) : (
-                    <Download className="w-4 h-4 mr-1" />
-                  )}
-                  {isCaching ? 'Caching...' : 'Cache'}
-                </Button>
+                <button
+                  type="button"
+                  disabled={isCaching}
+                  style={{ ...captionTagStyle, opacity: isCaching ? 0.6 : 1 }}
+                >
+                  {isCaching && <Loader2 className="w-3 h-3 animate-spin" />}
+                  {isCaching ? 'Caching' : 'Cache'}
+                </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => handlePreCache(false)}>
@@ -271,84 +358,112 @@ export function DeckDetail() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button variant="outline" size="sm" onClick={() => setShowRoleModal(true)}>
-              <Settings className="w-4 h-4 mr-1" />
+
+            <button
+              type="button"
+              onClick={() => setShowRoleModal(true)}
+              style={captionTagStyle}
+            >
               Roles
-            </Button>
+            </button>
+
             <ExportDropdown ref={exportRef} deck={deck} />
+
             <ImportDialog deckId={deck.id} sideboardSize={deck.format.sideboardSize} />
-          </div>
-        </div>
-
-        <div className="flex items-center gap-6">
-          {/* Card count with progress */}
-          <div className="flex items-center gap-2">
-            <div className="w-32 h-2 bg-secondary rounded-full overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all ${
-                  isComplete ? 'bg-green-500' : 'bg-primary'
-                }`}
-                style={{
-                  width: `${Math.min(100, (cardCount / deck.format.deckSize) * 100)}%`
-                }}
-              />
-            </div>
-            <span className="text-sm text-muted-foreground">
-              {cardCount}/{deck.format.deckSize}
-            </span>
-          </div>
-
-          {/* Validation status */}
-          <div className="flex items-center gap-1 text-sm">
-            {isComplete ? (
-              <>
-                <Check className="w-4 h-4 text-green-500" />
-                <span className="text-green-500">Valid</span>
-              </>
-            ) : hasWarnings ? (
-              <>
-                <AlertTriangle className="w-4 h-4 text-yellow-500" />
-                <span className="text-yellow-500">Incomplete</span>
-              </>
-            ) : null}
           </div>
         </div>
       </div>
 
-      {/* Quick Add */}
-      <div className="border-b p-4 flex-shrink-0">
-        <QuickAdd
-          deckId={deck.id}
-          format={deck.format}
-          colorIdentity={deck.colorIdentity}
-          customRoles={deck.customRoles}
-          activeTab={activeTab}
-        />
+      {/* Status + Quick Add row */}
+      <div
+        className="flex items-center gap-4 flex-shrink-0 flex-wrap"
+        style={{ padding: `14px ${PAGE_X_PAD} 14px ${PAGE_X_PAD}` }}
+      >
+        <span
+          style={{
+            fontFamily: 'var(--font-tagline)',
+            fontSize: '16px',
+            fontStyle: 'italic',
+            color: 'var(--foreground)',
+          }}
+        >
+          {statusLine.count}
+        </span>
+        <span
+          style={{
+            fontFamily: 'var(--font-tagline)',
+            fontSize: '16px',
+            fontStyle: 'italic',
+            color: 'var(--muted-foreground)',
+          }}
+        >
+          ·
+        </span>
+        <span
+          style={{
+            fontFamily: 'var(--font-tagline)',
+            fontSize: '16px',
+            fontStyle: 'italic',
+            fontWeight: statusLine.status === 'valid' ? 400 : 500,
+            color: statusLine.status === 'valid'
+              ? 'var(--muted-foreground)'
+              : 'var(--destructive)',
+          }}
+        >
+          {statusLine.status}
+        </span>
+
+        <div className="flex-1 min-w-[24px]" />
+
+        <span
+          style={{
+            fontFamily: 'var(--font-body)',
+            fontSize: '11px',
+            fontWeight: 600,
+            letterSpacing: '0.14em',
+            textTransform: 'uppercase',
+            color: 'var(--muted-foreground)',
+          }}
+        >
+          Quick Add
+        </span>
+        <div className="min-w-[280px] flex-shrink-0">
+          <QuickAdd
+            deckId={deck.id}
+            format={deck.format}
+            colorIdentity={deck.colorIdentity}
+            customRoles={deck.customRoles}
+            activeTab={activeTab}
+          />
+        </div>
       </div>
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col overflow-hidden">
-        <div className="border-b px-4 flex-shrink-0">
-          <TabsList>
-            <TabsTrigger value={CARD_SET.MAINBOARD}>
-              Cards ({getCardCount(deck)})
-            </TabsTrigger>
-            <TabsTrigger value={CARD_SET.ALTERNATES}>
-              Alternates ({getEntriesTotalQuantity(getAlternates(deck))})
-            </TabsTrigger>
+        <div
+          className="flex items-stretch flex-shrink-0"
+          style={{
+            padding: `0 ${PAGE_X_PAD}`,
+            borderBottom: '1px solid var(--border)',
+          }}
+        >
+          {/* Primary card-set tabs */}
+          <TabsList className="bg-transparent h-auto p-0 gap-7 rounded-none">
+            <MastheadTab value={CARD_SET.MAINBOARD} label="Cards" count={getCardCount(deck)} />
+            <MastheadTab value={CARD_SET.ALTERNATES} label="Alternates" count={getEntriesTotalQuantity(getAlternates(deck))} />
             {deck.format.sideboardSize > 0 && (
-              <TabsTrigger value={CARD_SET.SIDEBOARD}>
-                Sideboard ({getEntriesTotalQuantity(getSideboard(deck))})
-              </TabsTrigger>
+              <MastheadTab value={CARD_SET.SIDEBOARD} label="Sideboard" count={getEntriesTotalQuantity(getSideboard(deck))} />
             )}
-            <TabsTrigger value={CARD_SET.CUT}>
-              Cut ({getEntriesTotalQuantity(getCutList(deck))})
-            </TabsTrigger>
-            <TabsTrigger value="notes">
-              Notes ({deck.notes.length})
-            </TabsTrigger>
-            <TabsTrigger value="pull-list">Pull List</TabsTrigger>
-            <TabsTrigger value="stats">Stats</TabsTrigger>
+            <MastheadTab value={CARD_SET.CUT} label="Cut" count={getEntriesTotalQuantity(getCutList(deck))} />
+          </TabsList>
+
+          <div className="flex-1" />
+
+          {/* Secondary tools tabs */}
+          <TabsList className="bg-transparent h-auto p-0 gap-5 rounded-none">
+            <MastheadTab value="notes" label="Notes" count={deck.notes.length} variant="secondary" />
+            <MastheadTab value="pull-list" label="Pull List" variant="secondary" />
+            <MastheadTab value="stats" label="Stats" variant="secondary" />
           </TabsList>
         </div>
 
@@ -385,7 +500,6 @@ export function DeckDetail() {
         </div>
       </Tabs>
 
-      {/* Role Edit Modal */}
       <RoleEditModal
         isOpen={showRoleModal}
         onClose={() => setShowRoleModal(false)}
@@ -410,5 +524,52 @@ export function DeckDetail() {
         }}
       />
     </div>
+  )
+}
+
+// Newspaper-section-label tab trigger. `value` drives Radix Tabs state;
+// styling is theme-token-driven and varies by primary vs. secondary cluster.
+function MastheadTab({
+  value,
+  label,
+  count,
+  variant = 'primary',
+}: {
+  value: string
+  label: string
+  count?: number
+  variant?: 'primary' | 'secondary'
+}) {
+  const labelSize = variant === 'primary' ? '11px' : '10px'
+  const labelTracking = variant === 'primary' ? '0.16em' : '0.18em'
+  const countSize = variant === 'primary' ? '13px' : '12px'
+
+  return (
+    <TabsTrigger
+      value={value}
+      className="rounded-none px-0 py-3.5 h-auto bg-transparent shadow-none gap-2 border-b-2 border-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-foreground text-muted-foreground data-[state=active]:text-foreground font-normal data-[state=active]:font-semibold"
+      style={{
+        fontFamily: 'var(--font-body)',
+        fontSize: labelSize,
+        letterSpacing: labelTracking,
+        textTransform: 'uppercase',
+      }}
+    >
+      <span>{label}</span>
+      {count !== undefined && (
+        <span
+          style={{
+            fontFamily: 'var(--font-tagline)',
+            fontSize: countSize,
+            fontStyle: 'italic',
+            fontWeight: 400,
+            color: 'var(--muted-foreground)',
+            letterSpacing: 0,
+          }}
+        >
+          {count}
+        </span>
+      )}
+    </TabsTrigger>
   )
 }

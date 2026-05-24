@@ -9,6 +9,27 @@ interface ColorPipsProps {
   showColorless?: boolean // Whether to show C for colorless decks
 }
 
+// Wraps a pip with two theme-aware affordances:
+//   - A --pip-backplate disc behind the SVG (transparent on light themes;
+//     parchment / cool-white on cyberpunk + gothic so the baked-in light
+//     discs read against dark backgrounds).
+//   - A 25%-alpha foreground border so the W pip's near-white disc has
+//     definition against light backgrounds like Library's warm cream.
+function PipWithBackplate({ symbol, size }: { symbol: string; size: 'sm' | 'md' | 'lg' }) {
+  return (
+    <span
+      className="inline-flex items-center justify-center rounded-full"
+      style={{
+        backgroundColor: 'var(--pip-backplate)',
+        border: '1px solid color-mix(in srgb, var(--foreground) 25%, transparent)',
+        padding: '1px',
+      }}
+    >
+      <ManaSymbol symbol={symbol} size={size} />
+    </span>
+  )
+}
+
 export function ColorPips({
   colors,
   size = 'md',
@@ -19,7 +40,7 @@ export function ColorPips({
     if (showColorless) {
       return (
         <span className={cn('inline-flex items-center gap-0.5', className)}>
-          <ManaSymbol symbol="C" size={size} />
+          <PipWithBackplate symbol="C" size={size} />
         </span>
       )
     }
@@ -31,7 +52,7 @@ export function ColorPips({
   return (
     <span className={cn('inline-flex items-center gap-0.5', className)}>
       {sortedColors.map(color => (
-        <ManaSymbol key={color} symbol={color} size={size} />
+        <PipWithBackplate key={color} symbol={color} size={size} />
       ))}
     </span>
   )

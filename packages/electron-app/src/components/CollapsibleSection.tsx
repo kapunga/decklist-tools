@@ -35,26 +35,36 @@ export function CollapsibleSection({
     <div className={cn('', className)}>
       <div
         className={cn(
-          'flex items-center gap-2 w-full py-2',
-          'hover:bg-accent/50 rounded-md px-2 -mx-2',
+          'flex items-baseline gap-3 w-full pb-2',
           'transition-colors duration-150',
           headerClassName
         )}
+        style={{ borderBottom: '1px solid var(--border)' }}
       >
         <button
           type="button"
           onClick={handleToggle}
-          className="shrink-0"
+          className="shrink-0 self-center"
+          aria-label={isOpen ? 'Collapse section' : 'Expand section'}
         >
           {isOpen ? (
-            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            <ChevronDown className="h-3.5 w-3.5" style={{ color: 'var(--muted-foreground)' }} />
           ) : (
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            <ChevronRight className="h-3.5 w-3.5" style={{ color: 'var(--muted-foreground)' }} />
           )}
         </button>
-        <div className="font-medium flex-1">{title}</div>
+        <div className="flex-1">{title}</div>
         {badge && (
-          <span className="text-sm text-muted-foreground">{badge}</span>
+          <span
+            style={{
+              fontFamily: 'var(--font-tagline)',
+              fontSize: '13px',
+              fontStyle: 'italic',
+              color: 'var(--muted-foreground)',
+            }}
+          >
+            {badge}
+          </span>
         )}
       </div>
 

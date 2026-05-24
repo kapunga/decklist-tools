@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react'
-import { Upload, Check, Copy, Save } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { Check, Copy, Save } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { getFormat, getMainboard, getSideboard, getAlternates } from '@mtg-deckbuilder/shared'
+import { captionTagStyle } from '@/lib/mastheadStyles'
 import type { Deck } from '@/types'
 import type { DeckExportFormatId, DeckExportSection } from '@/vite-env'
 
@@ -103,19 +103,16 @@ export const ExportDropdown = forwardRef<ExportDropdownHandle, Props>(function E
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm">
+        <button type="button" style={captionTagStyle}>
           {copiedLabel ? (
             <>
-              <Check className="w-4 h-4 mr-1 text-green-500" />
+              <Check className="w-3 h-3" />
               Copied {copiedLabel}
             </>
           ) : (
-            <>
-              <Upload className="w-4 h-4 mr-1" />
-              Export
-            </>
+            'Export'
           )}
-        </Button>
+        </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuLabel className="flex items-center gap-2">

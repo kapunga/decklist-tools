@@ -11,23 +11,19 @@ interface ManaCurveProps {
   scryfallCache: Map<string, ScryfallCard>
 }
 
+// Theme-keyed pie fills — reference --color-* tokens so each theme drives
+// its own mana-color palette. Strokes use --foreground so slices always
+// have a visible outline regardless of how close a fill sits to the page bg.
 const PIE_COLORS: Record<string, string> = {
-  W: '#f9fafb',
-  U: '#3b82f6',
-  B: '#1f2937',
-  R: '#ef4444',
-  G: '#22c55e',
-  C: '#9ca3af',
+  W: 'var(--color-w)',
+  U: 'var(--color-u)',
+  B: 'var(--color-b)',
+  R: 'var(--color-r)',
+  G: 'var(--color-g)',
+  C: 'var(--color-c)',
 }
 
-const PIE_STROKES: Record<string, string> = {
-  W: '#d1d5db',
-  U: '#2563eb',
-  B: '#111827',
-  R: '#dc2626',
-  G: '#16a34a',
-  C: '#6b7280',
-}
+const PIE_STROKE = 'var(--foreground)'
 
 export function ManaCurve({ deck, scryfallCache }: ManaCurveProps) {
   const [filters, setFilters] = useState<CardFilter[]>([])
@@ -63,7 +59,7 @@ export function ManaCurve({ deck, scryfallCache }: ManaCurveProps) {
         name: color,
         value: pips[color],
         fill: PIE_COLORS[color],
-        stroke: PIE_STROKES[color],
+        stroke: PIE_STROKE,
       }))
   }, [filtered])
 
@@ -87,18 +83,28 @@ export function ManaCurve({ deck, scryfallCache }: ManaCurveProps) {
           <h4 className="text-sm font-medium text-muted-foreground mb-2">Cards by Mana Value</h4>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={cmcData}>
-              <XAxis dataKey="name" />
-              <YAxis allowDecimals={false} />
+              <XAxis
+                dataKey="name"
+                tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }}
+                axisLine={{ stroke: 'var(--border)' }}
+                tickLine={{ stroke: 'var(--border)' }}
+              />
+              <YAxis
+                allowDecimals={false}
+                tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }}
+                axisLine={{ stroke: 'var(--border)' }}
+                tickLine={{ stroke: 'var(--border)' }}
+              />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: 'hsl(var(--popover))',
-                  borderColor: 'hsl(var(--border))',
-                  borderRadius: 'var(--radius)',
+                  backgroundColor: 'var(--popover)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 0,
                 }}
-                labelStyle={{ color: 'hsl(var(--popover-foreground))' }}
-                itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
+                labelStyle={{ color: 'var(--popover-foreground)' }}
+                itemStyle={{ color: 'var(--popover-foreground)' }}
               />
-              <Bar dataKey="count" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="count" fill="var(--foreground)" radius={0} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -132,12 +138,12 @@ export function ManaCurve({ deck, scryfallCache }: ManaCurveProps) {
                 </Pie>
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: 'hsl(var(--popover))',
-                    borderColor: 'hsl(var(--border))',
-                    borderRadius: 'var(--radius)',
+                    backgroundColor: 'var(--popover)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 0,
                   }}
-                  labelStyle={{ color: 'hsl(var(--popover-foreground))' }}
-                  itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
+                  labelStyle={{ color: 'var(--popover-foreground)' }}
+                  itemStyle={{ color: 'var(--popover-foreground)' }}
                 />
               </PieChart>
             </ResponsiveContainer>

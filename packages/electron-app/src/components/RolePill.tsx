@@ -19,13 +19,23 @@ export function RolePill({ roleId, globalRoles, customRoles, onRemove, disabled 
 
   const pill = (
     <span
-      className="group relative inline-flex items-center px-1.5 py-0.5 text-xs rounded text-white whitespace-nowrap"
-      style={{ backgroundColor: color }}
+      className="group relative inline-flex items-center whitespace-nowrap"
+      style={{
+        padding: '2px 8px',
+        backgroundColor: `color-mix(in srgb, ${color} 14%, transparent)`,
+        color,
+        fontFamily: 'var(--font-body)',
+        fontSize: '10px',
+        fontWeight: 600,
+        letterSpacing: '0.12em',
+        textTransform: 'uppercase',
+      }}
     >
       {name}
       {onRemove && !disabled && (
         <button
-          className="absolute -top-1 -right-1 hidden group-hover:flex items-center justify-center w-3.5 h-3.5 rounded-full bg-black text-white"
+          className="absolute -top-1 -right-1 hidden group-hover:flex items-center justify-center w-3.5 h-3.5 text-[color:var(--background)]"
+          style={{ backgroundColor: 'var(--foreground)' }}
           onClick={(e) => {
             e.stopPropagation()
             onRemove()

@@ -88,11 +88,14 @@ export function getNonCutEntries(deck: Deck): CardEntry[] {
 /**
  * Get the type line for an entry by consulting the Scryfall cache. Returns
  * `undefined` when the cache has no entry for this card's `scryfallId`, or
- * when the card has no `scryfallId` to look up by.
+ * when the card has no `scryfallId` to look up by. Reversible-layout cards
+ * (e.g. Secret Lair "Mountain // Mountain") have `type_line: null` at the
+ * top level; fall back to the first face's type line for those.
  */
 export function getTypeLine(entry: CardEntry, cache: Map<string, ScryfallCard>): string | undefined {
   if (!entry.card.scryfallId) return undefined
-  return cache.get(entry.card.scryfallId)?.type_line
+  const card = cache.get(entry.card.scryfallId)
+  return card?.type_line ?? card?.card_faces?.[0]?.type_line
 }
 
 /**

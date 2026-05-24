@@ -49,6 +49,15 @@
     --font-title: 'Cinzel', serif;
     --font-display: 'Fraunces', serif;
     --font-body: 'Inter', system-ui, sans-serif;
+    /* --font-tagline is the italic editorial register used for taglines, bylines,
+     * and status lines. Defaults to --font-display so it inherits per theme.
+     * Cyberpunk overrides because Space Grotesk lacks an italic axis. */
+    --font-tagline: var(--font-display);
+
+    /* --pip-backplate is the disc rendered behind a color-identity pip so the
+     * baked-in SVG fills read against the background. Transparent on light
+     * themes; dark themes override to a parchment/cool-white value. */
+    --pip-backplate: transparent;
 
     /* Card elevation — drop shadow for light themes, backlight glow for dark.
      * Each theme overrides these to set its own physical-context lighting. */
@@ -237,6 +246,14 @@
     --action-fg: var(--background);
     --masthead-rule-color: var(--color-u);
 
+    /* Space Grotesk has no italic axis. Tagline / byline italics translate to
+     * JetBrains Mono italic — same editorial register, different mechanics. */
+    --font-tagline: 'JetBrains Mono', monospace;
+
+    /* Cool-white disc behind color-identity pips so the SVG fills read on the
+     * deep navy background. */
+    --pip-backplate: #F5F7FB;
+
     /* Cyberpunk — neon-sign backlight, per-deck color identity.
      * Components set --deck-color-1 (primary tube) and --deck-color-2 (halo)
      * inline based on the deck's color identity. Falls back to --ring if
@@ -295,6 +312,9 @@
 
     --font-display: 'Cormorant Garamond', serif;
     --font-body: 'Cormorant Garamond', serif;
+
+    /* Parchment disc behind color-identity pips on the warm-dark ground. */
+    --pip-backplate: #E8DFD4;
 
     /* Gothic — candlelight, per-deck color identity. Same per-deck pattern
      * as Cyberpunk but quieter — softer rim, no hot inner glow, more

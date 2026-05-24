@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
-import { Plus, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { captionTagStyle, captionLabelStyle, editorialTextStyle } from '@/lib/mastheadStyles'
 import {
   Dialog,
   DialogContent,
@@ -92,48 +93,49 @@ function computeAvailableValues(cards: EnrichedDeckCard[]): AvailableValues {
   return { cmcBuckets, colors, cardTypes, roleIds, ownershipStatuses }
 }
 
-// Render a filter summary with inline mana pips for color/cmc filters
-function FilterPillContent({
+// Render the value portion of a filter as italic editorial text.
+// Negative filters get a leading "not " in the same italic register; color
+// filters render mana pips inline.
+function FilterValueDisplay({
   filter,
   allRoles,
 }: {
   filter: CardFilter
   allRoles: { id: string; name: string }[]
 }) {
-  const label = FILTER_TYPE_LABELS[filter.type]
-  const mode = filter.mode === 'include' ? 'is' : 'is not'
-
   if (filter.values.length === 0) {
-    return <span>{label}: (none selected)</span>
+    return <span style={{ ...editorialTextStyle, color: 'var(--muted-foreground)' }}>none</span>
   }
+
+  const prefix = filter.mode === 'exclude' ? 'not ' : ''
 
   switch (filter.type) {
     case 'cmc': {
-      const valuesStr = filter.values.map(v => v === 7 ? '7+' : String(v)).join(', ')
-      return <span>{label} {mode} {valuesStr}</span>
+      const valuesStr = filter.values.map(v => v === 7 ? '7+' : String(v)).join(' · ')
+      return <span style={editorialTextStyle}>{prefix}{valuesStr}</span>
     }
     case 'color':
       return (
-        <span className="inline-flex items-center gap-1">
-          {label} {mode}{' '}
-          {filter.values.map((v) => (
+        <span className="inline-flex items-center gap-1" style={editorialTextStyle}>
+          {prefix}
+          {filter.values.map(v => (
             <ManaSymbol key={v} symbol={v} size="sm" />
           ))}
         </span>
       )
     case 'card-type':
-      return <span>{label} {mode} {filter.values.join(', ')}</span>
+      return <span style={editorialTextStyle}>{prefix}{filter.values.join(' · ')}</span>
     case 'role': {
       const names = filter.values
         .map(id => allRoles.find(r => r.id === id)?.name ?? id)
-        .join(', ')
-      return <span>{label} {mode} {names}</span>
+        .join(' · ')
+      return <span style={editorialTextStyle}>{prefix}{names.toLowerCase()}</span>
     }
     case 'ownership': {
       const names = filter.values
         .map(s => OWNERSHIP_STATUS_LABELS[s] ?? s)
-        .join(', ')
-      return <span>{label} {mode} {names}</span>
+        .join(' · ')
+      return <span style={editorialTextStyle}>{prefix}{names.toLowerCase()}</span>
     }
   }
 }
@@ -218,37 +220,46 @@ export function CardFilterBar({ filters, onChange, allowedGroups, deck, enriched
   if (filters.length === 0 && availableTypes.length === 0) return null
 
   return (
-    <div className="flex items-center gap-2 flex-wrap mb-4">
+    <div className="flex items-center gap-7 flex-wrap mb-4">
       {filters.map((filter, index) => (
         <div
           key={`${filter.type}-${index}`}
-          className="flex items-center gap-1 bg-secondary rounded-full pl-3 pr-1 py-1 text-xs cursor-pointer hover:bg-secondary/80"
+          className="flex items-baseline gap-2 cursor-pointer hover:opacity-80 transition-opacity"
           onClick={() => openEditFilter(index)}
         >
-          <FilterPillContent filter={filter} allRoles={allRoles} />
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-5 w-5 rounded-full hover:bg-destructive/20"
+          <span style={captionLabelStyle}>{FILTER_TYPE_LABELS[filter.type]}</span>
+          <FilterValueDisplay filter={filter} allRoles={allRoles} />
+          <button
+            type="button"
+            aria-label="Remove filter"
+            className="hover:opacity-70 transition-opacity self-center"
+            style={{
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              padding: 0,
+              color: 'var(--muted-foreground)',
+              display: 'inline-flex',
+            }}
             onClick={(e) => {
               e.stopPropagation()
               removeFilter(index)
             }}
           >
             <X className="w-3 h-3" />
-          </Button>
+          </button>
         </div>
       ))}
 
       {availableTypes.length > 0 && (
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-7 text-xs gap-1 rounded-full"
+        <button
+          type="button"
           onClick={openNewFilter}
+          className="hover:opacity-80 transition-opacity"
+          style={captionTagStyle}
         >
-          <Plus className="w-3 h-3" /> Add Filter
-        </Button>
+          + Add Filter
+        </button>
       )}
 
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
