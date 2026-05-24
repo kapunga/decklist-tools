@@ -21,8 +21,11 @@ export const migrateDenormalizePrimaryType: Migration = {
         const scryfallId = entry.card.scryfallId
         if (!scryfallId) continue
         const card = context.lookupScryfallCard(scryfallId)
-        if (!card?.type_line) continue
-        entry.primaryType = getPrimaryType(card.type_line)
+        // Reversible-layout cards (Secret Lair "Mountain // Mountain" etc.)
+        // have a null top-level type_line; fall back to the first face.
+        const typeLine = card?.type_line ?? card?.card_faces?.[0]?.type_line
+        if (!typeLine) continue
+        entry.primaryType = getPrimaryType(typeLine)
       }
     }
   },

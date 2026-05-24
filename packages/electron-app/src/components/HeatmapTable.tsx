@@ -20,7 +20,7 @@ function cellStyle(p: number): React.CSSProperties {
   const alpha = 0.15 + p * 0.7
   return {
     backgroundColor: `hsl(${hue} 75% 55% / ${alpha.toFixed(2)})`,
-    color: p > 0.55 ? 'white' : 'hsl(var(--foreground))',
+    color: p > 0.55 ? 'white' : 'var(--foreground)',
   }
 }
 
