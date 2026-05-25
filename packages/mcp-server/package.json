@@ -23,12 +23,12 @@
     "@mtg-deckbuilder/shared": "workspace:*"
   },
   "devDependencies": {
-    "@types/node": "^25.7.0",
+    "@types/node": "^25.9.1",
     "esbuild": "^0.28.0",
     "pkg": "^5.8.1",
-    "tsx": "^4.7.0",
+    "tsx": "^4.22.3",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.6"
+    "vitest": "^4.1.7"
   },
   "pkg": {
     "scripts": "dist/**/*.js",
