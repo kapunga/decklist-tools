@@ -16,6 +16,7 @@ import {
   updateSettingsActiveSection,
   SETTINGS_WINDOW_DEFAULTS,
 } from './storage-extensions'
+import { createSkillsModule, getBundledSkillsDir, type SkillClientId } from './skills'
 
 // MCP client integration
 type McpClientId = 'claude-desktop' | 'claude-code' | 'gemini-cli'
@@ -106,9 +107,13 @@ function registerMcpHandlers(clientId: string, configPath: string): void {
       const config = readJsonConfig(configPath) ?? {}
       const servers = (config.mcpServers as Record<string, unknown>) ?? {}
       const mcpServerPath = getMcpServerPath()
-      const args = app.isPackaged
+      // Pass `--skills-dir` so the server's list_bundled_skills tool can read
+      // the same SKILL.md files the Settings → Skills table installs from.
+      const skillsDir = getBundledSkillsDir(getRepoRoot())
+      const baseArgs = app.isPackaged
         ? [mcpServerPath]
         : [mcpServerPath, '--storage-dir', getStorageDir()]
+      const args = [...baseArgs, '--skills-dir', skillsDir]
 
       servers[getMcpServerName()] = {
         command: 'node',
@@ -592,6 +597,18 @@ function setupIpcHandlers() {
   // MCP client integrations
   for (const [clientId, configPath] of Object.entries(getMcpClientConfigPaths())) {
     registerMcpHandlers(clientId, configPath)
+  }
+
+  // Skill installation (Claude Code + Gemini CLI: filesystem-copy into the
+  // client's skills dir; 'manual': zip-export through a save dialog for
+  // Claude Desktop's Capabilities UI or any other harness).
+  const skillsModule = createSkillsModule({
+    repoRoot: getRepoRoot(),
+    storageDir: getStorageDir(),
+  })
+  const skillClients: SkillClientId[] = ['claude-code', 'gemini-cli', 'manual']
+  for (const clientId of skillClients) {
+    skillsModule.registerHandlers(clientId)
   }
 
   // Cache management

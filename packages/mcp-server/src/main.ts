@@ -10,13 +10,14 @@ import * as path from 'path'
 import { Storage, loadCardDeckLimits } from '@mtg-deckbuilder/shared'
 import { handleToolCall, getToolDefinitions } from './tools/index.js'
 
-function parseStorageDir(argv: string[]): string | undefined {
-  const i = argv.indexOf('--storage-dir')
+function parseFlag(argv: string[], flag: string): string | undefined {
+  const i = argv.indexOf(flag)
   return i >= 0 && i + 1 < argv.length ? argv[i + 1] : undefined
 }
 
 async function main() {
-  const storage = new Storage(parseStorageDir(process.argv))
+  const storage = new Storage(parseFlag(process.argv, '--storage-dir'))
+  const skillsDir = parseFlag(process.argv, '--skills-dir')
 
   // Load card-intrinsic deck limits ("A deck can have..." cards) before serving
   // any requests. Non-throwing: logs warnings on failure and falls back to a
@@ -47,7 +48,7 @@ async function main() {
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name, arguments: args } = request.params
     try {
-      const result = await handleToolCall(name, args || {}, storage)
+      const result = await handleToolCall(name, args || {}, storage, skillsDir)
       return {
         content: [
           {

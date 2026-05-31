@@ -17,6 +17,7 @@ import { manageCommander } from './commander-tools.js'
 import { listCardLists, getCardList, manageCardList } from './list-tools.js'
 import { listDeckNotes, manageDeckNote } from './note-tools.js'
 import { getCollectionFilter } from './collection-tools.js'
+import { listBundledSkills } from './skill-tools.js'
 import { validateInputLengths } from './helpers.js'
 import {
   validateManageDeckArgs,
@@ -38,7 +39,8 @@ export { getToolDefinitions }
 export async function handleToolCall(
   name: string,
   args: Record<string, unknown>,
-  storage: Storage
+  storage: Storage,
+  skillsDir?: string
 ): Promise<unknown> {
   validateInputLengths(args)
 
@@ -88,6 +90,8 @@ export async function handleToolCall(
       return searchDecksForCard(storage, args.card_name as string)
     case 'get_collection_filter':
       return getCollectionFilter(storage)
+    case 'list_bundled_skills':
+      return listBundledSkills(skillsDir)
     default:
       throw new Error(`Unknown tool: ${name}`)
   }

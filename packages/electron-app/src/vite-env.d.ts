@@ -66,6 +66,33 @@ export interface DeckExportResult {
   error?: string
 }
 
+export type SkillClientId = 'claude-code' | 'gemini-cli' | 'manual'
+
+export type SkillInstallStatus = 'not-installed' | 'installed' | 'installed-stale'
+
+export interface SkillListEntry {
+  name: string
+  description: string
+  status: SkillInstallStatus
+  installedVersion?: string
+  bundledVersion: string
+}
+
+export type SkillTarget =
+  | { kind: 'directory'; clientId: SkillClientId; skillsDir: string }
+  | { kind: 'manual'; clientId: SkillClientId }
+
+export interface SkillInstallResult {
+  success: boolean
+  cancelled?: boolean
+  error?: string
+}
+
+export interface SkillBulkResult {
+  success: boolean
+  errors?: Array<{ skillName: string; error: string }>
+}
+
 export interface ElectronAPI {
   listDecks: () => Promise<unknown[]>
   getDeck: (id: string) => Promise<unknown | null>
@@ -110,6 +137,12 @@ export interface ElectronAPI {
   setExportMenuEnabled: (enabled: boolean) => Promise<void>
   openSettings: () => Promise<void>
   saveSettingsActiveSection: (section: string) => Promise<void>
+  listSkills: (clientId: string) => Promise<SkillListEntry[]>
+  getSkillTarget: (clientId: string) => Promise<SkillTarget>
+  installSkill: (clientId: string, skillName: string) => Promise<SkillInstallResult>
+  uninstallSkill: (clientId: string, skillName: string) => Promise<SkillInstallResult>
+  installAllSkills: (clientId: string) => Promise<SkillBulkResult>
+  uninstallAllSkills: (clientId: string) => Promise<SkillBulkResult>
 }
 
 declare global {

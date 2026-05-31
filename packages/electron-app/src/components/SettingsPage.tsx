@@ -5,14 +5,16 @@ import { DataManagementSection } from '@/components/DataManagementSection'
 import { CacheSettingsSection } from '@/components/CacheSettingsSection'
 import { SetCollectionPane } from '@/components/settings/SetCollectionPane'
 import { RolesPane } from '@/components/settings/RolesPane'
-import { IntegrationsPane } from '@/components/settings/IntegrationsPane'
+import { McpServerPane } from '@/components/settings/McpServerPane'
+import { SkillsPane } from '@/components/settings/SkillsPane'
 
 function renderPane(section: SettingsSection) {
   switch (section) {
     case 'general':       return <ThemeSettingsSection />
     case 'sets':          return <SetCollectionPane />
     case 'roles':         return <RolesPane />
-    case 'integrations':  return <IntegrationsPane />
+    case 'mcp-server':    return <McpServerPane />
+    case 'skills':        return <SkillsPane />
     case 'data':          return <DataManagementSection />
     case 'cache':         return <CacheSettingsSection />
   }
@@ -20,7 +22,10 @@ function renderPane(section: SettingsSection) {
 
 function parseInitialSection(): SettingsSection {
   const param = new URLSearchParams(window.location.search).get('section')
-  const match = SETTINGS_SECTIONS.find(s => s.id === param)
+  // Migration: anyone whose persisted active section is the old 'integrations'
+  // key lands on the new 'mcp-server' pane.
+  const normalised = param === 'integrations' ? 'mcp-server' : param
+  const match = SETTINGS_SECTIONS.find(s => s.id === normalised)
   return match?.id ?? 'general'
 }
 

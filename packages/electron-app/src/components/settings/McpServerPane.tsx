@@ -1,6 +1,6 @@
 import { McpIntegrationCard } from '@/components/McpIntegrationCard'
 
-export function IntegrationsPane() {
+export function McpServerPane() {
   return (
     <div className="space-y-6">
       <McpIntegrationCard
