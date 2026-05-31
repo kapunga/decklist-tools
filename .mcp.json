@@ -5,7 +5,9 @@
       "args": [
         "/Users/kapunga/code/llm-stuff/decklist-tools/packages/mcp-server/dist/main.js",
         "--storage-dir",
-        "/Users/kapunga/code/llm-stuff/decklist-tools/dev-storage"
+        "/Users/kapunga/code/llm-stuff/decklist-tools/dev-storage",
+        "--skills-dir",
+        "/Users/kapunga/code/llm-stuff/decklist-tools/skills"
       ]
     }
   }

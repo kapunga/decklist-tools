@@ -419,5 +419,15 @@ export function getToolDefinitions(): Tool[] {
         properties: {},
       },
     },
+
+    // Skill inventory
+    {
+      name: 'list_bundled_skills',
+      description: 'Lists the SKILL.md skills bundled with the currently-running mtg-deckbuilder app, with their name, version (date), and description. Use this to check whether installed copies of mtg-deckbuilder skills (in ~/.claude/skills, ~/.gemini/skills, Claude Desktop\'s Capabilities, etc.) are up to date — compare the returned `version` against the `metadata.version` in your local SKILL.md and reinstall if newer. Returns `skills_dir_configured: false` if the server was not started with a `--skills-dir` flag.',
+      inputSchema: {
+        type: 'object',
+        properties: {},
+      },
+    },
   ]
 }
