@@ -62,8 +62,8 @@ function call(name: string, args: Record<string, unknown> = {}) {
 // ─── Tool Definitions ──────────────────────────────────────────
 
 describe('getToolDefinitions', () => {
-  it('returns 20 tools', () => {
-    expect(getToolDefinitions()).toHaveLength(20)
+  it('returns 21 tools', () => {
+    expect(getToolDefinitions()).toHaveLength(21)
   })
 
   it('exposes the four split deck views, not view_deck', () => {
