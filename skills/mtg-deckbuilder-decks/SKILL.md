@@ -1,6 +1,8 @@
 ---
 name: mtg-deckbuilder-decks
 description: Drive the mtg-deckbuilder MCP server to create, modify, and export Magic the Gathering decks — setting up a new deck, adding/removing/moving cards, assigning roles, managing commanders, and exporting for paper play or import into other tools (Arena, Moxfield, Archidekt, MTGO, plain text). Use when a user says "build a deck", "add this card to my deck", "swap my commander", "export the deck", or similar lifecycle prompts.
+metadata:
+  version: "2026-05-24"
 ---
 
 # MTG Deckbuilder — Deck Lifecycle

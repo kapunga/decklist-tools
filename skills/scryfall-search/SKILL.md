@@ -1,6 +1,8 @@
 ---
 name: scryfall-search
 description: How to construct Scryfall search queries for Magic the Gathering. Use when you need to find cards by attributes (color, type, mana cost, power/toughness, format legality, oracle text, etc.) or when composing a multi-operator query — on scryfall.com, through the Scryfall API, or via an MTG-aware MCP tool. For looking up specific function/oracle tag names, see the scryfall-tags skill instead.
+metadata:
+  version: "2026-05-24"
 ---
 
 # Scryfall Search Syntax

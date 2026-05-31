@@ -66,12 +66,13 @@ export interface DeckExportResult {
   error?: string
 }
 
-export type SkillClientId = 'claude-desktop' | 'claude-code' | 'gemini-cli'
+export type SkillClientId = 'claude-code' | 'gemini-cli' | 'manual'
 
 export type SkillInstallStatus = 'not-installed' | 'installed' | 'installed-stale'
 
 export interface SkillListEntry {
   name: string
+  description: string
   status: SkillInstallStatus
   installedVersion?: string
   bundledVersion: string

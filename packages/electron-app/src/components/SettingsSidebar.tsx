@@ -1,7 +1,14 @@
 import type { ReactNode } from 'react'
-import { Settings2, Layers, Tag, Plug, Database, HardDrive } from 'lucide-react'
+import { Settings2, Layers, Tag, Plug, Sparkles, Database, HardDrive } from 'lucide-react'
 
-export type SettingsSection = 'general' | 'sets' | 'roles' | 'integrations' | 'data' | 'cache'
+export type SettingsSection =
+  | 'general'
+  | 'sets'
+  | 'roles'
+  | 'mcp-server'
+  | 'skills'
+  | 'data'
+  | 'cache'
 
 interface SectionDef {
   id: SettingsSection
@@ -15,7 +22,8 @@ export const SETTINGS_SECTIONS: SectionDef[] = [
   { id: 'general', label: 'General', icon: <Settings2 className={ICON_CLASS} /> },
   { id: 'sets', label: 'Set Collection', icon: <Layers className={ICON_CLASS} /> },
   { id: 'roles', label: 'Roles', icon: <Tag className={ICON_CLASS} /> },
-  { id: 'integrations', label: 'Integrations', icon: <Plug className={ICON_CLASS} /> },
+  { id: 'mcp-server', label: 'MCP Server', icon: <Plug className={ICON_CLASS} /> },
+  { id: 'skills', label: 'Skills', icon: <Sparkles className={ICON_CLASS} /> },
   { id: 'data', label: 'Data', icon: <Database className={ICON_CLASS} /> },
   { id: 'cache', label: 'Cache', icon: <HardDrive className={ICON_CLASS} /> },
 ]

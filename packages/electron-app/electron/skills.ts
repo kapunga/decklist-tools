@@ -7,20 +7,25 @@ import archiver from 'archiver'
 // Types
 // ---------------------------------------------------------------------------
 
-/** Clients we can install skills into. Mirrors `McpClientId` in main.ts. */
-export type SkillClientId = 'claude-desktop' | 'claude-code' | 'gemini-cli'
+/**
+ * Targets we can install skills into. The first two are concrete clients with
+ * known filesystem skill directories. `manual` is the generic export path —
+ * a user-chosen save location that produces a `.zip` they can upload into
+ * Claude Desktop's Capabilities UI, drop into another harness, or stash
+ * anywhere they want. It's deliberately not tied to one client.
+ */
+export type SkillClientId = 'claude-code' | 'gemini-cli' | 'manual'
 
 /**
- * How a client receives skills.
+ * How a target receives skills.
  *
  * - `directory`: skills are dropped into a known filesystem path
  *   (Claude Code → ~/.claude/skills/, Gemini CLI → ~/.gemini/skills/).
  *   Install = copy in, uninstall = remove + drop manifest record.
  *
- * - `manual`: no documented filesystem path (Claude Desktop). Install =
- *   export each skill as a .zip via the OS save dialog so the user can
- *   upload it through the app's Capabilities UI. There's nothing on disk
- *   to track, so manual targets do not write manifest records.
+ * - `manual`: no specific destination. Install = export each skill as a
+ *   `.zip` via the OS save dialog. Nothing on disk to track, so manual
+ *   targets do not write manifest records.
  */
 export type SkillTargetKind = 'directory' | 'manual'
 
@@ -43,6 +48,14 @@ export interface SkillsManifest {
 /** A skill bundled with the app. */
 export interface BundledSkill {
   name: string
+  /** One-line description from SKILL.md frontmatter. Empty string if absent. */
+  description: string
+  /**
+   * Version from SKILL.md frontmatter (any opaque string — compared by `===`).
+   * Falls back to the app version for SKILL.md files without a `version:` field,
+   * which keeps older skills installable without retroactive edits.
+   */
+  version: string
   /** Absolute path to the source directory (e.g. <repo>/skills/<name>). */
   sourcePath: string
 }
@@ -54,6 +67,7 @@ export type SkillInstallStatus =
 
 export interface SkillListEntry {
   name: string
+  description: string
   status: SkillInstallStatus
   installedVersion?: string
   bundledVersion: string // currently always app.getVersion()
@@ -122,7 +136,7 @@ export function getBundledSkillsDir(repoRoot: string): string {
  * to avoid touching real Claude/Gemini installs.
  */
 export function resolveSkillTarget(clientId: SkillClientId, repoRoot: string): SkillTarget {
-  if (clientId === 'claude-desktop') {
+  if (clientId === 'manual') {
     return { kind: 'manual', clientId }
   }
   if (!app.isPackaged) {
@@ -191,6 +205,72 @@ function withoutRecord(
 }
 
 // ---------------------------------------------------------------------------
+// SKILL.md frontmatter (minimal YAML — single-line key: value pairs)
+// ---------------------------------------------------------------------------
+
+/**
+ * Parsed SKILL.md frontmatter. Top-level keys (per the agentskills.io spec:
+ * name, description, license, compatibility, allowed-tools) land in `top`.
+ * The `metadata:` block — a flat string-to-string map by spec — lands in
+ * `metadata`. We only need one level of nesting, so no YAML dep.
+ */
+interface SkillFrontmatter {
+  top: Record<string, string>
+  metadata: Record<string, string>
+}
+
+/**
+ * Pull `key: value` pairs from a `---`-delimited YAML head, recognising the
+ * `metadata:` block as one level of indented children. Quoted string values
+ * (`"2026-05-31"`) have their wrapping quotes stripped.
+ */
+function parseSkillFrontmatter(filePath: string): SkillFrontmatter {
+  const empty: SkillFrontmatter = { top: {}, metadata: {} }
+  try {
+    // 4 KB is enough to cover the largest frontmatter we have.
+    const fd = fs.openSync(filePath, 'r')
+    const buf = Buffer.alloc(4096)
+    const bytesRead = fs.readSync(fd, buf, 0, buf.length, 0)
+    fs.closeSync(fd)
+    const head = buf.toString('utf-8', 0, bytesRead)
+    const lines = head.split('\n')
+    if (lines[0]?.trim() !== '---') return empty
+    const out: SkillFrontmatter = { top: {}, metadata: {} }
+    let inMetadata = false
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i]
+      if (line.trim() === '---') break
+      const topMatch = line.match(/^([A-Za-z0-9_-]+):\s*(.*)$/)
+      if (topMatch) {
+        const [, key, rawValue] = topMatch
+        const value = unquote(rawValue.trim())
+        if (key === 'metadata' && value === '') {
+          inMetadata = true
+        } else {
+          inMetadata = false
+          out.top[key] = value
+        }
+        continue
+      }
+      if (inMetadata) {
+        const nested = line.match(/^\s+([A-Za-z0-9_-]+):\s*(.*)$/)
+        if (nested) out.metadata[nested[1]] = unquote(nested[2].trim())
+      }
+    }
+    return out
+  } catch {
+    return empty
+  }
+}
+
+function unquote(s: string): string {
+  if (s.length >= 2 && ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'")))) {
+    return s.slice(1, -1)
+  }
+  return s
+}
+
+// ---------------------------------------------------------------------------
 // Zip export (manual targets)
 // ---------------------------------------------------------------------------
 
@@ -221,11 +301,19 @@ export function createSkillsModule(config: SkillsModuleConfig): SkillsModule {
     return fs
       .readdirSync(dir, { withFileTypes: true })
       .filter((entry) => entry.isDirectory())
-      .map((entry) => ({
-        name: entry.name,
-        sourcePath: path.join(dir, entry.name),
-      }))
-      .filter((skill) => fs.existsSync(path.join(skill.sourcePath, 'SKILL.md')))
+      .map((entry) => {
+        const sourcePath = path.join(dir, entry.name)
+        const skillMd = path.join(sourcePath, 'SKILL.md')
+        if (!fs.existsSync(skillMd)) return null
+        const fm = parseSkillFrontmatter(skillMd)
+        return {
+          name: entry.name,
+          description: fm.top.description ?? '',
+          version: fm.metadata.version ?? app.getVersion(),
+          sourcePath,
+        }
+      })
+      .filter((skill): skill is BundledSkill => skill !== null)
   }
 
   function getSkillTarget(clientId: SkillClientId): SkillTarget {
@@ -239,18 +327,18 @@ export function createSkillsModule(config: SkillsModuleConfig): SkillsModule {
   function listSkillsForClient(clientId: SkillClientId): SkillListEntry[] {
     const bundled = listBundledSkills()
     const manifest = readManifest()
-    const currentVersion = app.getVersion()
     return bundled.map((skill) => {
       const record = findRecord(manifest, clientId, skill.name)
       let status: SkillInstallStatus = 'not-installed'
       if (record) {
-        status = record.installedVersion === currentVersion ? 'installed' : 'installed-stale'
+        status = record.installedVersion === skill.version ? 'installed' : 'installed-stale'
       }
       return {
         name: skill.name,
+        description: skill.description,
         status,
         installedVersion: record?.installedVersion,
-        bundledVersion: currentVersion,
+        bundledVersion: skill.version,
       }
     })
   }
@@ -278,13 +366,15 @@ export function createSkillsModule(config: SkillsModuleConfig): SkillsModule {
       }
       fs.cpSync(bundled.sourcePath, dest, { recursive: true })
 
-      // Record install.
+      // Record install — track the *skill's* version so a later author edit
+      // (with a new SKILL.md `version:`) flips this row to 'installed-stale'
+      // and surfaces an Update button.
       const manifest = readManifest()
       const cleaned = withoutRecord(manifest, clientId, skillName)
       cleaned.records.push({
         client: clientId,
         skillName,
-        installedVersion: app.getVersion(),
+        installedVersion: bundled.version,
         installedAt: new Date().toISOString(),
       })
       writeManifestAt(storageDir, cleaned)

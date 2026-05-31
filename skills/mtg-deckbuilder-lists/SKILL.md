@@ -1,6 +1,8 @@
 ---
 name: mtg-deckbuilder-lists
 description: Manage named card lists in the mtg-deckbuilder MCP server — the default interest list, additional user-created lists (wishlists, scanned collections, custom lists, or more interest-kind lists). Use when a user wants to "save this card for later", "add to my wishlist", "track cards I've scanned", or otherwise work with cards outside the context of a specific deck.
+metadata:
+  version: "2026-05-24"
 ---
 
 # MTG Deckbuilder — Card Lists

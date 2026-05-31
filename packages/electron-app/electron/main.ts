@@ -595,14 +595,14 @@ function setupIpcHandlers() {
     registerMcpHandlers(clientId, configPath)
   }
 
-  // Skill installation (Claude Code + Gemini CLI: filesystem-copy; Claude
-  // Desktop: zip-export through a save dialog because no documented
-  // filesystem skills path).
+  // Skill installation (Claude Code + Gemini CLI: filesystem-copy into the
+  // client's skills dir; 'manual': zip-export through a save dialog for
+  // Claude Desktop's Capabilities UI or any other harness).
   const skillsModule = createSkillsModule({
     repoRoot: getRepoRoot(),
     storageDir: getStorageDir(),
   })
-  const skillClients: SkillClientId[] = ['claude-desktop', 'claude-code', 'gemini-cli']
+  const skillClients: SkillClientId[] = ['claude-code', 'gemini-cli', 'manual']
   for (const clientId of skillClients) {
     skillsModule.registerHandlers(clientId)
   }

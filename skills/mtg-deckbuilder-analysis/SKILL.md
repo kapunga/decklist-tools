@@ -1,6 +1,8 @@
 ---
 name: mtg-deckbuilder-analysis
 description: Inspect and analyze decks stored in the mtg-deckbuilder MCP server — viewing card lists with oracle text, computing mana curves, reading strategic notes, generating physical pull lists, and searching for cards across decks. Use when a user asks "show me the deck", "what's in this deck", "what's the mana curve", "what's the strategy", or "which decks contain card X".
+metadata:
+  version: "2026-05-24"
 ---
 
 # MTG Deckbuilder — Analysis & Views

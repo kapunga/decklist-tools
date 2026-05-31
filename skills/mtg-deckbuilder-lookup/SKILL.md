@@ -1,6 +1,8 @@
 ---
 name: mtg-deckbuilder-lookup
 description: Search for Magic the Gathering cards through the mtg-deckbuilder MCP server's Scryfall integration. Use when a user wants to find cards by name, by attributes (color, type, mana cost, format legality), or by mechanical role ("find me artifact removal in red"). For query syntax, see the scryfall-search skill; for function:tag vocabulary, see the scryfall-tags skill.
+metadata:
+  version: "2026-05-24"
 ---
 
 # MTG Deckbuilder — Card Lookup

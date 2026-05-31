@@ -1,6 +1,8 @@
 ---
 name: scryfall-tags
 description: Reference for Scryfall's functional tag taxonomy. Use when searching Magic the Gathering cards by mechanical role (removal, ramp, card draw, tutors, counterspells, recursion, tribal payoffs, token producers, etc.) via `function:<tag>` or `oracletag:<tag>` queries — whether on scryfall.com directly, via the API, or through any MTG-aware tool.
+metadata:
+  version: "2026-05-24"
 ---
 
 # Scryfall Functional Tag Reference
