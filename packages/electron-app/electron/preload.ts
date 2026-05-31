@@ -48,6 +48,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
   connectMcpClient: (clientId: string) => ipcRenderer.invoke(`mcp:${clientId}:connect`),
   disconnectMcpClient: (clientId: string) => ipcRenderer.invoke(`mcp:${clientId}:disconnect`),
 
+  // Skill installation
+  listSkills: (clientId: string) => ipcRenderer.invoke(`skills:${clientId}:list`),
+  getSkillTarget: (clientId: string) => ipcRenderer.invoke(`skills:${clientId}:target`),
+  installSkill: (clientId: string, skillName: string) =>
+    ipcRenderer.invoke(`skills:${clientId}:install`, skillName),
+  uninstallSkill: (clientId: string, skillName: string) =>
+    ipcRenderer.invoke(`skills:${clientId}:uninstall`, skillName),
+  installAllSkills: (clientId: string) => ipcRenderer.invoke(`skills:${clientId}:install-all`),
+  uninstallAllSkills: (clientId: string) => ipcRenderer.invoke(`skills:${clientId}:uninstall-all`),
+
   // Cache management
   getCacheStats: () => ipcRenderer.invoke('cache:stats'),
   clearJsonCache: () => ipcRenderer.invoke('cache:clear-json'),

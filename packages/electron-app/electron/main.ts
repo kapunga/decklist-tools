@@ -16,6 +16,7 @@ import {
   updateSettingsActiveSection,
   SETTINGS_WINDOW_DEFAULTS,
 } from './storage-extensions'
+import { createSkillsModule, type SkillClientId } from './skills'
 
 // MCP client integration
 type McpClientId = 'claude-desktop' | 'claude-code' | 'gemini-cli'
@@ -592,6 +593,18 @@ function setupIpcHandlers() {
   // MCP client integrations
   for (const [clientId, configPath] of Object.entries(getMcpClientConfigPaths())) {
     registerMcpHandlers(clientId, configPath)
+  }
+
+  // Skill installation (Claude Code + Gemini CLI: filesystem-copy; Claude
+  // Desktop: zip-export through a save dialog because no documented
+  // filesystem skills path).
+  const skillsModule = createSkillsModule({
+    repoRoot: getRepoRoot(),
+    storageDir: getStorageDir(),
+  })
+  const skillClients: SkillClientId[] = ['claude-desktop', 'claude-code', 'gemini-cli']
+  for (const clientId of skillClients) {
+    skillsModule.registerHandlers(clientId)
   }
 
   // Cache management

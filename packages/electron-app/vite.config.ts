@@ -15,7 +15,11 @@ export default defineConfig({
           build: {
             outDir: 'dist-electron',
             rollupOptions: {
-              external: ['electron']
+              // 'archiver' is a CommonJS module without a default export;
+              // bundling it trips rolldown's interop check. Externalising
+              // leaves it as `require('archiver')` — Node resolves it from
+              // node_modules in dev and from app.asar in the packaged build.
+              external: ['electron', 'archiver']
             }
           }
         }
