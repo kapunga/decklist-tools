@@ -2,7 +2,7 @@
 name: mtg-deckbuilder-analysis
 description: Inspect and analyze decks stored in the mtg-deckbuilder MCP server — viewing card lists with oracle text, computing mana curves, reading strategic notes, generating physical pull lists, and searching for cards across decks. Use when a user asks "show me the deck", "what's in this deck", "what's the mana curve", "what's the strategy", or "which decks contain card X".
 metadata:
-  version: "2026-05-24"
+  version: "2026-05-31"
 ---
 
 # MTG Deckbuilder — Analysis & Views
@@ -54,6 +54,30 @@ Same filter schema as `deck_curve` (see "Filter schema" below). Examples:
 - Drop lands: `filters: [{type: "card-type", mode: "exclude", values: ["Land"]}]`
 - Cards I still need to buy: `filters: [{type: "ownership", mode: "include", values: ["need_to_buy"]}]`
 - Cards in a specific role: `filters: [{type: "role", mode: "include", values: ["ramp"]}]`
+
+## Delegating deck evaluation
+
+If your client supports subagents (a delegation / task tool), a *judgment* question about a deck
+is a good candidate to hand off. `deck_list` at `compact`/`full` detail is the largest payload in
+this toolset — every card with its oracle text — and an evaluation also pulls `deck_curve` and
+`deck_notes` on top. That's a lot of context to answer a question whose output is a paragraph.
+
+**Carve-out first — do not delegate the render.** When the user says "show me the deck", "list the
+cards", or "what's in it", that `deck_list` markdown is *meant for them to read*. Run it in the
+main conversation and show it. Summarizing it through a subagent defeats the purpose and loses the
+oracle text the user asked to see.
+
+**When to delegate.** Reach for a subagent on *evaluative* questions where the inputs are large
+but the answer is prose: "is this deck balanced?", "does it have enough removal?", "what's the
+game plan?", "where is the curve too top-heavy?"
+
+**Brief the subagent with** the `deck_id` and the question. It runs whatever it needs —
+`deck_curve`, `deck_notes`, and a filtered or `group_by: role` `deck_list` — and reasons about the
+curve, role distribution, and strategy.
+
+**Ask it to return** a tight written assessment (a few paragraphs, maybe a short list of gaps) —
+**not** the raw card list. Read-only: it analyzes and reports; any notes worth persisting are added
+by the main agent via `manage_deck_note`.
 
 ## `deck_list` vs `get_deck` — when to use which
 

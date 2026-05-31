@@ -2,7 +2,7 @@
 name: mtg-deckbuilder-lookup
 description: Search for Magic the Gathering cards through the mtg-deckbuilder MCP server's Scryfall integration. Use when a user wants to find cards by name, by attributes (color, type, mana cost, format legality), or by mechanical role ("find me artifact removal in red"). For query syntax, see the scryfall-search skill; for function:tag vocabulary, see the scryfall-tags skill.
 metadata:
-  version: "2026-05-24"
+  version: "2026-05-31"
 ---
 
 # MTG Deckbuilder — Card Lookup
@@ -134,6 +134,34 @@ search_cards  query="function:graveyard-hate game:paper", limit=30
 2. manage_card   action=add, deck_id=<id>, cards=["ema 127"]
    → uses the resolved printing
 ```
+
+## Delegating an exploratory search
+
+If your client supports subagents (a.k.a. a delegation / task tool), an open-ended search is a
+good thing to hand off. The win is context: an exploratory search fans out into several
+`search_cards` calls, each returning many cards with full oracle text — a lot of tokens for a
+question whose answer is "here are a handful of candidates."
+
+**When to delegate.** Reach for a subagent when the search is *exploratory and likely to iterate*:
+"find removal that fits this deck", "what cheap green ramp could I run", "show me payoffs for an
+artifacts theme." **Do not** delegate a single-card name lookup ("look up Sol Ring") — that's one
+call returning one card; delegation would only add a round-trip.
+
+**Brief the subagent with** (it starts with a fresh context, so spell these out):
+- the search goal in plain language;
+- the hard constraints — color identity, format, mana-value ceiling, and the
+  `get_collection_filter` string if the user wants owned-only results;
+- a pointer to consult the **scryfall-search** skill (query grammar) and **scryfall-tags** skill
+  (function:tag vocabulary), and to apply the two-operator workaround from "The auto-detect
+  gotcha" above so its queries don't misroute.
+
+**Ask it to return** a compact shortlist — roughly 5–10 candidates, each as a name plus a
+one-line reason it fits — **not** raw `search_cards` output. The shortlist is what re-enters the
+main conversation; the bulky result pages stay in the subagent's context.
+
+**Read-only.** The subagent searches and reports; it does not add cards. You (and the user) decide
+what to keep and add it via **mtg-deckbuilder-decks** (`manage_card add`) or save it via
+**mtg-deckbuilder-lists**.
 
 ## Companion skills
 

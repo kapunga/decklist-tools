@@ -2,7 +2,7 @@
 name: mtg-deckbuilder-decks
 description: Drive the mtg-deckbuilder MCP server to create, modify, and export Magic the Gathering decks — setting up a new deck, adding/removing/moving cards, assigning roles, managing commanders, and exporting for paper play or import into other tools (Arena, Moxfield, Archidekt, MTGO, plain text). Use when a user says "build a deck", "add this card to my deck", "swap my commander", "export the deck", or similar lifecycle prompts.
 metadata:
-  version: "2026-05-24"
+  version: "2026-05-31"
 ---
 
 # MTG Deckbuilder — Deck Lifecycle
@@ -83,6 +83,29 @@ Assigning roles to cards uses `manage_card` with action `update`:
 - `roles: [...]` replaces the card's role list
 - `add_roles: [...]` appends without removing existing ones
 - `remove_roles: [...]` strips specific roles
+
+## Delegating bulk role assignment
+
+Tagging a whole deck with roles — going card by card deciding what's ramp, removal, draw, a combo
+piece — is a large read-and-reason job: it needs every card's oracle text and a judgment per card.
+If your client supports subagents (a delegation / task tool), spread it out so that reasoning
+happens in throwaway contexts and only the conclusions come back.
+
+**Partition by role.** Give each subagent a *small* group of roles — roughly two — and the deck's
+card list. Each subagent figures out, for *its* roles only, which cards qualify, and returns a
+compact mapping of `role → [card names]`. Partitioning by role (rather than by card) keeps each
+subagent's job coherent and its output small.
+
+**Brief each subagent with** the `deck_id`, its assigned roles (with definitions, since role names
+have no built-in semantics — see "Roles — global vs custom" above), and a pointer to the
+**scryfall-tags** skill if it wants the `function:` vocabulary to reason about mechanical roles.
+
+**You apply the results.** The subagents are read-only; they return mappings, you make the edits.
+For each returned `role → [cards]` group, apply it in one call with
+`manage_card action=update, add_roles=["<role>"], cards=[...]` (append, don't clobber existing
+roles). Alternatively, `manage_deck_note` with a `role_id` propagates a role to all of a note's
+`card_names` in a single call (see **mtg-deckbuilder-analysis**). Keeping the writes in the main
+agent means every role assignment stays visible to you.
 
 ## Commander format quirks
 

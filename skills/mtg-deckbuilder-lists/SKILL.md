@@ -2,7 +2,7 @@
 name: mtg-deckbuilder-lists
 description: Manage named card lists in the mtg-deckbuilder MCP server — the default interest list, additional user-created lists (wishlists, scanned collections, custom lists, or more interest-kind lists). Use when a user wants to "save this card for later", "add to my wishlist", "track cards I've scanned", or otherwise work with cards outside the context of a specific deck.
 metadata:
-  version: "2026-05-24"
+  version: "2026-05-31"
 ---
 
 # MTG Deckbuilder — Card Lists
@@ -195,6 +195,33 @@ For each result:
                      source="claude",
                      notes="from Scryfall search: graveyard hate in Dimir colors"
 ```
+
+## Delegating cross-deck triage (one subagent per deck)
+
+The "review my interest list and decide which deck each card fits" workflow above gets expensive
+fast: answering it well means reading *each* candidate deck's full context — contents, color
+identity, curve — and that's a large read per deck. If your client supports subagents (a
+delegation / task tool), fan this out.
+
+**Fan out by deck, not by card.** Spawn **one subagent per candidate deck**. The expensive thing
+to load is the deck context, so you want to read each deck once and weigh the *whole* card list
+against it — not re-read a deck for every card. Each subagent gets the full list of cards under
+consideration plus a single `deck_id`.
+
+**Each subagent** reads its deck (see **mtg-deckbuilder-analysis** — `deck_list`, `deck_curve`,
+and the deck's color identity), then reports, for that deck, which list cards fit and which don't,
+with a one-line reason each.
+
+**Pre-filter the obvious misfits.** Until there's a dedicated tool for this, instruct each subagent
+to first discard cards that *categorically* cannot go in that deck — illegal in the deck's format,
+or outside its color identity — and spend its reasoning only on the cards that clear that gate.
+(A mechanical pre-filter tool to do this step deterministically is planned; see the project
+issues.)
+
+**Returns / read-only.** Each subagent returns its per-deck verdict; the main agent aggregates
+them into a recommendation and presents it. The subagents do not move or add cards — you and the
+user decide placements, applied via **mtg-deckbuilder-decks** (`manage_card add`) or by updating
+`potential_decks` on the list entry.
 
 ## Companion skills
 
