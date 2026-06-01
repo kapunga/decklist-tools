@@ -51,9 +51,13 @@ jobs:
         run: npx electron-builder --mac --x64 --arm64
         env:
           # Signing + notarization run on tag builds only; PR builds stay
-          # unsigned and fast (every var resolves to '' off-tag, so
+          # unsigned and fast (every var resolves to '' / false off-tag, so
           # electron-builder skips both signing and notarization).
-          CSC_IDENTITY_AUTO_DISCOVERY: false
+          # Auto-discovery must be ON for tags: CSC_LINK imports the cert
+          # into a temp keychain, but electron-builder only *selects* it via
+          # identity auto-discovery (no CSC_NAME is set). Hardcoding false
+          # imports the cert yet never matches it -> ad-hoc signature.
+          CSC_IDENTITY_AUTO_DISCOVERY: ${{ startsWith(github.ref, 'refs/tags/v') }}
           CSC_LINK: ${{ startsWith(github.ref, 'refs/tags/v') && secrets.MAC_CSC_LINK || '' }}
           CSC_KEY_PASSWORD: ${{ startsWith(github.ref, 'refs/tags/v') && secrets.MAC_CSC_KEY_PASSWORD || '' }}
           APPLE_ID: ${{ startsWith(github.ref, 'refs/tags/v') && secrets.APPLE_ID || '' }}
