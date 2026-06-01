@@ -15,11 +15,13 @@ export default defineConfig({
           build: {
             outDir: 'dist-electron',
             rollupOptions: {
-              // 'archiver' is a CommonJS module without a default export;
-              // bundling it trips rolldown's interop check. Externalising
-              // leaves it as `require('archiver')` — Node resolves it from
-              // node_modules in dev and from app.asar in the packaged build.
-              external: ['electron', 'archiver']
+              // Only 'electron' is external — it is provided by the runtime.
+              // Everything else (incl. 'archiver') is bundled INTO main.js so
+              // the packaged app never depends on node_modules being present.
+              // electron-builder's dependency collector can't resolve this
+              // pnpm workspace, so externalised modules go missing in the
+              // packaged build (see v0.12.0: "Cannot find module 'archiver'").
+              external: ['electron']
             }
           }
         }
