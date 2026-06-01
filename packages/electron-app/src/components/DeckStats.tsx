@@ -8,7 +8,7 @@ import { useGlobalRoles } from '@/hooks/useStore'
 import { useScryfallCache } from '@/hooks/useScryfallCache'
 import { ManaCurve } from '@/components/ManaCurve'
 import { ConsistencyMatrix } from '@/components/ConsistencyMatrix'
-import { cn } from '@/lib/utils'
+import { sectionTitleStyle, captionLabelStyle, editorialTextStyle, PAGE_X_PAD } from '@/lib/mastheadStyles'
 
 interface DeckStatsProps {
   deck: Deck
@@ -55,29 +55,47 @@ export function DeckStats({ deck }: DeckStatsProps) {
   })
 
   return (
-    <div className="space-y-6">
+    <div
+      className="space-y-6"
+      style={{ padding: `24px ${PAGE_X_PAD}` }}
+    >
       {/* Mana Curve */}
       {scryfallLoading ? (
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <Loader2 className="w-4 h-4 animate-spin" />
-          <span className="text-sm">Loading card data...</span>
+        <div className="flex items-center gap-2">
+          <Loader2 className="w-4 h-4 animate-spin" style={{ color: 'var(--muted-foreground)' }} />
+          <span
+            style={{
+              fontFamily: 'var(--font-tagline)',
+              fontStyle: 'italic',
+              fontSize: '14px',
+              color: 'var(--muted-foreground)',
+            }}
+          >
+            loading card data...
+          </span>
         </div>
       ) : (
         <ManaCurve deck={deck} scryfallCache={scryfallCache} />
       )}
 
       <div>
-        <h3 className="text-lg font-semibold mb-4">Cards by Role</h3>
+        <h3 style={sectionTitleStyle} className="mb-4">Cards by Role</h3>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           {sortedRoles.map(([roleId, count]) => (
             <button
               key={roleId}
               type="button"
-              className={cn(
-                'bg-secondary rounded-lg p-4 text-center transition-all',
-                roleId !== 'Unassigned' && 'cursor-pointer hover:bg-secondary/80',
-                matrixRoles.includes(roleId) && 'ring-2 ring-primary'
-              )}
+              className={roleId !== 'Unassigned' ? 'cursor-pointer' : undefined}
+              style={{
+                padding: '16px',
+                textAlign: 'center',
+                border: '1px solid color-mix(in srgb, var(--border) 60%, transparent)',
+                background: 'transparent',
+                backgroundColor: matrixRoles.includes(roleId)
+                  ? 'color-mix(in srgb, var(--foreground) 8%, transparent)'
+                  : 'transparent',
+                transition: 'background-color 0.15s',
+              }}
               onClick={() => {
                 if (roleId !== 'Unassigned') {
                   setMatrixRoles(prev =>
@@ -88,8 +106,19 @@ export function DeckStats({ deck }: DeckStatsProps) {
                 }
               }}
             >
-              <div className="text-2xl font-bold">{count}</div>
-              <div className="text-sm text-muted-foreground">
+              <div
+                style={{
+                  fontFamily: 'var(--font-display)',
+                  fontStyle: 'italic',
+                  fontSize: '28px',
+                  fontWeight: 600,
+                  color: 'var(--foreground)',
+                  lineHeight: 1.1,
+                }}
+              >
+                {count}
+              </div>
+              <div style={{ ...captionLabelStyle, marginTop: '4px' }}>
                 {getRoleName(roleId)}
               </div>
             </button>
@@ -114,17 +143,21 @@ export function DeckStats({ deck }: DeckStatsProps) {
 
       {totalNeedToBuy > 0 && (
         <div>
-          <h3 className="text-lg font-semibold mb-4">
+          <h3 style={sectionTitleStyle} className="mb-4">
             Cards to Buy ({totalNeedToBuy})
           </h3>
-          <div className="space-y-2">
+          <div>
             {needToBuy.map((card, index) => (
               <div
                 key={`${card.card.name}-${card.card.scryfallId || index}`}
-                className="flex items-center justify-between p-2 bg-secondary rounded"
+                className="flex items-center justify-between"
+                style={{
+                  padding: '8px 4px',
+                  borderBottom: '1px solid color-mix(in srgb, var(--border) 60%, transparent)',
+                }}
               >
-                <span>{card.quantity}x {getCardDisplayName(card.card)}</span>
-                <span className="text-sm text-muted-foreground">
+                <span style={editorialTextStyle}>{card.quantity}x {getCardDisplayName(card.card)}</span>
+                <span style={captionLabelStyle}>
                   {card.card.setCode.toUpperCase()}
                 </span>
               </div>
@@ -134,27 +167,27 @@ export function DeckStats({ deck }: DeckStatsProps) {
       )}
 
       <div>
-        <h3 className="text-lg font-semibold mb-4">Deck Info</h3>
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <span className="text-muted-foreground">Created:</span>
-            <span className="ml-2">
+        <h3 style={sectionTitleStyle} className="mb-4">Deck Info</h3>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="flex items-baseline gap-2">
+            <span style={captionLabelStyle}>Created</span>
+            <span style={editorialTextStyle}>
               {new Date(deck.createdAt).toLocaleDateString()}
             </span>
           </div>
-          <div>
-            <span className="text-muted-foreground">Updated:</span>
-            <span className="ml-2">
+          <div className="flex items-baseline gap-2">
+            <span style={captionLabelStyle}>Updated</span>
+            <span style={editorialTextStyle}>
               {new Date(deck.updatedAt).toLocaleDateString()}
             </span>
           </div>
-          <div>
-            <span className="text-muted-foreground">Version:</span>
-            <span className="ml-2">{deck.version}</span>
+          <div className="flex items-baseline gap-2">
+            <span style={captionLabelStyle}>Version</span>
+            <span style={editorialTextStyle}>{deck.version}</span>
           </div>
-          <div>
-            <span className="text-muted-foreground">Card Limit:</span>
-            <span className="ml-2">
+          <div className="flex items-baseline gap-2">
+            <span style={captionLabelStyle}>Card Limit</span>
+            <span style={editorialTextStyle}>
               {deck.format.cardLimit === Infinity ? 'Unlimited' : deck.format.cardLimit}
             </span>
           </div>
@@ -163,8 +196,8 @@ export function DeckStats({ deck }: DeckStatsProps) {
 
       {deck.description && (
         <div>
-          <h3 className="text-lg font-semibold mb-4">Description</h3>
-          <p className="text-muted-foreground whitespace-pre-wrap">
+          <h3 style={sectionTitleStyle} className="mb-4">Description</h3>
+          <p style={{ ...editorialTextStyle, whiteSpace: 'pre-wrap' }}>
             {deck.description}
           </p>
         </div>

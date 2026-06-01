@@ -1,9 +1,7 @@
 import { useState, useCallback } from 'react'
-import { Plus, Pencil, Trash2, ChevronUp, ChevronDown, X } from 'lucide-react'
+import { Plus, ChevronUp, ChevronDown, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
@@ -21,18 +19,18 @@ import {
 } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
 import { CreateRoleDialog } from '@/components/CreateRoleDialog'
+import { RolePill } from '@/components/RolePill'
+import {
+  captionLabelStyle,
+  editorialTextStyle,
+  filledActionButtonStyle,
+  sectionTitleStyle,
+  PAGE_X_PAD,
+} from '@/lib/mastheadStyles'
 import { useStore, useAllRoles } from '@/hooks/useStore'
 import { migrateDeckNote, NOTE_TYPE } from '@/types'
 import type { Deck, DeckNote, NoteType, NoteCardRef, RoleDefinition } from '@/types'
 import { getAllDeckEntries } from '@mtg-deckbuilder/shared'
-
-const NOTE_TYPE_COLORS: Record<NoteType, string> = {
-  [NOTE_TYPE.COMBO]: 'bg-red-500/20 text-red-400 border-red-500/30',
-  [NOTE_TYPE.SYNERGY]: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-  [NOTE_TYPE.THEME]: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
-  [NOTE_TYPE.STRATEGY]: 'bg-green-500/20 text-green-400 border-green-500/30',
-  [NOTE_TYPE.GENERAL]: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
-}
 
 const NOTE_TYPE_LABELS: Record<NoteType, string> = {
   [NOTE_TYPE.COMBO]: 'Combo',
@@ -154,80 +152,122 @@ export function NotesView({ deck }: NotesViewProps) {
   }, [])
 
   return (
-    <div className="p-4 overflow-auto h-full">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold">Notes ({notes.length})</h2>
-        <Button size="sm" onClick={openCreateDialog}>
-          <Plus className="w-4 h-4 mr-1" />
+    <div
+      className="overflow-auto h-full"
+      style={{ paddingLeft: PAGE_X_PAD, paddingRight: PAGE_X_PAD, paddingTop: '24px', paddingBottom: '24px' }}
+    >
+      <div className="flex items-center justify-between" style={{ marginBottom: '20px' }}>
+        <h2 style={sectionTitleStyle}>Notes ({notes.length})</h2>
+        <button style={filledActionButtonStyle} onClick={openCreateDialog}>
+          <Plus className="w-3.5 h-3.5" />
           Add Note
-        </Button>
+        </button>
       </div>
 
       {notes.length === 0 ? (
-        <div className="text-center text-muted-foreground py-12">
-          No notes yet. Add notes to document combos, synergies, and strategy.
+        <div
+          className="flex items-center justify-center h-32"
+          style={{
+            fontFamily: 'var(--font-tagline)',
+            fontStyle: 'italic',
+            fontSize: '16px',
+            color: 'var(--muted-foreground)',
+          }}
+        >
+          no notes yet — add notes to document combos, synergies, and strategy
         </div>
       ) : (
-        <div className="space-y-3">
-          {notes.map(note => {
-            const role = note.roleId ? allRoles.find(r => r.id === note.roleId) : null
-            return (
-              <Card key={note.id}>
-                <CardHeader className="pb-2 pt-4 px-4">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <Badge variant="outline" className={`text-xs shrink-0 ${NOTE_TYPE_COLORS[note.noteType]}`}>
-                        {NOTE_TYPE_LABELS[note.noteType]}
-                      </Badge>
-                      <CardTitle className="text-base truncate">{note.title}</CardTitle>
-                      {role && (
-                        <Badge
-                          variant="outline"
-                          className="text-xs shrink-0"
-                          style={role.color ? { borderColor: role.color, color: role.color } : undefined}
-                        >
-                          {role.name}
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditDialog(note)}>
-                        <Pencil className="w-3.5 h-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-destructive"
-                        onClick={() => setDeleteConfirm({ noteId: note.id, hasRole: !!note.roleId })}
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="px-4 pb-4">
-                  <div className="flex gap-4">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-muted-foreground whitespace-pre-wrap">{note.content}</p>
-                    </div>
-                    {note.cardRefs.length > 0 && (
-                      <div className="shrink-0 border-l pl-4">
-                        <p className="text-xs font-medium text-muted-foreground mb-1">Cards</p>
-                        <ol className="text-sm space-y-0.5">
-                          {note.cardRefs.map(ref => (
-                            <li key={ref.cardName} className="text-muted-foreground">
-                              <span className="text-xs text-muted-foreground/60 mr-1">{ref.ordinal}.</span>
-                              {ref.cardName}
-                            </li>
-                          ))}
-                        </ol>
-                      </div>
+        <div>
+          {notes.map(note => (
+            <div
+              key={note.id}
+              style={{
+                padding: '16px 4px',
+                borderBottom: '1px solid color-mix(in srgb, var(--border) 60%, transparent)',
+              }}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <span style={captionLabelStyle}>{NOTE_TYPE_LABELS[note.noteType]}</span>
+                    {note.roleId && (
+                      <RolePill roleId={note.roleId} customRoles={allRoles} />
                     )}
                   </div>
-                </CardContent>
-              </Card>
-            )
-          })}
+                  <div
+                    className="truncate"
+                    style={{
+                      fontFamily: 'var(--font-display)',
+                      fontSize: '17px',
+                      fontStyle: 'italic',
+                      fontWeight: 600,
+                      color: 'var(--foreground)',
+                      letterSpacing: '-0.01em',
+                      marginTop: '4px',
+                    }}
+                  >
+                    {note.title}
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 shrink-0">
+                  <button
+                    type="button"
+                    className="hover:opacity-80 transition-opacity"
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: 0,
+                      fontFamily: 'var(--font-body)',
+                      fontSize: '11px',
+                      color: 'var(--muted-foreground)',
+                    }}
+                    onClick={() => openEditDialog(note)}
+                    title="Edit note"
+                  >
+                    edit
+                  </button>
+                  <button
+                    type="button"
+                    className="hover:opacity-80 transition-opacity"
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: 0,
+                      fontFamily: 'var(--font-body)',
+                      fontSize: '14px',
+                      fontWeight: 500,
+                      color: 'var(--destructive)',
+                      lineHeight: 1,
+                    }}
+                    onClick={() => setDeleteConfirm({ noteId: note.id, hasRole: !!note.roleId })}
+                    title="Delete note"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+              <div className="flex gap-6" style={{ marginTop: '8px' }}>
+                <div className="flex-1 min-w-0">
+                  <p className="whitespace-pre-wrap" style={editorialTextStyle}>{note.content}</p>
+                </div>
+                {note.cardRefs.length > 0 && (
+                  <div className="shrink-0 pl-4" style={{ borderLeft: '1px solid var(--border)' }}>
+                    <span style={captionLabelStyle}>Cards</span>
+                    <ol style={{ marginTop: '6px' }}>
+                      {note.cardRefs.map(ref => (
+                        <li key={ref.cardName} style={{ ...editorialTextStyle, lineHeight: '22px' }}>
+                          <span style={{ color: 'var(--muted-foreground)', marginRight: '6px' }}>{ref.ordinal}.</span>
+                          {ref.cardName}
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 

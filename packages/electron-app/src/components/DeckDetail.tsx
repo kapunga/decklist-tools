@@ -24,7 +24,7 @@ import { getDeckColorIdentity, showColorlessPip, getAlternates, getSideboard, ge
 import { getCardCount, getCardDisplayName, CARD_SET, isCommanderLikeFormat } from '@/types'
 import type { RoleDefinition, CardSetName, ScryfallCard } from '@/types'
 import { formatDeckTagline, formatDeckStatus } from '@/lib/deckTagline'
-import { captionTagStyle } from '@/lib/mastheadStyles'
+import { captionTagStyle, PAGE_X_PAD } from '@/lib/mastheadStyles'
 
 type CommanderModalMode = 'set' | 'swap' | 'addPartner'
 
@@ -33,8 +33,6 @@ const COMMANDER_MODAL_TITLES: Record<CommanderModalMode, string> = {
   swap: 'Change Commander',
   addPartner: 'Add Partner',
 }
-
-const PAGE_X_PAD = '56px'
 
 const taglineStyle: React.CSSProperties = {
   fontFamily: 'var(--font-tagline)',
@@ -547,7 +545,7 @@ function MastheadTab({
   return (
     <TabsTrigger
       value={value}
-      className="rounded-none px-0 py-3.5 h-auto bg-transparent shadow-none gap-2 border-b-2 border-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-foreground text-muted-foreground data-[state=active]:text-foreground font-normal data-[state=active]:font-semibold"
+      className="rounded-none px-0 py-3.5 h-auto bg-transparent shadow-none gap-2 border-b-2 border-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-foreground text-muted-foreground data-[state=active]:text-foreground font-normal data-[state=active]:font-semibold focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none"
       style={{
         fontFamily: 'var(--font-body)',
         fontSize: labelSize,

@@ -1,20 +1,21 @@
 import { useState, useMemo } from 'react'
-import { BarChart, Bar, XAxis, YAxis, Tooltip, PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import type { Deck, ScryfallCard } from '@/types'
 import type { CardFilter } from '@mtg-deckbuilder/shared'
 import { enrichCards, applyFilters, getCmcDistribution, countManaPips, getMainboard } from '@mtg-deckbuilder/shared'
 import { CardFilterBar } from '@/components/CardFilterBar'
 import { ManaSymbol } from '@/components/ManaCost'
+import { sectionTitleStyle, captionLabelStyle, editorialTextStyle } from '@/lib/mastheadStyles'
 
 interface ManaCurveProps {
   deck: Deck
   scryfallCache: Map<string, ScryfallCard>
 }
 
-// Theme-keyed pie fills — reference --color-* tokens so each theme drives
-// its own mana-color palette. Strokes use --foreground so slices always
-// have a visible outline regardless of how close a fill sits to the page bg.
-const PIE_COLORS: Record<string, string> = {
+// Theme-keyed pip-bar fills — reference --color-* tokens so each theme drives
+// its own mana-color palette. A hairline edge (below) keeps near-background
+// fills (e.g. black mana on a dark theme) visible regardless of the ground.
+const PIP_COLORS: Record<string, string> = {
   W: 'var(--color-w)',
   U: 'var(--color-u)',
   B: 'var(--color-b)',
@@ -22,8 +23,6 @@ const PIE_COLORS: Record<string, string> = {
   G: 'var(--color-g)',
   C: 'var(--color-c)',
 }
-
-const PIE_STROKE = 'var(--foreground)'
 
 export function ManaCurve({ deck, scryfallCache }: ManaCurveProps) {
   const [filters, setFilters] = useState<CardFilter[]>([])
@@ -58,16 +57,16 @@ export function ManaCurve({ deck, scryfallCache }: ManaCurveProps) {
       .map(color => ({
         name: color,
         value: pips[color],
-        fill: PIE_COLORS[color],
-        stroke: PIE_STROKE,
+        fill: PIP_COLORS[color],
       }))
   }, [filtered])
 
   const totalPips = pipData.reduce((sum, d) => sum + d.value, 0)
+  const maxPip = pipData.reduce((max, d) => Math.max(max, d.value), 0)
 
   return (
     <div>
-      <h3 className="text-lg font-semibold mb-4">Mana Curve</h3>
+      <h3 style={sectionTitleStyle} className="mb-4">Mana Curve</h3>
 
       <CardFilterBar
         filters={filters}
@@ -80,7 +79,7 @@ export function ManaCurve({ deck, scryfallCache }: ManaCurveProps) {
       <div className="flex gap-8 flex-wrap">
         {/* Bar chart */}
         <div className="flex-1 min-w-[300px]">
-          <h4 className="text-sm font-medium text-muted-foreground mb-2">Cards by Mana Value</h4>
+          <h4 style={captionLabelStyle} className="mb-2">Cards by Mana Value</h4>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={cmcData}>
               <XAxis
@@ -109,52 +108,36 @@ export function ManaCurve({ deck, scryfallCache }: ManaCurveProps) {
           </ResponsiveContainer>
         </div>
 
-        {/* Pie chart with pip legend */}
+        {/* Mana pip distribution — horizontal bars. Length encodes the count
+            (robust where a pie's near-background slice would vanish), with a
+            hairline edge so dark theme fills stay legible against the ground. */}
         {totalPips > 0 && (
-          <div className="w-[280px]">
-            <h4 className="text-sm font-medium text-muted-foreground mb-2">Mana Pips ({totalPips})</h4>
-            <ResponsiveContainer width="100%" height={180}>
-              <PieChart>
-                <Pie
-                  data={pipData}
-                  dataKey="value"
-                  nameKey="name"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={70}
-                  label={({ value, percent }) =>
-                    `${value} (${((percent ?? 0) * 100).toFixed(0)}%)`
-                  }
-                  labelLine={false}
-                >
-                  {pipData.map((entry) => (
-                    <Cell
-                      key={entry.name}
-                      fill={entry.fill}
-                      stroke={entry.stroke}
-                      strokeWidth={2}
-                    />
-                  ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'var(--popover)',
-                    border: '1px solid var(--border)',
-                    borderRadius: 0,
-                  }}
-                  labelStyle={{ color: 'var(--popover-foreground)' }}
-                  itemStyle={{ color: 'var(--popover-foreground)' }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-            {/* Legend with mana pips */}
-            <div className="flex items-center justify-center gap-3 mt-2">
-              {pipData.map((entry) => (
-                <div key={entry.name} className="flex items-center gap-1">
-                  <ManaSymbol symbol={entry.name} size="sm" />
-                  <span className="text-xs text-muted-foreground">{entry.value}</span>
-                </div>
-              ))}
+          <div className="w-[300px]">
+            <h4 style={captionLabelStyle} className="mb-2">Mana Pips ({totalPips})</h4>
+            <div className="flex flex-col gap-3 pt-1.5">
+              {pipData.map(entry => {
+                const pct = totalPips > 0 ? Math.round((entry.value / totalPips) * 100) : 0
+                return (
+                  <div key={entry.name} className="flex items-center gap-3">
+                    <ManaSymbol symbol={entry.name} size="sm" />
+                    <div className="flex-1 h-3.5 min-w-0">
+                      <div
+                        style={{
+                          width: `${maxPip > 0 ? (entry.value / maxPip) * 100 : 0}%`,
+                          height: '100%',
+                          backgroundColor: entry.fill,
+                          border: '1px solid color-mix(in srgb, var(--foreground) 28%, transparent)',
+                          boxSizing: 'border-box',
+                        }}
+                      />
+                    </div>
+                    <span style={{ ...editorialTextStyle, flexShrink: 0 }}>
+                      {entry.value}
+                      <span style={{ color: 'var(--muted-foreground)' }}> · {pct}%</span>
+                    </span>
+                  </div>
+                )
+              })}
             </div>
           </div>
         )}

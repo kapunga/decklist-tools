@@ -1,7 +1,5 @@
 import { numberToWords } from '@/lib/numberToWords'
 import { getCardCount } from '@/types'
-import { getDeckColorIdentity } from '@mtg-deckbuilder/shared'
-import { getColorIdentityName } from '@/components/ColorPips'
 import type { Deck } from '@/types'
 
 const FORMAT_TAGLINE: Record<string, string> = {
@@ -15,14 +13,13 @@ const FORMAT_TAGLINE: Record<string, string> = {
 }
 
 // Composes the italic editorial tagline displayed under the deck name in the
-// masthead, e.g. "commander · esper · midrange · twenty-three roles defined".
+// masthead, e.g. "commander · midrange · twenty-three roles defined".
 // Segments collapse when their data is absent (no archetype, no roles).
+// Color identity is intentionally omitted here — it's already shown by the
+// ColorPips beside the title, so repeating it as a word is redundant.
 export function formatDeckTagline(deck: Deck): string {
   const parts: string[] = []
   parts.push(FORMAT_TAGLINE[deck.format.type] ?? deck.format.type.replace(/_/g, ' '))
-
-  const colorName = getColorIdentityName(getDeckColorIdentity(deck))
-  parts.push(colorName.replace(/^Mono-/, '').toLowerCase())
 
   if (deck.archetype) {
     parts.push(deck.archetype.toLowerCase())

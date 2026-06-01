@@ -224,10 +224,6 @@ export function QuickAdd({ deckId, format, colorIdentity, customRoles, activeTab
             </div>
           )}
         </div>
-
-        <p className="text-xs text-muted-foreground mt-1">
-          Type a card name and press Enter, or use format: &quot;4 Card Name&quot;
-        </p>
       </div>
 
       {/* Add Card Modal */}
