@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useStore, useSelectedDeck } from '@/hooks/useStore'
+import { useScryfallCache } from '@/hooks/useScryfallCache'
 import { getCardById } from '@/lib/scryfall'
 import { DeckListView } from '@/components/DeckListView'
 import { QuickAdd } from '@/components/QuickAdd'
@@ -20,7 +21,7 @@ import { RoleEditModal } from '@/components/RoleEditModal'
 import { SelectCommanderModal } from '@/components/SelectCommanderModal'
 import { ColorPips } from '@/components/ColorPips'
 import { PullListView } from '@/components/PullListView'
-import { getDeckColorIdentity, showColorlessPip, getAlternates, getSideboard, getCutList, getEntriesTotalQuantity, createCardIdentifier } from '@mtg-deckbuilder/shared'
+import { getDeckColorIdentity, showColorlessPip, getAlternates, getSideboard, getCutList, getEntriesTotalQuantity, createCardIdentifier, getAllDeckEntries, validateDeckStructure, validateFormatLegality, validateColorIdentity } from '@mtg-deckbuilder/shared'
 import { getCardCount, getCardDisplayName, CARD_SET, isCommanderLikeFormat } from '@/types'
 import type { RoleDefinition, CardSetName, ScryfallCard } from '@/types'
 import { formatDeckTagline, formatDeckStatus } from '@/lib/deckTagline'
@@ -177,6 +178,12 @@ export function DeckDetail() {
     setIsEditingName(false)
   }, [deck, editedName, updateDeck])
 
+  // Scryfall cache for legality checks in the masthead status. Hook runs
+  // unconditionally (before the null-deck guard); entries are empty when no
+  // deck is selected so it no-ops.
+  const deckEntries = deck ? getAllDeckEntries(deck) : []
+  const { cache: validationCache } = useScryfallCache(deckEntries)
+
   if (!deck) {
     return (
       <div
@@ -189,7 +196,12 @@ export function DeckDetail() {
   }
 
   const tagline = formatDeckTagline(deck)
-  const statusLine = formatDeckStatus(deck)
+  const validationIssues = [
+    ...validateDeckStructure(deck),
+    ...validateColorIdentity(deck),
+    ...validateFormatLegality(deck, validationCache),
+  ]
+  const statusLine = formatDeckStatus(deck, validationIssues)
   const colorIdentity = getDeckColorIdentity(deck)
   const isCommanderFormat = isCommanderLikeFormat(deck.format.type)
 
@@ -406,10 +418,10 @@ export function DeckDetail() {
             fontFamily: 'var(--font-tagline)',
             fontSize: '16px',
             fontStyle: 'italic',
-            fontWeight: statusLine.status === 'valid' ? 400 : 500,
-            color: statusLine.status === 'valid'
-              ? 'var(--muted-foreground)'
-              : 'var(--destructive)',
+            fontWeight: statusLine.status === 'complete' ? 400 : 500,
+            color: statusLine.status === 'illegal'
+              ? 'var(--destructive)'
+              : 'var(--muted-foreground)',
           }}
         >
           {statusLine.status}

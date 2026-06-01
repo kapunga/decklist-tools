@@ -1,5 +1,5 @@
+import { useState } from 'react'
 import { Settings, RotateCcw, Eye, EyeOff, Mountain, ScanSearch } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -8,8 +8,9 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useStore } from '@/hooks/useStore'
+import { captionTagStyle, captionLabelStyle, PAGE_X_PAD } from '@/lib/mastheadStyles'
+import type { CSSProperties } from 'react'
 import type { PullListSortKey, PullListSource } from '@/types'
 
 interface PullListToolbarProps {
@@ -30,6 +31,15 @@ const SORT_OPTIONS: { key: PullListSortKey; label: string }[] = [
   { key: 'name', label: 'Name' },
 ]
 
+// A caption-tag action button (Cache/Roles register). `active` lifts it to the
+// foreground ink so toggled-on state reads without a filled chip.
+function toolbarButtonStyle(active = false): CSSProperties {
+  return {
+    ...captionTagStyle,
+    color: active ? 'var(--foreground)' : 'var(--muted-foreground)',
+  }
+}
+
 export function PullListToolbar({
   deckId,
   sortColumns,
@@ -41,9 +51,10 @@ export function PullListToolbar({
 }: PullListToolbarProps) {
   const updatePullListConfig = useStore(state => state.updatePullListConfig)
   const resetPulledStatus = useStore(state => state.resetPulledStatus)
+  const [sortOpen, setSortOpen] = useState(false)
 
-  const handleSourceChange = async (value: string) => {
-    await updatePullListConfig({ source: value as PullListSource })
+  const handleSourceChange = async (value: PullListSource) => {
+    await updatePullListConfig({ source: value })
   }
 
   const handleToggleSortColumn = async (key: PullListSortKey) => {
@@ -78,32 +89,58 @@ export function PullListToolbar({
   }
 
   return (
-    <div className="flex items-center justify-between p-4 border-b">
-      <div className="flex items-center gap-2">
-        <Tabs value={source} onValueChange={handleSourceChange}>
-          <TabsList>
-            <TabsTrigger value="mainDeck">Main Deck</TabsTrigger>
-            <TabsTrigger value="maybeboard">Maybeboard</TabsTrigger>
-          </TabsList>
-        </Tabs>
+    <div
+      className="flex items-center justify-between gap-6 flex-shrink-0 flex-wrap"
+      style={{
+        padding: `14px ${PAGE_X_PAD}`,
+        borderBottom: '1px solid var(--border)',
+      }}
+    >
+      <div className="flex items-center gap-7 flex-wrap">
+        {/* Source toggle — caption labels rather than a segmented control */}
+        <div className="flex items-center gap-2.5">
+          <span style={captionLabelStyle}>Source</span>
+          <button
+            type="button"
+            onClick={() => handleSourceChange('mainDeck')}
+            className="hover:opacity-80 transition-opacity"
+            style={toolbarButtonStyle(source === 'mainDeck')}
+          >
+            Deck
+          </button>
+          <span style={{ ...captionTagStyle, color: 'var(--muted-foreground)', cursor: 'default' }}>·</span>
+          <button
+            type="button"
+            onClick={() => handleSourceChange('maybeboard')}
+            className="hover:opacity-80 transition-opacity"
+            style={toolbarButtonStyle(source === 'maybeboard')}
+          >
+            Maybeboard
+          </button>
+        </div>
 
-        <Button
-          variant={identifyMode ? "secondary" : "outline"}
-          size="sm"
+        <button
+          type="button"
           onClick={onToggleIdentifyMode}
+          className="hover:opacity-80 transition-opacity"
+          style={toolbarButtonStyle(identifyMode)}
         >
-          <ScanSearch className="h-4 w-4 mr-2" />
+          <ScanSearch className="w-3.5 h-3.5" />
           {identifyMode ? 'Exit Identify' : 'Identify Prints'}
-        </Button>
+        </button>
 
         {!identifyMode && (
           <>
-            <DropdownMenu>
+            <DropdownMenu open={sortOpen} onOpenChange={setSortOpen}>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <Settings className="h-4 w-4 mr-2" />
+                <button
+                  type="button"
+                  className="hover:opacity-80 transition-opacity"
+                  style={toolbarButtonStyle(sortOpen)}
+                >
+                  <Settings className="w-3.5 h-3.5" />
                   Sort Options
-                </Button>
+                </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
                 <DropdownMenuLabel>Sort by (in order)</DropdownMenuLabel>
@@ -125,44 +162,38 @@ export function PullListToolbar({
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <Button
-              variant="outline"
-              size="sm"
+            <button
+              type="button"
               onClick={handleTogglePulledSection}
+              className="hover:opacity-80 transition-opacity"
+              style={toolbarButtonStyle(showPulledSection)}
             >
-              {showPulledSection ? (
-                <>
-                  <EyeOff className="h-4 w-4 mr-2" />
-                  Hide Pulled
-                </>
-              ) : (
-                <>
-                  <Eye className="h-4 w-4 mr-2" />
-                  Show Pulled
-                </>
-              )}
-            </Button>
+              {showPulledSection ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+              {showPulledSection ? 'Hide Pulled' : 'Show Pulled'}
+            </button>
 
-            <Button
-              variant={hideBasicLands ? "outline" : "secondary"}
-              size="sm"
+            <button
+              type="button"
               onClick={handleToggleBasicLands}
+              className="hover:opacity-80 transition-opacity"
+              style={toolbarButtonStyle(!hideBasicLands)}
             >
-              <Mountain className="h-4 w-4 mr-2" />
+              <Mountain className="w-3.5 h-3.5" />
               {hideBasicLands ? 'Show Basics' : 'Hide Basics'}
-            </Button>
+            </button>
           </>
         )}
       </div>
 
-      <Button
-        variant="destructive"
-        size="sm"
+      <button
+        type="button"
         onClick={handleReset}
+        className="hover:opacity-80 transition-opacity"
+        style={{ ...captionTagStyle, color: 'var(--destructive)' }}
       >
-        <RotateCcw className="h-4 w-4 mr-2" />
+        <RotateCcw className="w-3.5 h-3.5" />
         Reset All
-      </Button>
+      </button>
     </div>
   )
 }
