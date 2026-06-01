@@ -1,5 +1,13 @@
 # @mtg-deckbuilder/mcp-server
 
+## 0.12.1
+
+### Patch Changes
+
+- 8d3b28d: Fix packaged app crashing on launch with "Cannot find module 'archiver'". electron-builder's dependency collector can't resolve the pnpm workspace, so externalised main-process modules were missing from the packaged build. `archiver` is now bundled into the Electron main process instead of left external.
+- Updated dependencies [8d3b28d]
+  - @mtg-deckbuilder/shared@0.12.1
+
 ## 0.12.0
 
 ### Minor Changes
