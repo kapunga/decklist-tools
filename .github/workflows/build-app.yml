@@ -50,7 +50,15 @@ jobs:
         working-directory: packages/electron-app
         run: npx electron-builder --mac --x64 --arm64
         env:
+          # Signing + notarization run on tag builds only; PR builds stay
+          # unsigned and fast (every var resolves to '' off-tag, so
+          # electron-builder skips both signing and notarization).
           CSC_IDENTITY_AUTO_DISCOVERY: false
+          CSC_LINK: ${{ startsWith(github.ref, 'refs/tags/v') && secrets.MAC_CSC_LINK || '' }}
+          CSC_KEY_PASSWORD: ${{ startsWith(github.ref, 'refs/tags/v') && secrets.MAC_CSC_KEY_PASSWORD || '' }}
+          APPLE_ID: ${{ startsWith(github.ref, 'refs/tags/v') && secrets.APPLE_ID || '' }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ startsWith(github.ref, 'refs/tags/v') && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
+          APPLE_TEAM_ID: ${{ startsWith(github.ref, 'refs/tags/v') && secrets.APPLE_TEAM_ID || '' }}
 
       - name: Package (Windows)
         if: matrix.platform == 'win'

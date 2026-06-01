@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- Electron requires this for V8's JIT compiler -->
+  <key>com.apple.security.cs.allow-jit</key>
+  <true/>
+  <!-- Needed for Electron's V8 engine -->
+  <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+  <true/>
+  <!-- Allows loading the bundled Node/Electron dylibs -->
+  <key>com.apple.security.cs.disable-library-validation</key>
+  <true/>
+  <!-- Network access for the Scryfall API -->
+  <key>com.apple.security.network.client</key>
+  <true/>
+  <!-- File dialogs for deck import/export -->
+  <key>com.apple.security.files.user-selected.read-write</key>
+  <true/>
+</dict>
+</plist>
