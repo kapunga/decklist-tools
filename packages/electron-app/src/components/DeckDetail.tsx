@@ -251,11 +251,10 @@ export function DeckDetail() {
           borderBottom: '2px solid var(--masthead-rule-color)',
         }}
       >
-        <div className="flex items-end justify-between gap-8 flex-wrap">
-          {/* Identity column */}
-          <div className="flex flex-col gap-1.5 min-w-0">
-            {/* Title + color pips */}
-            <div className="flex items-baseline gap-4 flex-wrap">
+        <div className="flex flex-col gap-3">
+          {/* Row 1 — title + color pips + deck type, as one identity line */}
+          <div className="flex items-baseline justify-between gap-8 flex-wrap">
+            <div className="flex items-baseline gap-4 flex-wrap min-w-0">
               {isEditingName ? (
                 <Input
                   value={editedName}
@@ -289,85 +288,90 @@ export function DeckDetail() {
                   showColorless={showColorlessPip(deck)}
                 />
               )}
+
+              {/* Deck type — inline, immediately after the pips */}
+              <span style={taglineStyle}>{tagline}</span>
             </div>
+          </div>
 
-            {/* Tagline */}
-            <span style={taglineStyle}>{tagline}</span>
-
+          {/* Row 2 — byline (left), action cluster (right) */}
+          <div className="flex items-center justify-between gap-8 flex-wrap">
             {/* Byline — commander attribution */}
-            {isCommanderFormat && (
-              deck.commanders.length > 0 ? (
-                <div className="flex items-baseline gap-2.5 flex-wrap">
-                  <span style={bylineLedStyle}>Led by</span>
-                  <span style={bylineNameStyle}>
-                    {deck.commanders.map(c => getCardDisplayName(c)).join(' and ')}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setCommanderModalMode('swap')}
-                    className="hover:opacity-80 transition-opacity"
-                    style={bylineCapStyle}
-                  >
-                    change
-                  </button>
-                  {commanderHasPartner && deck.commanders.length === 1 && (
+            <div className="min-w-0">
+              {isCommanderFormat && (
+                deck.commanders.length > 0 ? (
+                  <div className="flex items-baseline gap-2.5 flex-wrap">
+                    <span style={bylineLedStyle}>Led by</span>
+                    <span style={bylineNameStyle}>
+                      {deck.commanders.map(c => getCardDisplayName(c)).join(' and ')}
+                    </span>
                     <button
                       type="button"
-                      onClick={() => setCommanderModalMode('addPartner')}
+                      onClick={() => setCommanderModalMode('swap')}
                       className="hover:opacity-80 transition-opacity"
                       style={bylineCapStyle}
                     >
-                      + partner
+                      change
                     </button>
-                  )}
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setCommanderModalMode('set')}
-                  className="hover:opacity-80 transition-opacity self-start"
-                  style={{ ...bylineCapStyle, fontSize: '11px', color: 'var(--foreground)' }}
-                >
-                  Set commander
-                </button>
-              )
-            )}
-          </div>
+                    {commanderHasPartner && deck.commanders.length === 1 && (
+                      <button
+                        type="button"
+                        onClick={() => setCommanderModalMode('addPartner')}
+                        className="hover:opacity-80 transition-opacity"
+                        style={bylineCapStyle}
+                      >
+                        + partner
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setCommanderModalMode('set')}
+                    className="hover:opacity-80 transition-opacity"
+                    style={{ ...bylineCapStyle, fontSize: '11px', color: 'var(--foreground)' }}
+                  >
+                    Set commander
+                  </button>
+                )
+              )}
+            </div>
 
-          {/* Action cluster */}
-          <div className="flex items-center gap-5 flex-shrink-0" style={{ paddingBottom: '6px' }}>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  disabled={isCaching}
-                  style={{ ...captionTagStyle, opacity: isCaching ? 0.6 : 1 }}
-                >
-                  {isCaching && <Loader2 className="w-3 h-3 animate-spin" />}
-                  {isCaching ? 'Caching' : 'Cache'}
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => handlePreCache(false)}>
-                  Cache Card Data Only
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handlePreCache(true)}>
-                  Cache Data + Images
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {/* Action cluster */}
+            <div className="flex items-center gap-5 flex-shrink-0">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    disabled={isCaching}
+                    style={{ ...captionTagStyle, opacity: isCaching ? 0.6 : 1 }}
+                  >
+                    {isCaching && <Loader2 className="w-3 h-3 animate-spin" />}
+                    {isCaching ? 'Caching' : 'Cache'}
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => handlePreCache(false)}>
+                    Cache Card Data Only
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handlePreCache(true)}>
+                    Cache Data + Images
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
 
-            <button
-              type="button"
-              onClick={() => setShowRoleModal(true)}
-              style={captionTagStyle}
-            >
-              Roles
-            </button>
+              <button
+                type="button"
+                onClick={() => setShowRoleModal(true)}
+                style={captionTagStyle}
+              >
+                Roles
+              </button>
 
-            <ExportDropdown ref={exportRef} deck={deck} />
+              <ExportDropdown ref={exportRef} deck={deck} />
 
-            <ImportDialog deckId={deck.id} sideboardSize={deck.format.sideboardSize} />
+              <ImportDialog deckId={deck.id} sideboardSize={deck.format.sideboardSize} />
+            </div>
           </div>
         </div>
       </div>

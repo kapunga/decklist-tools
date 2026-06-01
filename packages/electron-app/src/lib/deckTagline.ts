@@ -12,25 +12,12 @@ const FORMAT_TAGLINE: Record<string, string> = {
   kitchen_table: 'kitchen table',
 }
 
-// Composes the italic editorial tagline displayed under the deck name in the
-// masthead, e.g. "commander · midrange · twenty-three roles defined".
-// Segments collapse when their data is absent (no archetype, no roles).
-// Color identity is intentionally omitted here — it's already shown by the
-// ColorPips beside the title, so repeating it as a word is redundant.
+// The italic editorial "deck type" label shown in the masthead title row —
+// just the format, e.g. "commander" or "pauper". Color identity (ColorPips),
+// role count (Roles affordance), and archetype are all intentionally omitted
+// so the header stays a clean identity line rather than a metadata dump.
 export function formatDeckTagline(deck: Deck): string {
-  const parts: string[] = []
-  parts.push(FORMAT_TAGLINE[deck.format.type] ?? deck.format.type.replace(/_/g, ' '))
-
-  if (deck.archetype) {
-    parts.push(deck.archetype.toLowerCase())
-  }
-
-  const rolesCount = deck.customRoles.length
-  if (rolesCount > 0) {
-    parts.push(`${numberToWords(rolesCount)} roles defined`)
-  }
-
-  return parts.join(' · ')
+  return FORMAT_TAGLINE[deck.format.type] ?? deck.format.type.replace(/_/g, ' ')
 }
 
 export type DeckStatus = 'valid' | 'incomplete'
