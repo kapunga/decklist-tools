@@ -63,3 +63,22 @@ export const editorialTextStyle: CSSProperties = {
   color: 'var(--foreground)',
   letterSpacing: '-0.005em',
 }
+
+// Section heading — the italic display register used for the headings inside
+// the deck-detail tool panels (Stats, Notes, Pull List). Smaller than the
+// masthead title but the same editorial voice, so panel sections read as
+// sub-headings of the page rather than generic shadcn <h3>s.
+export const sectionTitleStyle: CSSProperties = {
+  fontFamily: 'var(--font-display)',
+  fontSize: '22px',
+  fontStyle: 'italic',
+  fontWeight: 600,
+  color: 'var(--foreground)',
+  letterSpacing: '-0.02em',
+  lineHeight: '26px',
+}
+
+// Horizontal page gutter shared by the deck-detail masthead and every tool
+// panel below it, so panel content aligns to the masthead's left/right edge.
+// Lives here (not in DeckDetail) so the panels don't re-declare the magic number.
+export const PAGE_X_PAD = '56px'

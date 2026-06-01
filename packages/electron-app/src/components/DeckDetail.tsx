@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useStore, useSelectedDeck } from '@/hooks/useStore'
+import { useScryfallCache } from '@/hooks/useScryfallCache'
 import { getCardById } from '@/lib/scryfall'
 import { DeckListView } from '@/components/DeckListView'
 import { QuickAdd } from '@/components/QuickAdd'
@@ -20,11 +21,11 @@ import { RoleEditModal } from '@/components/RoleEditModal'
 import { SelectCommanderModal } from '@/components/SelectCommanderModal'
 import { ColorPips } from '@/components/ColorPips'
 import { PullListView } from '@/components/PullListView'
-import { getDeckColorIdentity, showColorlessPip, getAlternates, getSideboard, getCutList, getEntriesTotalQuantity, createCardIdentifier } from '@mtg-deckbuilder/shared'
+import { getDeckColorIdentity, showColorlessPip, getAlternates, getSideboard, getCutList, getEntriesTotalQuantity, createCardIdentifier, getAllDeckEntries, validateDeckStructure, validateFormatLegality, validateColorIdentity } from '@mtg-deckbuilder/shared'
 import { getCardCount, getCardDisplayName, CARD_SET, isCommanderLikeFormat } from '@/types'
 import type { RoleDefinition, CardSetName, ScryfallCard } from '@/types'
 import { formatDeckTagline, formatDeckStatus } from '@/lib/deckTagline'
-import { captionTagStyle } from '@/lib/mastheadStyles'
+import { captionTagStyle, PAGE_X_PAD } from '@/lib/mastheadStyles'
 
 type CommanderModalMode = 'set' | 'swap' | 'addPartner'
 
@@ -33,8 +34,6 @@ const COMMANDER_MODAL_TITLES: Record<CommanderModalMode, string> = {
   swap: 'Change Commander',
   addPartner: 'Add Partner',
 }
-
-const PAGE_X_PAD = '56px'
 
 const taglineStyle: React.CSSProperties = {
   fontFamily: 'var(--font-tagline)',
@@ -179,6 +178,12 @@ export function DeckDetail() {
     setIsEditingName(false)
   }, [deck, editedName, updateDeck])
 
+  // Scryfall cache for legality checks in the masthead status. Hook runs
+  // unconditionally (before the null-deck guard); entries are empty when no
+  // deck is selected so it no-ops.
+  const deckEntries = deck ? getAllDeckEntries(deck) : []
+  const { cache: validationCache } = useScryfallCache(deckEntries)
+
   if (!deck) {
     return (
       <div
@@ -191,7 +196,12 @@ export function DeckDetail() {
   }
 
   const tagline = formatDeckTagline(deck)
-  const statusLine = formatDeckStatus(deck)
+  const validationIssues = [
+    ...validateDeckStructure(deck),
+    ...validateColorIdentity(deck),
+    ...validateFormatLegality(deck, validationCache),
+  ]
+  const statusLine = formatDeckStatus(deck, validationIssues)
   const colorIdentity = getDeckColorIdentity(deck)
   const isCommanderFormat = isCommanderLikeFormat(deck.format.type)
 
@@ -253,11 +263,10 @@ export function DeckDetail() {
           borderBottom: '2px solid var(--masthead-rule-color)',
         }}
       >
-        <div className="flex items-end justify-between gap-8 flex-wrap">
-          {/* Identity column */}
-          <div className="flex flex-col gap-1.5 min-w-0">
-            {/* Title + color pips */}
-            <div className="flex items-baseline gap-4 flex-wrap">
+        <div className="flex flex-col gap-3">
+          {/* Row 1 — title + color pips + deck type, as one identity line */}
+          <div className="flex items-baseline justify-between gap-8 flex-wrap">
+            <div className="flex items-baseline gap-4 flex-wrap min-w-0">
               {isEditingName ? (
                 <Input
                   value={editedName}
@@ -291,85 +300,90 @@ export function DeckDetail() {
                   showColorless={showColorlessPip(deck)}
                 />
               )}
+
+              {/* Deck type — inline, immediately after the pips */}
+              <span style={taglineStyle}>{tagline}</span>
             </div>
+          </div>
 
-            {/* Tagline */}
-            <span style={taglineStyle}>{tagline}</span>
-
+          {/* Row 2 — byline (left), action cluster (right) */}
+          <div className="flex items-center justify-between gap-8 flex-wrap">
             {/* Byline — commander attribution */}
-            {isCommanderFormat && (
-              deck.commanders.length > 0 ? (
-                <div className="flex items-baseline gap-2.5 flex-wrap">
-                  <span style={bylineLedStyle}>Led by</span>
-                  <span style={bylineNameStyle}>
-                    {deck.commanders.map(c => getCardDisplayName(c)).join(' and ')}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setCommanderModalMode('swap')}
-                    className="hover:opacity-80 transition-opacity"
-                    style={bylineCapStyle}
-                  >
-                    change
-                  </button>
-                  {commanderHasPartner && deck.commanders.length === 1 && (
+            <div className="min-w-0">
+              {isCommanderFormat && (
+                deck.commanders.length > 0 ? (
+                  <div className="flex items-baseline gap-2.5 flex-wrap">
+                    <span style={bylineLedStyle}>Led by</span>
+                    <span style={bylineNameStyle}>
+                      {deck.commanders.map(c => getCardDisplayName(c)).join(' and ')}
+                    </span>
                     <button
                       type="button"
-                      onClick={() => setCommanderModalMode('addPartner')}
+                      onClick={() => setCommanderModalMode('swap')}
                       className="hover:opacity-80 transition-opacity"
                       style={bylineCapStyle}
                     >
-                      + partner
+                      change
                     </button>
-                  )}
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setCommanderModalMode('set')}
-                  className="hover:opacity-80 transition-opacity self-start"
-                  style={{ ...bylineCapStyle, fontSize: '11px', color: 'var(--foreground)' }}
-                >
-                  Set commander
-                </button>
-              )
-            )}
-          </div>
+                    {commanderHasPartner && deck.commanders.length === 1 && (
+                      <button
+                        type="button"
+                        onClick={() => setCommanderModalMode('addPartner')}
+                        className="hover:opacity-80 transition-opacity"
+                        style={bylineCapStyle}
+                      >
+                        + partner
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setCommanderModalMode('set')}
+                    className="hover:opacity-80 transition-opacity"
+                    style={{ ...bylineCapStyle, fontSize: '11px', color: 'var(--foreground)' }}
+                  >
+                    Set commander
+                  </button>
+                )
+              )}
+            </div>
 
-          {/* Action cluster */}
-          <div className="flex items-center gap-5 flex-shrink-0" style={{ paddingBottom: '6px' }}>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  disabled={isCaching}
-                  style={{ ...captionTagStyle, opacity: isCaching ? 0.6 : 1 }}
-                >
-                  {isCaching && <Loader2 className="w-3 h-3 animate-spin" />}
-                  {isCaching ? 'Caching' : 'Cache'}
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => handlePreCache(false)}>
-                  Cache Card Data Only
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handlePreCache(true)}>
-                  Cache Data + Images
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {/* Action cluster */}
+            <div className="flex items-center gap-5 flex-shrink-0">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    disabled={isCaching}
+                    style={{ ...captionTagStyle, opacity: isCaching ? 0.6 : 1 }}
+                  >
+                    {isCaching && <Loader2 className="w-3 h-3 animate-spin" />}
+                    {isCaching ? 'Caching' : 'Cache'}
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => handlePreCache(false)}>
+                    Cache Card Data Only
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handlePreCache(true)}>
+                    Cache Data + Images
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
 
-            <button
-              type="button"
-              onClick={() => setShowRoleModal(true)}
-              style={captionTagStyle}
-            >
-              Roles
-            </button>
+              <button
+                type="button"
+                onClick={() => setShowRoleModal(true)}
+                style={captionTagStyle}
+              >
+                Roles
+              </button>
 
-            <ExportDropdown ref={exportRef} deck={deck} />
+              <ExportDropdown ref={exportRef} deck={deck} />
 
-            <ImportDialog deckId={deck.id} sideboardSize={deck.format.sideboardSize} />
+              <ImportDialog deckId={deck.id} sideboardSize={deck.format.sideboardSize} />
+            </div>
           </div>
         </div>
       </div>
@@ -404,10 +418,10 @@ export function DeckDetail() {
             fontFamily: 'var(--font-tagline)',
             fontSize: '16px',
             fontStyle: 'italic',
-            fontWeight: statusLine.status === 'valid' ? 400 : 500,
-            color: statusLine.status === 'valid'
-              ? 'var(--muted-foreground)'
-              : 'var(--destructive)',
+            fontWeight: statusLine.status === 'complete' ? 400 : 500,
+            color: statusLine.status === 'illegal'
+              ? 'var(--destructive)'
+              : 'var(--muted-foreground)',
           }}
         >
           {statusLine.status}
@@ -547,7 +561,7 @@ function MastheadTab({
   return (
     <TabsTrigger
       value={value}
-      className="rounded-none px-0 py-3.5 h-auto bg-transparent shadow-none gap-2 border-b-2 border-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-foreground text-muted-foreground data-[state=active]:text-foreground font-normal data-[state=active]:font-semibold"
+      className="rounded-none px-0 py-3.5 h-auto bg-transparent shadow-none gap-2 border-b-2 border-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-foreground text-muted-foreground data-[state=active]:text-foreground font-normal data-[state=active]:font-semibold focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none"
       style={{
         fontFamily: 'var(--font-body)',
         fontSize: labelSize,

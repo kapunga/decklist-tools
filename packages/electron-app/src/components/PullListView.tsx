@@ -1,12 +1,18 @@
 import { useState, useEffect } from 'react'
-import { ChevronDown, ChevronRight, Loader2, Package, Check } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
+import { Loader2, Package, Check } from 'lucide-react'
 import { PullListToolbar } from '@/components/PullListToolbar'
 import { PullListTable } from '@/components/PullListTable'
 import { IdentifyModeList } from '@/components/IdentifyModeList'
 import { CardImage } from '@/components/CardImage'
+import { CollapsibleSection } from '@/components/CollapsibleSection'
 import { usePullList, type PullListGroup, type PullListItem } from '@/hooks/usePullList'
 import { getCardById } from '@/lib/scryfall'
+import {
+  captionLabelStyle,
+  editorialTextStyle,
+  sectionTitleStyle,
+  PAGE_X_PAD,
+} from '@/lib/mastheadStyles'
 import type { Deck, ScryfallCard } from '@/types'
 
 interface PullListViewProps {
@@ -22,46 +28,37 @@ interface CollapsibleSetSectionProps {
 }
 
 function CollapsibleSetSection({ group, deckId, defaultOpen = true, focusedItemKey, onFocusItem }: CollapsibleSetSectionProps) {
-  const [isOpen, setIsOpen] = useState(defaultOpen)
-
   const totalCards = group.items.reduce((sum, item) => sum + item.remainingNeeded, 0)
   const uniqueCards = new Set(group.items.map(i => i.deckCardId)).size
 
   return (
-    <div className="border rounded-lg overflow-hidden">
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between p-3 bg-muted/50 hover:bg-muted transition-colors"
-      >
-        <div className="flex items-center gap-2">
-          {isOpen ? (
-            <ChevronDown className="h-4 w-4" />
-          ) : (
-            <ChevronRight className="h-4 w-4" />
-          )}
-          <span className="font-medium">{group.setName}</span>
-          <Badge variant="outline" className="text-xs">
-            {group.setCode.toUpperCase()}
-          </Badge>
+    <CollapsibleSection
+      defaultOpen={defaultOpen}
+      title={
+        <div className="flex items-baseline gap-3">
+          <span
+            style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: '16px',
+              fontWeight: 600,
+              color: 'var(--foreground)',
+              letterSpacing: '-0.01em',
+            }}
+          >
+            {group.setName}
+          </span>
+          <span style={captionLabelStyle}>{group.setCode.toUpperCase()}</span>
         </div>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span>{uniqueCards} unique</span>
-          <span>|</span>
-          <span>{totalCards} cards</span>
-        </div>
-      </button>
-
-      {isOpen && (
-        <div className="border-t">
-          <PullListTable
-            items={group.items}
-            deckId={deckId}
-            focusedItemKey={focusedItemKey}
-            onFocusItem={onFocusItem}
-          />
-        </div>
-      )}
-    </div>
+      }
+      badge={`${uniqueCards} unique · ${totalCards} cards`}
+    >
+      <PullListTable
+        items={group.items}
+        deckId={deckId}
+        focusedItemKey={focusedItemKey}
+        onFocusItem={onFocusItem}
+      />
+    </CollapsibleSection>
   )
 }
 
@@ -160,30 +157,62 @@ export function PullListView({ deck }: PullListViewProps) {
       />
 
       <div className="flex-1 flex overflow-hidden">
-        {/* Left column - Focused card image */}
-        <div className="w-72 shrink-0 border-r p-4 flex flex-col items-center overflow-auto">
-          {loadingCard && (
-            <div className="flex items-center justify-center h-96">
-              <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+        {/* Left column - Focused card with editorial framing */}
+        <div
+          className="w-72 shrink-0 flex flex-col gap-4 p-6 overflow-auto"
+          style={{ borderRight: '1px solid var(--border)' }}
+        >
+          <span style={captionLabelStyle}>Currently viewing</span>
+
+          {loadingCard ? (
+            <div className="flex items-center justify-center" style={{ height: '380px' }}>
+              <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--muted-foreground)' }} />
             </div>
-          )}
-          {!loadingCard && focusedScryfallCard && (
-            <div className="space-y-2">
+          ) : focusedScryfallCard ? (
+            <div className="flex flex-col gap-4">
               <CardImage card={focusedScryfallCard} size="large" />
-              <div className="text-center text-sm text-muted-foreground">
-                {focusedItem?.setCode.toUpperCase()} #{focusedItem?.collectorNumber}
+              <div className="flex flex-col gap-1">
+                <span
+                  style={{
+                    fontFamily: 'var(--font-display)',
+                    fontSize: '22px',
+                    fontWeight: 600,
+                    fontStyle: 'italic',
+                    color: 'var(--foreground)',
+                    letterSpacing: '-0.015em',
+                    lineHeight: '26px',
+                  }}
+                >
+                  {focusedScryfallCard.name}
+                </span>
+                {focusedItem && (
+                  <span style={captionLabelStyle}>
+                    {focusedItem.setCode.toUpperCase()} #{focusedItem.collectorNumber}
+                  </span>
+                )}
               </div>
             </div>
-          )}
-          {!loadingCard && !focusedScryfallCard && (
-            <div className="flex items-center justify-center h-96 text-muted-foreground text-sm">
-              Click a card to preview
+          ) : (
+            <div
+              className="flex items-center justify-center"
+              style={{
+                height: '380px',
+                fontFamily: 'var(--font-tagline)',
+                fontStyle: 'italic',
+                fontSize: '14px',
+                color: 'var(--muted-foreground)',
+              }}
+            >
+              click a card to preview
             </div>
           )}
         </div>
 
         {/* Right column - Pull list */}
-        <div className="flex-1 overflow-auto p-4 space-y-6">
+        <div
+          className="flex-1 overflow-auto py-6 space-y-8"
+          style={{ paddingLeft: PAGE_X_PAD, paddingRight: PAGE_X_PAD }}
+        >
         {identifyMode ? (
           <IdentifyModeList
             items={identifyItems}
@@ -194,31 +223,38 @@ export function PullListView({ deck }: PullListViewProps) {
         ) : (
           <>
             {/* Unpulled Section */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
+            <div className="space-y-4">
+              <div className="flex items-baseline justify-between">
                 <div className="flex items-center gap-2">
-                  <Package className="h-5 w-5 text-primary" />
-                  <h2 className="text-lg font-semibold">Cards to Pull</h2>
+                  <Package className="h-5 w-5" style={{ color: 'var(--muted-foreground)' }} />
+                  <h2 style={sectionTitleStyle}>Cards to Pull</h2>
                 </div>
                 {!allPulled && (
-                  <Badge variant="secondary">
+                  <span style={editorialTextStyle}>
                     {uniqueUnpulledCards} unique cards remaining
-                  </Badge>
+                  </span>
                 )}
               </div>
 
               {allPulled ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <Check className="h-12 w-12 text-green-500 mb-4" />
-                  <p className="text-lg font-medium text-green-500">All cards pulled!</p>
-                  <p className="text-sm text-muted-foreground mt-1">
+                <div className="flex flex-col items-center justify-center py-12 text-center gap-2">
+                  <Check className="h-12 w-12 mb-2" style={{ color: 'var(--ring)' }} />
+                  <p style={sectionTitleStyle}>All cards pulled!</p>
+                  <p
+                    style={{
+                      fontFamily: 'var(--font-tagline)',
+                      fontStyle: 'italic',
+                      fontSize: '14px',
+                      color: 'var(--muted-foreground)',
+                    }}
+                  >
                     {source === 'maybeboard'
-                      ? 'All maybeboard cards have been pulled'
-                      : 'Your deck is ready to play'}
+                      ? 'all maybeboard cards have been pulled'
+                      : 'your deck is ready to play'}
                   </p>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-4">
                   {unpulledGroups.map(group => (
                     <CollapsibleSetSection
                       key={group.setCode}
@@ -235,13 +271,16 @@ export function PullListView({ deck }: PullListViewProps) {
 
             {/* Pulled Section */}
             {showPulledSection && pulledGroups.length > 0 && (
-              <div className="space-y-3 pt-4 border-t">
+              <div
+                className="space-y-4 pt-6"
+                style={{ borderTop: '1px solid color-mix(in srgb, var(--border) 60%, transparent)' }}
+              >
                 <div className="flex items-center gap-2">
-                  <Check className="h-5 w-5 text-green-500" />
-                  <h2 className="text-lg font-semibold text-muted-foreground">Already Pulled</h2>
+                  <Check className="h-5 w-5" style={{ color: 'var(--muted-foreground)' }} />
+                  <h2 style={{ ...sectionTitleStyle, color: 'var(--muted-foreground)' }}>Already Pulled</h2>
                 </div>
 
-                <div className="space-y-3 opacity-75">
+                <div className="space-y-4 opacity-75">
                   {pulledGroups.map(group => (
                     <CollapsibleSetSection
                       key={group.setCode}
@@ -258,17 +297,24 @@ export function PullListView({ deck }: PullListViewProps) {
 
             {/* Empty state when no set collection */}
             {unpulledGroups.length === 0 && pulledGroups.length === 0 && !allPulled && (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <Package className="h-12 w-12 text-muted-foreground mb-4" />
-                <p className="text-lg font-medium">
+              <div className="flex flex-col items-center justify-center py-12 text-center gap-2">
+                <Package className="h-12 w-12 mb-2" style={{ color: 'var(--muted-foreground)' }} />
+                <p style={sectionTitleStyle}>
                   {source === 'maybeboard'
                     ? 'No maybeboard cards in owned sets'
                     : 'No cards in owned sets'}
                 </p>
-                <p className="text-sm text-muted-foreground mt-1">
+                <p
+                  style={{
+                    fontFamily: 'var(--font-tagline)',
+                    fontStyle: 'italic',
+                    fontSize: '14px',
+                    color: 'var(--muted-foreground)',
+                  }}
+                >
                   {source === 'maybeboard'
-                    ? 'Add confirmed cards to the maybeboard, or add sets to your collection'
-                    : 'Add sets to your collection in Settings to see pull list options'}
+                    ? 'add confirmed cards to the maybeboard, or add sets to your collection'
+                    : 'add sets to your collection in Settings to see pull list options'}
                 </p>
               </div>
             )}
