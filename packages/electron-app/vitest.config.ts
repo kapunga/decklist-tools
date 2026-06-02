@@ -3,6 +3,6 @@ import { defineConfig } from 'vitest/config'
 export default defineConfig({
   test: {
     globals: true,
-    include: ['electron/**/*.test.ts'],
+    include: ['electron/**/*.test.ts', 'src/**/*.test.ts'],
   },
 })
