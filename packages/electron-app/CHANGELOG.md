@@ -1,5 +1,13 @@
 # @mtg-deckbuilder/electron-app
 
+## 0.12.2
+
+### Patch Changes
+
+- 1da317f: Fix infinite render loop (React #185) when viewing a deck. `useScryfallCache` now keys its fetch effect on a stable id signature instead of an array reference, so it no longer re-runs every render and loops via `setCache`.
+- Updated dependencies [1da317f]
+  - @mtg-deckbuilder/shared@0.12.2
+
 ## 0.12.1
 
 ### Patch Changes
