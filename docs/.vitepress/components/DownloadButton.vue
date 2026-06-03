@@ -166,12 +166,14 @@ onMounted(async () => {
 
 .primary-btn {
   display: inline-block;
-  padding: 0.75rem 1.5rem;
-  font-size: 1.1rem;
+  padding: 0.85rem 1.6rem;
+  font-size: 0.95rem;
   font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
   color: var(--vp-button-brand-text);
   background-color: var(--vp-button-brand-bg);
-  border-radius: 8px;
+  border-radius: 0;
   text-decoration: none;
   transition: background-color 0.25s;
 }
