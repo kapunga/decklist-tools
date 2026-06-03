@@ -16,6 +16,10 @@ packages/electron-app/dist-electron/
 packages/electron-app/release/
 packages/mcp-server/bin/
 
+# VitePress docsite — generated build cache and output (never commit)
+docs/.vitepress/cache/
+docs/.vitepress/dist/
+
 # IDE
 .idea/
 .vscode/
