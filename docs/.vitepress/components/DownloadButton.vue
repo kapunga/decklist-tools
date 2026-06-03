@@ -15,7 +15,11 @@ interface Release {
 }
 
 const REPO = 'kapunga/decklist-tools'
-const CACHE_KEY = 'mtg-deckbuilder-latest-release'
+// Bumped to :v2 so any release cached under the old key — which is how a stale
+// version (e.g. an old 0.11.0) could stick around — is abandoned, never shown.
+const CACHE_KEY = 'mtg-deckbuilder-latest-release:v2'
+const LEGACY_CACHE_KEY = 'mtg-deckbuilder-latest-release'
+const CACHE_TTL_MS = 60 * 60 * 1000 // 1 hour
 
 const release = ref<Release | null>(null)
 const error = ref(false)
@@ -94,25 +98,59 @@ function assetLabel(asset: Asset): string {
   return `${labels[asset.platform]}${archLabel}`
 }
 
-onMounted(async () => {
-  userPlatform.value = detectPlatform()
+interface CachedRelease {
+  release: Release
+  fetchedAt: number
+}
 
-  const cached = sessionStorage.getItem(CACHE_KEY)
-  if (cached) {
-    try {
-      release.value = JSON.parse(cached)
-      return
-    } catch { /* fall through */ }
-  }
-
+async function fetchLatest(): Promise<Release | null> {
   try {
     const res = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`)
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const data = await res.json()
     const assets = data.assets.map(parseAsset).filter(Boolean) as Asset[]
-    release.value = { tag_name: data.tag_name, html_url: data.html_url, assets }
-    sessionStorage.setItem(CACHE_KEY, JSON.stringify(release.value))
+    return { tag_name: data.tag_name, html_url: data.html_url, assets }
   } catch {
+    return null
+  }
+}
+
+onMounted(async () => {
+  userPlatform.value = detectPlatform()
+
+  // Purge the legacy (un-versioned, never-expiring) cache so a value stored
+  // under it can never resurface.
+  try {
+    sessionStorage.removeItem(LEGACY_CACHE_KEY)
+    localStorage.removeItem(LEGACY_CACHE_KEY)
+  } catch { /* storage unavailable — non-fatal */ }
+
+  // Show a recent cache immediately for a fast first paint, but only if it's
+  // still fresh. The fetch below always runs regardless, so even a shown cache
+  // gets corrected to the real latest release a moment later.
+  let shownFromCache = false
+  try {
+    const raw = localStorage.getItem(CACHE_KEY)
+    if (raw) {
+      const cached = JSON.parse(raw) as CachedRelease
+      if (cached?.release && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
+        release.value = cached.release
+        shownFromCache = true
+      }
+    }
+  } catch { /* ignore malformed cache */ }
+
+  // Always revalidate against GitHub. This is what guarantees the displayed
+  // version is the real latest, not whatever happened to be cached.
+  const latest = await fetchLatest()
+  if (latest) {
+    release.value = latest
+    error.value = false
+    try {
+      localStorage.setItem(CACHE_KEY, JSON.stringify({ release: latest, fetchedAt: Date.now() }))
+    } catch { /* storage full/unavailable — non-fatal */ }
+  } else if (!shownFromCache) {
+    // Only fall back to the error state if we have nothing at all to show.
     error.value = true
   }
 })
