@@ -35,37 +35,45 @@ export default defineConfig({
   themeConfig: {
     nav: [
       { text: 'Home', link: '/' },
-      { text: 'Installation', link: '/installation' },
+      { text: 'Install', link: '/installation' },
       { text: 'Desktop App', link: '/usage-electron' },
-      { text: 'MCP Server', link: '/usage-mcp' },
+      { text: 'AI assistants', link: '/usage-mcp' },
     ],
 
     sidebar: [
       {
-        text: 'Getting Started',
+        text: 'Getting started',
         items: [
           { text: 'Overview', link: '/' },
           { text: 'Installation', link: '/installation' },
         ],
       },
       {
-        text: 'Usage',
+        text: 'The desktop app',
         items: [
-          { text: 'Desktop App', link: '/usage-electron' },
+          { text: 'Guided tour', link: '/usage-electron' },
+          { text: 'Settings', link: '/settings' },
         ],
       },
       {
-        text: 'MCP Server',
+        text: 'Building with AI assistants',
         items: [
           { text: 'Overview', link: '/usage-mcp' },
-          { text: 'Deck Management', link: '/mcp/deck-management' },
-          { text: 'Card Management', link: '/mcp/card-management' },
+          { text: 'Skills', link: '/skills' },
+        ],
+      },
+      {
+        text: 'MCP tool reference (advanced)',
+        collapsed: true,
+        items: [
+          { text: 'Deck management', link: '/mcp/deck-management' },
+          { text: 'Card management', link: '/mcp/card-management' },
           { text: 'Views', link: '/mcp/views' },
           { text: 'Roles', link: '/mcp/roles' },
           { text: 'Commanders', link: '/mcp/commanders' },
           { text: 'Notes', link: '/mcp/notes' },
-          { text: 'Interest List', link: '/mcp/interest-list' },
-          { text: 'Search & Reports', link: '/mcp/search-reports' },
+          { text: 'Interest list', link: '/mcp/interest-list' },
+          { text: 'Search & reports', link: '/mcp/search-reports' },
         ],
       },
     ],

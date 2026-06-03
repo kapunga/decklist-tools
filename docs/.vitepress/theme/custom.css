@@ -406,30 +406,6 @@ html.dt-gothic {
   border-radius: 8px !important;
 }
 
-/* ── Soft Yakushima art behind light themes ───────────────────────
- * Full-viewport fixed artwork with a heavy parchment scrim so body text
- * stays readable. Light themes only (anything not under .dark). Tune the
- * "softness" by raising the scrim percentages — higher % = fainter art. */
-html:not(.dark) {
-  background:
-    linear-gradient(
-      to bottom,
-      color-mix(in srgb, var(--vp-c-bg) 62%, transparent),
-      color-mix(in srgb, var(--vp-c-bg) 73%, transparent)
-    ),
-    url('/decklist-tools/yakushima.png') center top / cover no-repeat fixed;
-}
-
-/* Let the fixed art show through the page + main reading column, while nav
- * and sidebar keep their solid bg for legibility. */
-html:not(.dark) body,
-html:not(.dark) .VPContent,
-html:not(.dark) .VPContent.is-home,
-html:not(.dark) .VPHome,
-html:not(.dark) .VPDoc {
-  background-color: transparent;
-}
-
 /* ── Buttons — caption-tag voice (uppercase, tracked) ─────────────── */
 .VPButton.brand {
   font-family: var(--vp-font-family-base);
