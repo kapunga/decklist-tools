@@ -14,7 +14,7 @@ import archiver from 'archiver'
  * Claude Desktop's Capabilities UI, drop into another harness, or stash
  * anywhere they want. It's deliberately not tied to one client.
  */
-export type SkillClientId = 'claude-code' | 'gemini-cli' | 'manual'
+export type SkillClientId = 'claude-code' | 'gemini-cli' | 'openai-codex' | 'manual'
 
 /**
  * How a target receives skills.
@@ -150,7 +150,9 @@ export function resolveSkillTarget(clientId: SkillClientId, repoRoot: string): S
   const skillsDir =
     clientId === 'claude-code'
       ? path.join(home, '.claude', 'skills')
-      : path.join(home, '.gemini', 'skills')
+      : clientId === 'openai-codex'
+        ? path.join(home, '.codex', 'skills')
+        : path.join(home, '.gemini', 'skills')
   return { kind: 'directory', clientId, skillsDir }
 }
 

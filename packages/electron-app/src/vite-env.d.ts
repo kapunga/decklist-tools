@@ -66,7 +66,7 @@ export interface DeckExportResult {
   error?: string
 }
 
-export type SkillClientId = 'claude-code' | 'gemini-cli' | 'manual'
+export type SkillClientId = 'claude-code' | 'gemini-cli' | 'openai-codex' | 'manual'
 
 export type SkillInstallStatus = 'not-installed' | 'installed' | 'installed-stale'
 

@@ -27,6 +27,14 @@ export function McpServerPane() {
         connectButtonLabel="Connect to Gemini CLI"
         postConnectionNote="You may need to restart Gemini CLI for changes to take effect."
       />
+      <McpIntegrationCard
+        clientId="openai-codex"
+        title="OpenAI Codex CLI"
+        connectedDescription="Codex can access your deck data through MCP tools"
+        disconnectedDescription="Connect to enable deck management from the Codex CLI"
+        connectButtonLabel="Connect to Codex CLI"
+        postConnectionNote="Restart Codex for changes to take effect. (The ChatGPT desktop app can't use local MCP servers — use the Codex CLI.)"
+      />
     </div>
   )
 }

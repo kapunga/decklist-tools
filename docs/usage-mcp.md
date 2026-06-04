@@ -8,13 +8,14 @@ Here's the nice part: your assistant reads and edits the exact same decks you se
 
 ## Supported assistants
 
-Three assistants connect with a single click from the desktop app today:
+Four assistants connect with a single click from the desktop app today:
 
 - **Claude Desktop** — Anthropic's desktop chat app. The most common pick if you want a point-and-talk, conversational workflow.
 - **Claude Code** — Anthropic's command-line coding agent. Handy if you already live in a terminal.
 - **Gemini CLI** — Google's command-line assistant.
+- **OpenAI Codex CLI** — OpenAI's command-line agent. One clarification worth making: this is the Codex *CLI*, not the ChatGPT desktop app. The ChatGPT app only connects to remote, hosted MCP connectors — it can't reach a local server like this one — so the Codex CLI (or Claude Desktop) is the way to drive your local decks from OpenAI's side.
 
-Under the hood this isn't really tied to those three. The app exposes a standard MCP server paired with SKILL.md skill bundles, so any assistant that speaks MCP and can read SKILL.md bundles can drive it. What those three get is one-click setup — connection *and* skill installation handled for you inside the app. Anything else you'd wire up by hand using the same building blocks. As more assistants ship MCP support, the list of one-click options is the part most likely to grow.
+Under the hood this isn't really tied to those four. The app exposes a standard MCP server paired with SKILL.md skill bundles, so any assistant that speaks MCP and can read SKILL.md bundles can drive it. What those four get is one-click setup — connection *and* skill installation handled for you inside the app. Anything else you'd wire up by hand using the same building blocks. As more assistants ship MCP support, the list of one-click options is the part most likely to grow.
 
 ## Getting connected
 
@@ -24,7 +25,7 @@ I'd strongly recommend installing the [Skills](/skills) while you're in there. T
 
 How you install the skills depends a little on the assistant, and it's the main place the three differ:
 
-- For **Claude Code** and **Gemini CLI**, it's one click per skill — or "Install all" — in Settings → Skills. The app writes them where the assistant will find them.
+- For **Claude Code**, **Gemini CLI**, and the **Codex CLI**, it's one click per skill — or "Install all" — in Settings → Skills. The app writes them where each assistant looks for them (`~/.claude/skills`, `~/.gemini/skills`, and `~/.codex/skills` respectively).
 - For **Claude Desktop**, use the Skills section's Export ("Save…") to get a `.zip`, then upload that in Claude Desktop's own Capabilities settings. It doesn't read skills off your filesystem the way the command-line tools do, so it's one extra step.
 
 <!-- SCREENSHOT: settings-mcp-connect | Settings → MCP Server panel with the connect buttons for Claude Desktop / Claude Code / Gemini CLI -->
@@ -131,4 +132,4 @@ What it isn't is a deck-tuning oracle. It can suggest cards and explain tradeoff
 
 ## For power users
 
-If you want to see the exact set of tools the assistant has and what each one does, there's an **MCP tool reference** in the sidebar with the full surface. Most people never need it — the assistant picks the right tools on its own — but it's there if you're curious, or you're wiring up an assistant that isn't one of the one-click options.
+If you want to see the exact set of tools the assistant has and what each one does, there's an **MCP tool reference** in the sidebar with the full surface. Most people never need it — the assistant picks the right tools on its own — but it's there if you're curious, or you're wiring up an assistant that isn't one of the one-click options. For the by-hand steps — config-file locations and the exact MCP server and skill snippets for each OS — see [Manual setup](/manual-setup).

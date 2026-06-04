@@ -36,6 +36,7 @@ interface ClientColumnSpec {
 const COLUMNS: ClientColumnSpec[] = [
   { id: 'claude-code', label: 'Claude Code' },
   { id: 'gemini-cli', label: 'Gemini CLI' },
+  { id: 'openai-codex', label: 'Codex CLI' },
   { id: 'manual', label: 'Export' },
 ]
 
