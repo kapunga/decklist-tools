@@ -1,6 +1,6 @@
 {
   "name": "@mtg-deckbuilder/electron-app",
-  "version": "0.12.2",
+  "version": "0.12.3",
   "description": "MTG Deckbuilder - Desktop app for managing Magic: The Gathering decks",
   "main": "dist-electron/main.js",
   "scripts": {
