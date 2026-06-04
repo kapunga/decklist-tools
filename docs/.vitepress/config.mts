@@ -60,6 +60,7 @@ export default defineConfig({
         items: [
           { text: 'Overview', link: '/usage-mcp' },
           { text: 'Skills', link: '/skills' },
+          { text: 'Manual setup', link: '/manual-setup' },
         ],
       },
       {

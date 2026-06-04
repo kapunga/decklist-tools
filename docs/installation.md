@@ -27,38 +27,13 @@
 
 ## MCP Server Setup
 
-The MCP server lets Claude Desktop help you build and manage decks. There are two ways to set it up:
-
-### Option 1: Through the Desktop App (recommended)
+The MCP server lets an AI assistant help you build and manage decks. The desktop app connects four assistants — Claude Desktop, Claude Code, Gemini CLI, and the OpenAI Codex CLI — with a single click each, and installs the skills for you too. That's the recommended path:
 
 1. Open the desktop app
-2. Go to **Settings**
-3. Click **Connect to Claude Desktop**
+2. Go to **Settings → MCP Server**
+3. Click **Connect** for the assistant you use
 
-This automatically configures Claude Desktop to use the MCP server.
-
-### Option 2: Manual Configuration
-
-Add the MCP server to your Claude Desktop config file:
-
-**macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
-**Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
-**Linux:** `~/.config/Claude/claude_desktop_config.json`
-
-```json
-{
-  "mcpServers": {
-    "mtg-deckbuilder": {
-      "command": "node",
-      "args": ["<path-to-app>/mcp-server/main.js"]
-    }
-  }
-}
-```
-
-The MCP server path depends on your platform and install location. On macOS, it's typically `/Applications/MTG Deckbuilder.app/Contents/Resources/mcp-server/main.js`.
-
-Restart Claude Desktop after making config changes.
+Prefer to wire it up by hand — or connecting an assistant that isn't one of the one-click options? See **[Manual setup](/manual-setup)** for the config-file locations and the exact MCP server and skill snippets for every assistant, on macOS, Windows, and Linux.
 
 ## Building from Source
 

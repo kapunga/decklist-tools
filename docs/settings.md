@@ -55,21 +55,22 @@ To add one, click **Add Role** and give it a name, an optional description, and 
 
 This section is the on switch for the AI features. The whole reason the app is interesting beyond a deck spreadsheet is that you can connect it to an AI assistant and then *talk* to your collection — "build me a mono-green ramp deck," "what's the mana curve on my Isshin deck," "which decks have Sol Ring in them" — and the assistant reads and edits your decks directly. None of that works until you flip the switch here.
 
-There are three integration cards, one per assistant, and connecting is a single click each:
+There are four integration cards, one per assistant, and connecting is a single click each:
 
 - **Claude Desktop** — click **Connect to Claude**. This writes the configuration Claude Desktop needs so that Claude can manage your decks. One thing to note: you may need to restart Claude Desktop for the change to take effect.
 - **Claude Code** — click **Connect to Claude Code**.
 - **Gemini CLI** — click **Connect to Gemini CLI**.
+- **OpenAI Codex CLI** — click **Connect to Codex CLI**. Codex keeps its settings in a TOML file (`~/.codex/config.toml`) rather than JSON, and that file also holds your model and provider choices, so connecting *merges* the deckbuilder in and leaves the rest untouched. Restart Codex afterward. One bit of naming to be clear on: this is the Codex *command-line* tool, **not** the ChatGPT desktop app — the ChatGPT app only connects to remote, hosted MCP connectors and can't reach a local server like this one, so Codex CLI (or Claude Desktop) is the way to drive your decks from OpenAI's side.
 
 Each card shows whether it's currently connected or disconnected, and once connected it offers a **Disconnect** button if you want to turn it back off. You don't need to understand anything about how the plumbing works — connecting just tells that assistant where to find your decks. For what you can actually *do* once you're connected, see [Building with AI assistants](/usage-mcp).
 
-<!-- SCREENSHOT: settings-mcp-connect | MCP Server pane showing the three integration cards (Claude Desktop, Claude Code, Gemini CLI) with their connect buttons and connection status -->
+<!-- SCREENSHOT: settings-mcp-connect | MCP Server pane showing the four integration cards (Claude Desktop, Claude Code, Gemini CLI, OpenAI Codex CLI) with their connect buttons and connection status -->
 
 ## Skills
 
 Connecting an assistant in the previous section gives it the *ability* to touch your decks. Skills make it *good* at it. The helper text puts it precisely: "Install MTG Deckbuilder skills into your AI clients. Skills teach the assistant how to use the MCP server effectively — what queries to run, what tools to chain, and the vocabulary specific to deckbuilding." Without skills, the assistant can fumble its way through; with them, it knows the right moves — how to phrase a Scryfall search, when to chain a couple of tools together, the deckbuilding terms you'd actually use.
 
-This section is a table where you install, update, or uninstall skills per client (Claude Code and Gemini CLI), and there are bulk "All" actions if you'd rather not click through them one by one. There's also an Export option — a **Save…** button — that writes the skills out as a SKILL.md bundle in a .zip file. That export exists mainly for Claude Desktop, which doesn't install skills the same way: for Claude Desktop, open the app's Capabilities settings and upload the zip there.
+This section is a table where you install, update, or uninstall skills per client (Claude Code, Gemini CLI, and Codex CLI), and there are bulk "All" actions if you'd rather not click through them one by one. There's also an Export option — a **Save…** button — that writes the skills out as a SKILL.md bundle in a .zip file. That export exists mainly for Claude Desktop, which doesn't install skills the same way: for Claude Desktop, open the app's Capabilities settings and upload the zip there.
 
 For a description of what each individual skill teaches the assistant, see the [Skills](/skills) page.
 

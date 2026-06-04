@@ -10,7 +10,7 @@ You don't have to use them — the tools work on their own — but installing th
 
 You manage skills from the desktop app. Open [Settings](/settings) and go to the **Skills** section. You'll see every bundled skill listed with its current status.
 
-For Claude Code or the Gemini CLI, installing is one click per skill — or hit **Install all** to drop the whole set in at once. The app writes them to the right place so the assistant picks them up automatically.
+For Claude Code, the Gemini CLI, or the Codex CLI, installing is one click per skill — or hit **Install all** to drop the whole set in at once. The app writes them to the right place (`~/.claude/skills`, `~/.gemini/skills`, or `~/.codex/skills`) so the assistant picks them up automatically.
 
 <!-- SCREENSHOT: settings-skills-table | The Skills section in Settings showing the six bundled skills listed with install/update actions and per-target status -->
 

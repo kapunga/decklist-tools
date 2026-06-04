@@ -17,9 +17,27 @@ import {
   SETTINGS_WINDOW_DEFAULTS,
 } from './storage-extensions'
 import { createSkillsModule, getBundledSkillsDir, type SkillClientId } from './skills'
+import {
+  readConfig,
+  writeConfig,
+  upsertMcpServer,
+  removeMcpServer,
+  hasMcpServer,
+  type McpConfigFormat,
+  type McpServerDef,
+} from './mcp-config'
 
 // MCP client integration
-type McpClientId = 'claude-desktop' | 'claude-code' | 'gemini-cli'
+type McpClientId = 'claude-desktop' | 'claude-code' | 'gemini-cli' | 'openai-codex'
+
+/** How to read, merge into, and write a given client's MCP config file. */
+interface McpClientSpec {
+  configPath: string
+  format: McpConfigFormat
+  // Top-level key the server list lives under: the JSON clients use
+  // `mcpServers`; Codex (TOML) uses `mcp_servers`.
+  serversKey: string
+}
 
 function getMcpServerName(): string {
   return app.isPackaged ? 'mtg-deckbuilder' : 'mtg-deckbuilder-dev'
@@ -48,38 +66,39 @@ function getClaudeDesktopConfigPath(): string {
   }
 }
 
-function getMcpClientConfigPaths(): Record<McpClientId, string> {
+/**
+ * Per-client config specs. The three JSON clients share the repo's `.mcp.json`
+ * in dev; Codex always targets its own TOML at `~/.codex/config.toml` (the file
+ * `codex mcp add` manages), merging in rather than overwriting the user's model
+ * and provider settings.
+ */
+function getMcpClientSpecs(): Record<McpClientId, McpClientSpec> {
+  const json = (configPath: string): McpClientSpec => ({
+    configPath,
+    format: 'json',
+    serversKey: 'mcpServers',
+  })
+  const codex: McpClientSpec = {
+    configPath: path.join(os.homedir(), '.codex', 'config.toml'),
+    format: 'toml',
+    serversKey: 'mcp_servers',
+  }
+
   if (!app.isPackaged) {
     const devConfig = path.join(getRepoRoot(), '.mcp.json')
     return {
-      'claude-desktop': devConfig,
-      'claude-code': devConfig,
-      'gemini-cli': devConfig,
+      'claude-desktop': json(devConfig),
+      'claude-code': json(devConfig),
+      'gemini-cli': json(devConfig),
+      'openai-codex': codex,
     }
   }
   return {
-    'claude-desktop': getClaudeDesktopConfigPath(),
-    'claude-code': path.join(os.homedir(), '.claude', 'settings.local.json'),
-    'gemini-cli': path.join(os.homedir(), '.gemini', 'settings.json'),
+    'claude-desktop': json(getClaudeDesktopConfigPath()),
+    'claude-code': json(path.join(os.homedir(), '.claude', 'settings.local.json')),
+    'gemini-cli': json(path.join(os.homedir(), '.gemini', 'settings.json')),
+    'openai-codex': codex,
   }
-}
-
-function readJsonConfig(configPath: string): Record<string, unknown> | null {
-  try {
-    if (!fs.existsSync(configPath)) return null
-    const content = fs.readFileSync(configPath, 'utf-8')
-    return JSON.parse(content) as Record<string, unknown>
-  } catch {
-    return null
-  }
-}
-
-function writeJsonConfig(configPath: string, config: Record<string, unknown>): void {
-  const dir = path.dirname(configPath)
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true })
-  }
-  fs.writeFileSync(configPath, JSON.stringify(config, null, 2))
 }
 
 function getMcpServerPath(): string {
@@ -91,12 +110,25 @@ function getMcpServerPath(): string {
   return path.join(__dirname, '../../mcp-server/dist/main.js')
 }
 
-function registerMcpHandlers(clientId: string, configPath: string): void {
+/** The MCP server entry (command + args) written into every client config. */
+function buildMcpServerDef(): McpServerDef {
+  const mcpServerPath = getMcpServerPath()
+  // Pass `--skills-dir` so the server's list_bundled_skills tool can read the
+  // same SKILL.md files the Settings → Skills table installs from.
+  const skillsDir = getBundledSkillsDir(getRepoRoot())
+  const baseArgs = app.isPackaged
+    ? [mcpServerPath]
+    : [mcpServerPath, '--storage-dir', getStorageDir()]
+  return { command: 'node', args: [...baseArgs, '--skills-dir', skillsDir] }
+}
+
+function registerMcpHandlers(clientId: string, spec: McpClientSpec): void {
+  const { configPath, format, serversKey } = spec
+
   ipcMain.handle(`mcp:${clientId}:status`, async () => {
-    const config = readJsonConfig(configPath)
-    const servers = config?.mcpServers as Record<string, unknown> | undefined
+    const config = readConfig(format, configPath)
     return {
-      connected: servers?.[getMcpServerName()] !== undefined,
+      connected: config ? hasMcpServer(config, serversKey, getMcpServerName()) : false,
       configPath,
       mcpServerPath: getMcpServerPath(),
     }
@@ -104,24 +136,9 @@ function registerMcpHandlers(clientId: string, configPath: string): void {
 
   ipcMain.handle(`mcp:${clientId}:connect`, async () => {
     try {
-      const config = readJsonConfig(configPath) ?? {}
-      const servers = (config.mcpServers as Record<string, unknown>) ?? {}
-      const mcpServerPath = getMcpServerPath()
-      // Pass `--skills-dir` so the server's list_bundled_skills tool can read
-      // the same SKILL.md files the Settings → Skills table installs from.
-      const skillsDir = getBundledSkillsDir(getRepoRoot())
-      const baseArgs = app.isPackaged
-        ? [mcpServerPath]
-        : [mcpServerPath, '--storage-dir', getStorageDir()]
-      const args = [...baseArgs, '--skills-dir', skillsDir]
-
-      servers[getMcpServerName()] = {
-        command: 'node',
-        args,
-      }
-      config.mcpServers = servers
-
-      writeJsonConfig(configPath, config)
+      const config = readConfig(format, configPath) ?? {}
+      const updated = upsertMcpServer(config, serversKey, getMcpServerName(), buildMcpServerDef())
+      writeConfig(format, configPath, updated)
       return { success: true }
     } catch (error) {
       return {
@@ -133,13 +150,9 @@ function registerMcpHandlers(clientId: string, configPath: string): void {
 
   ipcMain.handle(`mcp:${clientId}:disconnect`, async () => {
     try {
-      const config = readJsonConfig(configPath)
-      if (!config?.mcpServers) return { success: true }
-
-      const servers = config.mcpServers as Record<string, unknown>
-      delete servers[getMcpServerName()]
-
-      writeJsonConfig(configPath, config)
+      const config = readConfig(format, configPath)
+      if (!config) return { success: true }
+      writeConfig(format, configPath, removeMcpServer(config, serversKey, getMcpServerName()))
       return { success: true }
     } catch (error) {
       return {
@@ -595,8 +608,8 @@ function setupIpcHandlers() {
   })
 
   // MCP client integrations
-  for (const [clientId, configPath] of Object.entries(getMcpClientConfigPaths())) {
-    registerMcpHandlers(clientId, configPath)
+  for (const [clientId, spec] of Object.entries(getMcpClientSpecs())) {
+    registerMcpHandlers(clientId, spec)
   }
 
   // Skill installation (Claude Code + Gemini CLI: filesystem-copy into the
@@ -606,7 +619,7 @@ function setupIpcHandlers() {
     repoRoot: getRepoRoot(),
     storageDir: getStorageDir(),
   })
-  const skillClients: SkillClientId[] = ['claude-code', 'gemini-cli', 'manual']
+  const skillClients: SkillClientId[] = ['claude-code', 'gemini-cli', 'openai-codex', 'manual']
   for (const clientId of skillClients) {
     skillsModule.registerHandlers(clientId)
   }
