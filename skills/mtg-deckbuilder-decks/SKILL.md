@@ -1,8 +1,8 @@
 ---
 name: mtg-deckbuilder-decks
-description: Drive the mtg-deckbuilder MCP server to create, modify, and export Magic the Gathering decks — setting up a new deck, adding/removing/moving cards, assigning roles, managing commanders, and exporting for paper play or import into other tools (Arena, Moxfield, Archidekt, MTGO, plain text). Use when a user says "build a deck", "add this card to my deck", "swap my commander", "export the deck", or similar lifecycle prompts.
+description: Drive the mtg-deckbuilder MCP server to create, modify, and export Magic the Gathering decks — setting up a new deck, adding/removing/moving cards, assigning roles, managing commanders, and exporting for paper play or import into other tools (Moxfield, Archidekt, plain text). Use when a user says "build a deck", "add this card to my deck", "swap my commander", "export the deck", or similar lifecycle prompts.
 metadata:
-  version: "2026-05-31"
+  version: "2026-06-04"
 ---
 
 # MTG Deckbuilder — Deck Lifecycle
@@ -19,7 +19,7 @@ How to drive the `mtg-deckbuilder` MCP server through the lifecycle of a deck: c
 | `manage_commander` | Add, remove, or swap commanders. Commander-format only. Auto-recomputes color identity. |
 | `list_roles` | List available roles. Pass `deck_id` to see custom roles, not just globals. |
 | `manage_role` | Create, update, or delete role definitions. Six actions: `add_custom`/`add_global` and their `update`/`delete` siblings. |
-| `deck_export` | Emit the deck as text in one of five formats (arena, moxfield, archidekt, mtgo, simple). |
+| `deck_export` | Emit the deck as text in one of three formats (moxfield, archidekt, simple). |
 
 ## The four card sets
 
@@ -121,15 +121,15 @@ After every commander action the server **recomputes the deck's `colorIdentity`*
 
 ## Export formats
 
-Five output formats. Pick by where the user is pasting:
+Three output formats. Pick by where the user is pasting:
 
 | Format | Where to paste |
 |--------|----------------|
-| `arena` | MTG Arena import box |
 | `moxfield` | Moxfield deck-import grammar (best for Moxfield links) |
 | `archidekt` | Archidekt import |
-| `mtgo` | Magic Online .txt format |
 | `simple` | Plain `N Card Name` per line — universal fallback |
+
+Arena and MTGO are intentionally not export targets: Arena has no usable import flow to paste into, and MTGO's import is offline-client-only.
 
 Options:
 

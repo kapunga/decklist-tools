@@ -3,10 +3,10 @@
 A monorepo suite of tools for managing Magic: The Gathering decks, consisting of:
 
 1. **Shared Package** (`packages/shared`) - Common types, utilities, Scryfall client, and format parsers
-2. **MCP Server** (`packages/mcp-server`) - TypeScript MCP server enabling Claude to help build and manage decks
+2. **MCP Server** (`packages/mcp-server`) - TypeScript MCP server enabling AI assistants to help build and manage decks
 3. **Electron App** (`packages/electron-app`) - Desktop application for visual deck management
 
-All packages share the same JSON-based storage, allowing you to use Claude for deck building assistance while managing your collection visually in the desktop app.
+All packages share the same JSON-based storage, allowing you to use an AI assistant for deck building while managing your collection visually in the desktop app.
 
 ## Prerequisites
 
@@ -58,13 +58,13 @@ pnpm clean          # Clean all build outputs
 
 ## MCP Server
 
-The TypeScript MCP server enables Claude to help build and manage decks through natural conversation.
+The TypeScript MCP server enables an AI assistant to help build and manage decks through natural conversation. Any assistant with MCP and skill support can drive it.
 
-### Configuring with Claude Desktop
+### Connecting an assistant
 
-The easiest way is through the Electron app's Settings page — click **Connect to Claude Desktop** to automatically configure the MCP server.
+The easiest way is the Electron app's Settings page, which connects four assistants — Claude Desktop, Claude Code, Gemini CLI, and the OpenAI Codex CLI — with one click each (and installs the skills too). See [`docs/usage-mcp.md`](docs/usage-mcp.md) for the guided version and [`docs/manual-setup.md`](docs/manual-setup.md) for per-OS, per-assistant manual configuration.
 
-Alternatively, add this to `~/Library/Application Support/Claude/claude_desktop_config.json`:
+To wire it up by hand, point your assistant's MCP config at the server's `main.js`. For example, in Claude Desktop's `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 ```json
 {
@@ -140,7 +140,7 @@ Built-in views: `full`, `skeleton`, `checklist`, `curve`, `buy-list`, `by-role`,
 - **Card Management** - Change roles, ownership status, move between lists
 - **Mana Curve** - Visualize mana distribution with filtering
 - **Stats View** - See card distribution by role and cards needing purchase
-- **Claude Desktop Integration** - One-click MCP server setup from Settings
+- **AI Assistant Integration** - One-click MCP server setup for Claude, Gemini, and Codex from Settings
 - **File Watching** - Automatically reloads when MCP server modifies files
 
 ### Keyboard Shortcuts
@@ -154,7 +154,7 @@ Built-in views: `full`, `skeleton`, `checklist`, `curve`, `buy-list`, `by-role`,
 
 ## Usage Examples
 
-### With Claude (via MCP)
+### With an AI assistant (via MCP)
 
 ```
 User: Create a new Commander deck called "Isshin Attacks"
@@ -185,8 +185,8 @@ Claude: [Uses view_deck tool with view=by-role]
 
 1. Ensure Node.js 20+ is installed: `node -v`
 2. Rebuild: `pnpm build`
-3. Check the path in `claude_desktop_config.json` is correct
-4. Restart Claude Desktop after config changes
+3. Check the path in your assistant's MCP config is correct
+4. Restart the assistant after config changes
 
 ### Cards not found
 

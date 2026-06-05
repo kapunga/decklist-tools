@@ -28,7 +28,7 @@ How you install the skills depends a little on the assistant, and it's the main 
 - For **Claude Code**, **Gemini CLI**, and the **Codex CLI**, it's one click per skill — or "Install all" — in Settings → Skills. The app writes them where each assistant looks for them (`~/.claude/skills`, `~/.gemini/skills`, and `~/.codex/skills` respectively).
 - For **Claude Desktop**, use the Skills section's Export ("Save…") to get a `.zip`, then upload that in Claude Desktop's own Capabilities settings. It doesn't read skills off your filesystem the way the command-line tools do, so it's one extra step.
 
-<!-- SCREENSHOT: settings-mcp-connect | Settings → MCP Server panel with the connect buttons for Claude Desktop / Claude Code / Gemini CLI -->
+<!-- SCREENSHOT: settings-mcp-connect | Settings → MCP Server panel with the connect buttons for Claude Desktop / Claude Code / Gemini CLI / OpenAI Codex CLI -->
 
 ## What you can ask
 
@@ -99,14 +99,14 @@ Not everything you find belongs in a deck yet. The assistant can stash cards in 
 
 ### Exporting and shopping
 
-When a deck is ready to play or buy, the assistant can export it in the format you need. It handles Arena, Moxfield, Archidekt, MTGO, and plain text, and it can tell you what's missing from your collection so you know what to pick up.
+When a deck is ready to play or buy, the assistant can export it in the format you need. It handles Moxfield, Archidekt, and plain text, and it can tell you what's missing from your collection so you know what to pick up.
 
 > "Export this for Moxfield."
 > "What do I still need to buy for this deck?"
 
 ## An example conversation
 
-Here's roughly how it feels in practice — short, back and forth, nobody typing a single command. The labels below just say "Assistant," but this works the same whether you're talking to Claude or Gemini.
+Here's roughly how it feels in practice — short, back and forth, nobody typing a single command. The labels below just say "Assistant," but this works the same whatever assistant you've connected.
 
 > **You:** I want to build a Commander deck around Isshin, going wide and hitting hard. Start me a deck and find a few combat payoffs in Mardu I already own.
 >

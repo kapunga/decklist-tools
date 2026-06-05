@@ -65,7 +65,7 @@ export interface DeckPullListArgs {
   deck_id: string
 }
 
-export type DeckExportFormatId = 'arena' | 'moxfield' | 'archidekt' | 'mtgo' | 'simple'
+export type DeckExportFormatId = 'moxfield' | 'archidekt' | 'simple'
 
 export interface DeckExportArgs {
   deck_id: string
@@ -225,7 +225,10 @@ export function validateDeckPullListArgs(args: Record<string, unknown>): DeckPul
   return { deck_id: requireString(args, 'deck_id') }
 }
 
-const DECK_EXPORT_FORMATS = ['arena', 'moxfield', 'archidekt', 'mtgo', 'simple'] as const
+// Only formats with a usable import target are exported. Arena (no usable
+// import flow) and MTGO (offline-client-only import) were dropped from the
+// desktop app's export menu; the MCP surface mirrors that.
+export const DECK_EXPORT_FORMATS = ['moxfield', 'archidekt', 'simple'] as const
 const DECK_EXPORT_SECTIONS = ['mainboard', 'sideboard', 'maybeboard'] as const
 
 export function validateDeckExportArgs(args: Record<string, unknown>): DeckExportArgs {
