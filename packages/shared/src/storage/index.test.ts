@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import fs from 'fs'
 import path from 'path'
 import os from 'os'
-import { Storage } from './index.js'
+import { Storage, ConcurrentModificationError } from './index.js'
 import type { Deck, CardList, Config } from '../types/index.js'
 import { CARD_SET, INTEREST_LIST_ID } from '../types/index.js'
 
@@ -67,6 +67,27 @@ describe('Storage', () => {
       expect(loaded).not.toBeNull()
       expect(loaded!.name).toBe('Test Deck')
       expect(loaded!.version).toBe(3) // saveDeck increments version; getDeck runs schema migration (another save)
+    })
+
+    it('saveDeck returns the persisted version without mutating its input', () => {
+      const deck = makeDeck()
+      const saved = storage.saveDeck(deck)
+
+      // The returned deck carries the incremented version; the caller's copy is untouched.
+      expect(saved.version).toBe(2)
+      expect(deck.version).toBe(1)
+    })
+
+    it('re-saving the returned deck succeeds, but the stale original conflicts', () => {
+      const deck = makeDeck()
+      const saved = storage.saveDeck(deck) // disk -> v2
+
+      // Saving the up-to-date (returned) deck is fine and advances the version.
+      const saved2 = storage.saveDeck(saved) // disk -> v3
+      expect(saved2.version).toBe(3)
+
+      // Re-saving the now-stale original (still v1) is a concurrent-modification error.
+      expect(() => storage.saveDeck(deck)).toThrow(ConcurrentModificationError)
     })
 
     it('listDecks returns saved decks', () => {

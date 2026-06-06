@@ -96,7 +96,7 @@ export interface SkillBulkResult {
 export interface ElectronAPI {
   listDecks: () => Promise<unknown[]>
   getDeck: (id: string) => Promise<unknown | null>
-  saveDeck: (deck: unknown) => Promise<void>
+  saveDeck: (deck: unknown) => Promise<unknown>
   deleteDeck: (id: string) => Promise<void>
   getTaxonomy: () => Promise<unknown>
   saveTaxonomy: (taxonomy: unknown) => Promise<void>

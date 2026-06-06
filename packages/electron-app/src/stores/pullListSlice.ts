@@ -65,10 +65,7 @@ export const createPullListSlice: SliceCreator<PullListSlice> = (set, get) => ({
         commandersPulled
       }
 
-      await window.electronAPI.saveDeck(updatedDeck)
-      set({
-        decks: state.decks.map(d => d.id === deckId ? updatedDeck : d)
-      })
+      await get().updateDeck(updatedDeck)
       return
     }
 
@@ -103,10 +100,7 @@ export const createPullListSlice: SliceCreator<PullListSlice> = (set, get) => ({
       }
     })
 
-    await window.electronAPI.saveDeck(updatedDeck)
-    set({
-      decks: state.decks.map(d => d.id === deckId ? updatedDeck : d)
-    })
+    await get().updateDeck(updatedDeck)
   },
 
   unpullCards: async (deckId, cardName, setCode, collectorNumber, quantity) => {
@@ -139,10 +133,7 @@ export const createPullListSlice: SliceCreator<PullListSlice> = (set, get) => ({
         commandersPulled: commandersPulled.length > 0 ? commandersPulled : undefined
       }
 
-      await window.electronAPI.saveDeck(updatedDeck)
-      set({
-        decks: state.decks.map(d => d.id === deckId ? updatedDeck : d)
-      })
+      await get().updateDeck(updatedDeck)
       return
     }
 
@@ -169,10 +160,7 @@ export const createPullListSlice: SliceCreator<PullListSlice> = (set, get) => ({
       }
     })
 
-    await window.electronAPI.saveDeck(updatedDeck)
-    set({
-      decks: state.decks.map(d => d.id === deckId ? updatedDeck : d)
-    })
+    await get().updateDeck(updatedDeck)
   },
 
   resetPulledStatus: async (deckId) => {
@@ -189,9 +177,6 @@ export const createPullListSlice: SliceCreator<PullListSlice> = (set, get) => ({
       commandersPulled: undefined  // Also clear commander pulled status
     }
 
-    await window.electronAPI.saveDeck(updatedDeck)
-    set({
-      decks: state.decks.map(d => d.id === deckId ? updatedDeck : d)
-    })
+    await get().updateDeck(updatedDeck)
   }
 })
