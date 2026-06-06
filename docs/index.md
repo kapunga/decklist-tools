@@ -21,7 +21,7 @@ features:
     link: /usage-electron
     linkText: Tour the desktop app
   - title: Deckbuilding by conversation
-    details: Connect an AI assistant — Claude or Gemini — and build, search, organize, and export decks just by talking. No menus to hunt through.
+    details: Connect an AI assistant — Claude, Gemini, Codex, or anything with MCP and skill support — and build, search, organize, and export decks just by talking. No menus to hunt through.
     link: /usage-mcp
     linkText: See what you can ask
   - title: Everything stays in sync

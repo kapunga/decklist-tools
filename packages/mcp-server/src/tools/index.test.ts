@@ -723,6 +723,18 @@ describe('Views', () => {
       await expect(call('deck_export', { deck_id: deck.id, format: 'made-up' })).rejects.toThrow()
     })
 
+    it('rejects formats dropped from the export surface (arena, mtgo)', async () => {
+      const deck = makeDeck()
+      pushMainboard(deck, makeDeckCard('Lightning Bolt', { quantity: 1 }))
+      mock._decks.set(deck.id, deck)
+      // still supported
+      const moxfield = await call('deck_export', { deck_id: deck.id, format: 'moxfield' }) as { format: string }
+      expect(moxfield.format).toBe('moxfield')
+      // dropped — Arena has no usable import target, MTGO import is offline-client-only
+      await expect(call('deck_export', { deck_id: deck.id, format: 'arena' })).rejects.toThrow(/moxfield, archidekt, simple/)
+      await expect(call('deck_export', { deck_id: deck.id, format: 'mtgo' })).rejects.toThrow(/moxfield, archidekt, simple/)
+    })
+
     it('throws when deck not found', async () => {
       await expect(call('deck_export', { deck_id: MISSING_UUID, format: 'simple' })).rejects.toThrow('Deck not found')
     })

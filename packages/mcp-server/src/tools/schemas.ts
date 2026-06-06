@@ -1,4 +1,5 @@
 import type { Tool } from '@modelcontextprotocol/sdk/types.js'
+import { DECK_EXPORT_FORMATS } from './types.js'
 
 // Reused by deck_list and deck_curve — a CardFilter JSON shape for trimming
 // the card list shown in a rendered view.
@@ -212,14 +213,14 @@ export function getToolDefinitions(): Tool[] {
     },
     {
       name: 'deck_export',
-      description: 'Export a deck as text in one of the supported decklist formats: arena (MTG Arena), moxfield (Moxfield deck-import grammar), archidekt (Archidekt), mtgo (plain text), simple (plain "N Card Name"). Output is suitable for pasting into the matching site. Use the `section` option for tools (e.g. Moxfield) whose import UI accepts each section into a separate paste box.',
+      description: 'Export a deck as text in one of the supported decklist formats: moxfield (Moxfield deck-import grammar), archidekt (Archidekt), simple (plain "N Card Name" text). Output is suitable for pasting into the matching site. Use the `section` option for tools (e.g. Moxfield) whose import UI accepts each section into a separate paste box.',
       inputSchema: {
         type: 'object',
         properties: {
           deck_id: { type: 'string' },
           format: {
             type: 'string',
-            enum: ['arena', 'moxfield', 'archidekt', 'mtgo', 'simple'],
+            enum: [...DECK_EXPORT_FORMATS],
             description: 'Target export format.',
           },
           include_sideboard: { type: 'boolean', description: 'Include sideboard section (default true).' },

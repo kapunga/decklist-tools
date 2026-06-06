@@ -36,7 +36,7 @@ This is the skill for understanding a deck you already have. It teaches the assi
 
 ### Deck building
 
-This is the workhorse. It teaches the assistant the full lifecycle of building and editing a deck: starting one from scratch, adding and removing cards, moving cards between the mainboard, sideboard, and alternates, tagging cards with roles so you can see at a glance what each one is doing, and managing your commander. When you're ready to play or share, it knows how to export the deck in the formats other tools expect — Arena, Moxfield, Archidekt, MTGO, or plain text.
+This is the workhorse. It teaches the assistant the full lifecycle of building and editing a deck: starting one from scratch, adding and removing cards, moving cards between the mainboard, sideboard, and alternates, tagging cards with roles so you can see at a glance what each one is doing, and managing your commander. When you're ready to play or share, it knows how to export the deck in the formats other tools expect — Moxfield, Archidekt, or plain text.
 
 > Build a new Commander deck
 
