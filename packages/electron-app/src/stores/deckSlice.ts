@@ -1,19 +1,24 @@
 import { createEmptyDeck, formatDefaults } from '@/types'
+import type { Deck } from '@/types'
 import type { DeckSlice, SliceCreator } from './types'
 
 export const createDeckSlice: SliceCreator<DeckSlice> = (set, get) => ({
+  addDeck: async (deck) => {
+    const saved = await window.electronAPI.saveDeck(deck) as Deck
+    set(state => ({ decks: [...state.decks, saved] }))
+    return saved
+  },
+
   createDeck: async (name, formatType) => {
-    const deck = createEmptyDeck(name, formatType as keyof typeof formatDefaults)
-    await window.electronAPI.saveDeck(deck)
-    set(state => ({ decks: [...state.decks, deck] }))
-    return deck
+    return get().addDeck(createEmptyDeck(name, formatType as keyof typeof formatDefaults))
   },
 
   updateDeck: async (deck) => {
-    await window.electronAPI.saveDeck(deck)
+    const saved = await window.electronAPI.saveDeck(deck) as Deck
     set(state => ({
-      decks: state.decks.map(d => d.id === deck.id ? deck : d)
+      decks: state.decks.map(d => d.id === saved.id ? saved : d)
     }))
+    return saved
   },
 
   deleteDeck: async (id) => {

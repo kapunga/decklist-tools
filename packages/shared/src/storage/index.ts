@@ -130,10 +130,8 @@ export class Storage {
         try {
           const deck = this.readJson<Deck>(path.join(this.decksDir, f))
           if (deck) {
-            if (runMigrations(deck, migrationContext)) {
-              this.saveDeck(deck)
-            }
-            decks.push(deck)
+            // Push the persisted deck so callers load the post-migration version
+            decks.push(runMigrations(deck, migrationContext) ? this.saveDeck(deck) : deck)
           }
         } catch (error) {
           console.error(`Skipping corrupt deck file ${f}:`, error)
@@ -151,7 +149,7 @@ export class Storage {
     validateUUID(id, 'deck ID')
     const deck = this.readJson<Deck>(path.join(this.decksDir, `${id}.json`))
     if (deck && runMigrations(deck, this.getMigrationContext())) {
-      this.saveDeck(deck)
+      return this.saveDeck(deck)
     }
     return deck
   }
@@ -162,7 +160,7 @@ export class Storage {
     return decks.find(d => d.name.toLowerCase() === name.toLowerCase()) || null
   }
 
-  saveDeck(deck: Deck): void {
+  saveDeck(deck: Deck): Deck {
     // Optimistic locking: verify no concurrent modification since this deck was loaded
     const filePath = path.join(this.decksDir, `${deck.id}.json`)
     if (fs.existsSync(filePath)) {
@@ -174,9 +172,16 @@ export class Storage {
       }
     }
 
-    deck.version = (deck.version || 0) + 1
-    deck.updatedAt = new Date().toISOString()
-    this.writeJson(filePath, deck)
+    // Return the persisted deck rather than mutating the caller's copy: the
+    // incremented version is the source of truth, and callers (notably across
+    // the Electron IPC boundary) must capture it to save the deck again.
+    const saved: Deck = {
+      ...deck,
+      version: (deck.version || 0) + 1,
+      updatedAt: new Date().toISOString()
+    }
+    this.writeJson(filePath, saved)
+    return saved
   }
 
   deleteDeck(id: string): boolean {

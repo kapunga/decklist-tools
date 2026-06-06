@@ -8,7 +8,7 @@
     "build:shared": "pnpm --filter @mtg-deckbuilder/shared build",
     "build:mcp": "pnpm --filter @mtg-deckbuilder/mcp-server build",
     "build:electron": "pnpm --filter @mtg-deckbuilder/electron-app build",
-    "build:unsigned": "CSC_IDENTITY_AUTO_DISCOVERY=false pnpm build",
+    "build:unsigned": "pnpm build:shared && pnpm build:mcp && pnpm --filter @mtg-deckbuilder/electron-app build:unsigned",
     "dev": "pnpm build:shared && pnpm --filter @mtg-deckbuilder/electron-app electron:dev",
     "dev:mcp": "pnpm build:shared && pnpm --filter @mtg-deckbuilder/mcp-server dev",
     "test": "pnpm -r test",

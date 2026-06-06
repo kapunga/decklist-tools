@@ -26,7 +26,7 @@ import { ImportFileButton } from '@/components/ImportFileButton'
 const deckImportFormats = formats.filter(f => !f.listOnly)
 import { getCardById } from '@/lib/scryfall'
 import type { FormatType, Deck, CardEntry, CardIdentifier } from '@/types'
-import { formatDefaults, FORMAT_TYPE, CARD_SET, isCommanderLikeFormat } from '@/types'
+import { createEmptyDeck, formatDefaults, FORMAT_TYPE, CARD_SET, isCommanderLikeFormat } from '@/types'
 import { withDeckCardSet, getCardSetEntries } from '@mtg-deckbuilder/shared'
 
 interface ImportNewDeckDialogProps {
@@ -46,8 +46,7 @@ export function ImportNewDeckDialog({ open: controlledOpen, onOpenChange }: Impo
   const [importPhase, setImportPhase] = useState<'lookup' | 'saving'>('lookup')
   const [saveError, setSaveError] = useState<string | null>(null)
 
-  const createDeck = useStore(state => state.createDeck)
-  const updateDeck = useStore(state => state.updateDeck)
+  const addDeck = useStore(state => state.addDeck)
   const selectDeck = useStore(state => state.selectDeck)
 
   const {
@@ -95,7 +94,10 @@ export function ImportNewDeckDialog({ open: controlledOpen, onOpenChange }: Impo
     setImportPhase('saving')
 
     try {
-      const deck = await createDeck(deckName.trim(), deckFormat)
+      // Build the new deck in memory and persist it in a single save. Creating
+      // then updating would leave the store's version stale after the first
+      // save, failing the optimistic-lock check on the second.
+      const deck = createEmptyDeck(deckName.trim(), deckFormat)
 
       // Group cards by list type and add them all at once
       const cardsByList: Record<string, CardEntry[]> = {
@@ -158,16 +160,16 @@ export function ImportNewDeckDialog({ open: controlledOpen, onOpenChange }: Impo
       }
       completeDeck = { ...completeDeck, commanders, colorIdentity }
 
-      await updateDeck(completeDeck)
+      const saved = await addDeck(completeDeck)
 
       // Navigate to the new deck
-      selectDeck(deck.id)
+      selectDeck(saved.id)
       setOpen(false)
       resetForm()
     } catch (error) {
       setSaveError(`Failed to create deck: ${error}`)
     }
-  }, [parsedCards, deckName, deckFormat, lookupCards, createDeck, updateDeck, selectDeck])
+  }, [parsedCards, deckName, deckFormat, lookupCards, addDeck, selectDeck])
 
   const resetForm = useCallback(() => {
     setDeckName('')

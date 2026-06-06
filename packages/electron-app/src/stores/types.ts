@@ -40,8 +40,9 @@ export interface AppState
 }
 
 export interface DeckSlice {
+  addDeck: (deck: Deck) => Promise<Deck>
   createDeck: (name: string, formatType: string) => Promise<Deck>
-  updateDeck: (deck: Deck) => Promise<void>
+  updateDeck: (deck: Deck) => Promise<Deck>
   deleteDeck: (id: string) => Promise<void>
   setDeckArtCard: (deckId: string, scryfallId: string | undefined, face?: ArtCardFace) => Promise<void>
   setDeckColorIdentity: (deckId: string, colors: string[]) => Promise<void>

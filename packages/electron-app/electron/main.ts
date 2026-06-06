@@ -602,8 +602,14 @@ function setupIpcHandlers() {
     return storage!.savePullListConfig(config as PullListConfig)
   })
 
-  // Watch for file changes
+  // Watch for file changes. The Scryfall cache (cache/) is derived data that
+  // `loadData` never reads, but the app writes to it constantly — importing a
+  // decklist caches every looked-up card at once. Broadcasting those writes
+  // triggers a full reload per file, and the resulting loadData storm can trip
+  // React's "maximum update depth". Skip the cache subtree; deck/list/config
+  // writes (including those from the MCP server) still sync.
   watchForChanges(storage, (event, filename) => {
+    if (filename && filename.split(path.sep)[0] === 'cache') return
     broadcast('storage:changed', { event, filename })
   })
 

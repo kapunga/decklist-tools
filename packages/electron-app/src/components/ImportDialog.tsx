@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/select'
 import { useStore } from '@/hooks/useStore'
 import { useImportCards } from '@/hooks/useImportCards'
-import { formats } from '@mtg-deckbuilder/shared'
+import { formats, addCardToDeck } from '@mtg-deckbuilder/shared'
 import { ImportFileButton } from '@/components/ImportFileButton'
 import { filledActionButtonStyle } from '@/lib/mastheadStyles'
 
@@ -32,7 +32,9 @@ interface ImportDialogProps {
 
 export function ImportDialog({ deckId, sideboardSize }: ImportDialogProps) {
   const [open, setOpen] = useState(false)
-  const addCardToDeck = useStore(state => state.addCardToDeck)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const deck = useStore(state => state.decks.find(d => d.id === deckId))
+  const updateDeck = useStore(state => state.updateDeck)
 
   const {
     text,
@@ -53,30 +55,46 @@ export function ImportDialog({ deckId, sideboardSize }: ImportDialogProps) {
   } = useImportCards(sideboardSize)
 
   const handleImport = useCallback(async () => {
+    setSaveError(null)
     const { resolvedCards, errors: importErrors } = await lookupCards()
 
-    if (importErrors.length === 0 && resolvedCards.length > 0) {
-      // Add cards to the existing deck
+    if (importErrors.length > 0 || resolvedCards.length === 0) return
+    if (!deck) {
+      setSaveError('Deck not found')
+      return
+    }
+
+    try {
+      // Fold every card into the deck in-memory, then persist once. A per-card
+      // save loop would fail optimistic locking after the first save, since the
+      // store's version lags the persisted version until updateDeck returns.
+      let next = deck
       for (const { card, listType } of resolvedCards) {
-        await addCardToDeck(deckId, card, listType)
+        next = addCardToDeck(next, card, listType).deck
       }
+      await updateDeck(next)
 
       // Success - close dialog
       setTimeout(() => {
         setOpen(false)
         reset()
       }, 500)
+    } catch (error) {
+      setSaveError(`Failed to import: ${error}`)
     }
-  }, [lookupCards, deckId, addCardToDeck, reset])
+  }, [lookupCards, deck, updateDeck, reset])
 
   const handleClose = (isOpen: boolean) => {
     if (!isImporting) {
       setOpen(isOpen)
       if (!isOpen) {
+        setSaveError(null)
         reset()
       }
     }
   }
+
+  const allErrors = saveError ? [...errors, saveError] : errors
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -184,14 +202,14 @@ Sideboard
           )}
 
           {/* Errors */}
-          {errors.length > 0 && (
+          {allErrors.length > 0 && (
             <div className="border border-destructive/50 rounded-md p-3 bg-destructive/10">
               <div className="flex items-center gap-2 text-sm font-medium text-destructive mb-2">
                 <AlertCircle className="w-4 h-4" />
-                {errors.length} error(s) during import
+                {allErrors.length} error(s) during import
               </div>
               <div className="max-h-24 overflow-auto text-xs space-y-1">
-                {errors.map((error, i) => (
+                {allErrors.map((error, i) => (
                   <div key={i} className="text-destructive">{error}</div>
                 ))}
               </div>
@@ -199,7 +217,7 @@ Sideboard
           )}
 
           {/* Success */}
-          {!isImporting && importProgress.total > 0 && errors.length === 0 && (
+          {!isImporting && importProgress.total > 0 && allErrors.length === 0 && (
             <div className="flex items-center gap-2 text-sm text-green-600">
               <Check className="w-4 h-4" />
               Successfully imported {importProgress.total} cards!

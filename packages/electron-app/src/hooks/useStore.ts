@@ -58,7 +58,8 @@ export const useStore = create<AppState>((set, get) => ({
         setCollection: setCollection as SetCollectionFile,
         pullListConfig: pullListConfig as PullListConfig,
         isLoading: false,
-        hasInitialized: true
+        hasInitialized: true,
+        error: null
       })
     } catch (error) {
       set({ error: (error as Error).message, isLoading: false, hasInitialized: true })
