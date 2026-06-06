@@ -1,5 +1,18 @@
 # @mtg-deckbuilder/electron-app
 
+## 0.12.4
+
+### Patch Changes
+
+- 707d770: Drop the `arena` and `mtgo` export formats from the MCP `deck_export` tool, matching the desktop app's export menu — Arena has no usable import flow to paste into, and MTGO's import is offline-client-only. `deck_export` now accepts only `moxfield`, `archidekt`, and `simple` (enforced by the existing format validator). The `mtg-deckbuilder-decks` skill and the docs are updated to match.
+- 2a6f98c: Fix `ConcurrentModificationError` when importing decks. `Storage.saveDeck` now returns the persisted deck (with the incremented version) instead of mutating its argument and returning `void`, so the Electron renderer no longer holds a stale version across the IPC boundary. Both import flows now save the deck a single time — importing into an existing deck folds every card into one save (previously a per-card loop that silently failed after the first card while still reporting success), and creating a deck from an import builds it fully in memory before one save (previously a create-then-update sequence that conflicted on the second save). Pull-list mutations route through the same single-save path.
+
+  Also fix a "Maximum update depth exceeded" error that could surface during an import: the storage file watcher no longer broadcasts writes to the derived Scryfall cache (`cache/`), which `loadData` never reads — importing caches many cards at once, and reloading per cache file triggered a render storm. Storage-change reloads are now debounced, and a successful load clears any prior error so the app recovers cleanly.
+
+- Updated dependencies [707d770]
+- Updated dependencies [2a6f98c]
+  - @mtg-deckbuilder/shared@0.12.4
+
 ## 0.12.3
 
 ### Patch Changes
