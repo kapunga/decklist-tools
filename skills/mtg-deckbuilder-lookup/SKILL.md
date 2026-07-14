@@ -2,7 +2,7 @@
 name: mtg-deckbuilder-lookup
 description: Search for Magic the Gathering cards through the mtg-deckbuilder MCP server's Scryfall integration. Use when a user wants to find cards by name, by attributes (color, type, mana cost, format legality), or by mechanical role ("find me artifact removal in red"). For query syntax, see the scryfall-search skill; for function:tag vocabulary, see the scryfall-tags skill.
 metadata:
-  version: "2026-05-31"
+  version: "2026-07-14"
 ---
 
 # MTG Deckbuilder — Card Lookup
@@ -73,6 +73,8 @@ Returns a Scryfall filter string composed from the user's tracked collection (pe
 ```
 
 Note: this filter reflects the user's *tracked* collection (set-level granularity with rarity levels), not their literal owned cards. It's a useful approximation, not a guarantee.
+
+**Query length ceiling:** combining `get_collection_filter`'s output with additional filters can push a query past Scryfall's hard 500-character limit — common once a tracked collection spans many sets. See the **scryfall-search** skill's "Query length limit" section for the cause and mitigation (splitting into multiple searches, avoiding per-set/per-card `OR`-chains).
 
 ### Collection levels — what each level means
 
