@@ -78,7 +78,7 @@ For CI, store these as secrets.
 
 ```bash
 cd packages/electron-app
-pnpm build  # electron-builder will sign + notarize automatically
+pnpm build:release  # electron-builder will sign + notarize automatically
 
 # Verify signing
 codesign --verify --deep --strict "dist/mac-universal/MTG Deckbuilder.app"
@@ -161,7 +161,7 @@ export AZURE_CERT_NAME="your-cert-name"
 
 ```bash
 cd packages/electron-app
-pnpm build  # electron-builder will sign automatically
+pnpm build:release  # electron-builder will sign automatically
 
 # Verify with signtool (Windows SDK)
 signtool verify /pa "dist/MTG Deckbuilder Setup.exe"
