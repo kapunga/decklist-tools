@@ -414,7 +414,7 @@ export function getToolDefinitions(): Tool[] {
     // Collection Filter
     {
       name: 'get_collection_filter',
-      description: 'Generate a Scryfall filter string based on the user\'s set collection. The filter includes sets at their configured collection levels, with appropriate rarity filters. Use this to narrow search results to cards the user likely owns.',
+      description: 'Generate a Scryfall filter string scoped to the sets in the user\'s set collection (set only — no rarity filtering). Each returned set also carries its collection `level` (1-4) and the `rarities` typically associated with that level: a hint for judging ownership likelihood by comparing against each search result\'s own `rarity`, not a hard filter. A card above a set\'s level can still be owned.',
       inputSchema: {
         type: 'object',
         properties: {},

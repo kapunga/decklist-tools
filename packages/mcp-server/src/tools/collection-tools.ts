@@ -16,14 +16,18 @@ interface CollectionFilterResult {
 }
 
 /**
- * Generates a Scryfall filter string based on the user's set collection.
+ * Generates a Scryfall filter string scoped to the user's tracked set collection.
  *
- * For each set:
- * - Level 4 (Complete): Just the set code, no rarity filter
- * - Levels 1-3: Set code with appropriate rarity filters
+ * Scopes results to owned sets only — no rarity filtering. Each entry's
+ * `collectionLevel` (1-4) and the rarities normally associated with that level
+ * are still returned as `rarities`/`level` metadata: a *hint* for judging how
+ * likely the user is to own a specific printing, not a hard inclusion gate.
+ * A level-1 set's mythic is less likely owned than its common, but it isn't
+ * excluded here — callers combine this with each search result's own `rarity`
+ * to make that judgment themselves.
  *
  * Example output:
- * "(set:mkm) OR (set:one (r:common OR r:uncommon OR r:rare)) OR (set:neo (r:common OR r:uncommon))"
+ * "(set:mkm) OR (set:one) OR (set:neo)"
  */
 export function getCollectionFilter(storage: Storage): CollectionFilterResult {
   const collection = storage.getSetCollection()
@@ -44,22 +48,9 @@ export function getCollectionFilter(storage: Storage): CollectionFilterResult {
     rarities: COLLECTION_LEVEL_RARITIES[entry.collectionLevel]
   }))
 
-  // Build the filter string
-  const filterParts = setFilters.map(setInfo => {
-    if (setInfo.level === 4) {
-      // Complete collection - no rarity filter needed
-      return `(set:${setInfo.setCode})`
-    }
-
-    // Build rarity filter
-    const rarityFilter = setInfo.rarities
-      .map(r => `r:${r}`)
-      .join(' OR ')
-
-    return `(set:${setInfo.setCode} (${rarityFilter}))`
-  })
-
-  const filterString = filterParts.join(' OR ')
+  const filterString = setFilters
+    .map(setInfo => `(set:${setInfo.setCode})`)
+    .join(' OR ')
 
   return {
     filterString,

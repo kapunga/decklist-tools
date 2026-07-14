@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { renderFullView, renderCurveView, renderNotesView, renderPullListView } from './index.js'
-import { makeDeck, makeDeckCard, makeMockCache, pushMainboard, pushSideboard, pushAlternates } from '../__test__/helpers.js'
+import { makeDeck, makeDeckCard, makeMockCache, mockScryfallCard, pushMainboard, pushSideboard, pushAlternates } from '../__test__/helpers.js'
 import type { Deck, RoleDefinition, ScryfallCard, CardFilter, SetCollectionFile } from '@mtg-deckbuilder/shared'
 import { enrichCards, applyFilters, getMainboard } from '@mtg-deckbuilder/shared'
 
@@ -324,5 +324,65 @@ describe('default/unknown view', () => {
   it('falls back to full view', () => {
     const result = render('nonexistent-view', { name: 'Fallback Test' })
     expect(result).toContain('# Fallback Test')
+  })
+})
+
+describe('pull list view', () => {
+  it("includes a printing whose rarity exceeds its set's tracked collection level, flagged rather than dropped", () => {
+    const deck = makeDeck()
+    pushMainboard(deck, makeDeckCard('Mystic Confluence', {
+      quantity: 1,
+      card: { scryfallId: 'scryfall-mystic-confluence', name: 'Mystic Confluence', setCode: 'grn', collectorNumber: '46' },
+    }))
+
+    const scryfallCache = new Map<string, ScryfallCard>()
+    scryfallCache.set('scryfall-mystic-confluence', mockScryfallCard('Mystic Confluence', {
+      id: 'scryfall-mystic-confluence',
+      set: 'grn',
+      collector_number: '46',
+      rarity: 'rare',
+    }))
+
+    const setCollection: SetCollectionFile = {
+      version: 1, updatedAt: '',
+      sets: [{ setCode: 'grn', setName: 'Guilds of Ravnica', collectionLevel: 1, addedAt: '' }],
+    }
+
+    const result = renderPullListView(deck, setCollection, scryfallCache, { showPulled: true })
+
+    // Previously: a level-1 tracked set silently dropped rare/mythic printings
+    // (the card fell through to "Not in collection" instead of appearing here).
+    expect(result).toContain('Guilds of Ravnica')
+    expect(result).not.toContain('Not in collection')
+    expect(result).toContain('Mystic Confluence')
+    expect(result).toContain('R*')
+    expect(result).toContain('tracked collection level')
+  })
+
+  it("does not flag a printing whose rarity is within its set's tracked collection level", () => {
+    const deck = makeDeck()
+    pushMainboard(deck, makeDeckCard('Opt', {
+      quantity: 1,
+      card: { scryfallId: 'scryfall-opt', name: 'Opt', setCode: 'grn', collectorNumber: '10' },
+    }))
+
+    const scryfallCache = new Map<string, ScryfallCard>()
+    scryfallCache.set('scryfall-opt', mockScryfallCard('Opt', {
+      id: 'scryfall-opt',
+      set: 'grn',
+      collector_number: '10',
+      rarity: 'common',
+    }))
+
+    const setCollection: SetCollectionFile = {
+      version: 1, updatedAt: '',
+      sets: [{ setCode: 'grn', setName: 'Guilds of Ravnica', collectionLevel: 1, addedAt: '' }],
+    }
+
+    const result = renderPullListView(deck, setCollection, scryfallCache, { showPulled: true })
+
+    expect(result).toContain('Opt')
+    expect(result).not.toContain('C*')
+    expect(result).not.toContain('tracked collection level')
   })
 })

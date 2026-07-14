@@ -215,7 +215,7 @@ game:arena -game:paper is:digital
 
 Scryfall enforces a **hard 500-character ceiling** on a single query string. Queries over the limit are rejected, not truncated.
 
-**Why it bites deck-building queries specifically:** the usual way to blow past it is a large `OR`-chain — most often one `set:` clause per owned set, e.g. the output of `get_collection_filter` (`(s:dmu r<=r OR s:lci r<=r OR s:mh3 r<=m OR ...)`). A tracked collection spanning 20+ sets can exceed 500 characters before any other filter is even added.
+**Why it bites deck-building queries specifically:** the usual way to blow past it is a large `OR`-chain — most often one `set:` clause per owned set, e.g. the output of `get_collection_filter` (`(set:dmu) OR (set:lci) OR (set:mh3) OR ...`). `get_collection_filter` scopes by set only (no rarity clauses baked in), so a single collection-scoped chain is much shorter than a per-rarity one — but a tracked collection spanning 30+ sets, or combining the chain with several other filters, can still add up. Watch total query length whenever you concatenate a set-scoped `OR`-chain with additional operators.
 
 **Mitigation:**
 - Prefer compact operators over enumerating values — `r<=u` instead of `(r:c OR r:u)`.

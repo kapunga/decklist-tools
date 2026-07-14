@@ -60,21 +60,26 @@ search_cards  query="function:counterspell-noncreature game:paper"
 
 (For the `game:paper` convention and other operators, see **scryfall-search**.)
 
-## `get_collection_filter` — narrow to owned cards
+## `get_collection_filter` — scope to owned sets, judge likelihood yourself
 
-Returns a Scryfall filter string composed from the user's tracked collection (per-set rarity inclusion based on collection levels). Use it to constrain `search_cards` results to cards the user is likely to own.
+Returns a Scryfall filter string scoped to the sets in the user's tracked collection — set only, no rarity gating. Each set also comes back with its `level` (1-4) and the `rarities` typically associated with that level. Use the filter to scope `search_cards` to owned sets; use `level` plus each result's own `rarity` field as a **soft signal** for how likely the user is to own a specific card — never as a hard include/exclude. A set tracked at level 1 ("a few packs") still contains real rares and mythics; a few packs guarantee several rare-slot pulls, just not any *specific* rare. Don't drop higher-rarity cards from a lower-level set — surface them, flagged as less certain.
 
 ```
 1. get_collection_filter
-   → returns e.g. "(s:dmu r<=r OR s:lci r<=r OR s:mh3 r<=m)"
+   → filterString: "(set:dmu) OR (set:lci) OR (set:mh3)"
+     sets: [
+       { setCode: "dmu", level: 1, rarities: ["common","uncommon"] },
+       { setCode: "lci", level: 2, rarities: ["common","uncommon","rare"] },
+       { setCode: "mh3", level: 3, rarities: ["common","uncommon","rare","mythic"] }
+     ]
 
-2. search_cards  query="<collection_filter> c:g function:ramp mv<=2"
-   → only green 2-mana ramp from owned sets
+2. search_cards  query="<filterString> c:g function:ramp mv<=2"
+   → green 2-mana ramp from those sets, each result carrying its own `rarity`
 ```
 
-Note: this filter reflects the user's *tracked* collection (set-level granularity with rarity levels), not their literal owned cards. It's a useful approximation, not a guarantee.
+**Judging likelihood:** compare each result's `rarity` against its set's `level`/`rarities`. A card whose rarity is covered by the set's `rarities` is likely owned; a card whose rarity exceeds it (e.g. a mythic from a set tracked at level 1) is less likely owned but still real — present it, flagged, don't drop it from the results.
 
-**Query length ceiling:** combining `get_collection_filter`'s output with additional filters can push a query past Scryfall's hard 500-character limit — common once a tracked collection spans many sets. See the **scryfall-search** skill's "Query length limit" section for the cause and mitigation (splitting into multiple searches, avoiding per-set/per-card `OR`-chains).
+Because the filter is set-only, it's typically well under Scryfall's 500-character query limit even for large collections — see the **scryfall-search** skill's "Query length limit" section if you still hit it after combining with many other filters.
 
 ### Collection levels — what each level means
 
@@ -85,7 +90,7 @@ Note: this filter reflects the user's *tracked* collection (set-level granularit
 | 3 | + mythics |
 | 4 | All cards including special / promo rarities |
 
-Configured per-set in the user's collection config. `get_collection_filter` returns the union across all configured sets.
+Configured per-set in the user's collection config. `get_collection_filter` returns the union across all configured sets. Treat these as typical rarities for that engagement level, not a ceiling — see "Judging likelihood" above.
 
 ## Worked workflows
 
@@ -102,10 +107,15 @@ Configured per-set in the user's collection config. `get_collection_filter` retu
 
 ```
 1. get_collection_filter
-   → collection_filter string
+   → filterString scoped to owned sets, sets[] with level + rarities
 
-2. search_cards  query="<collection_filter> function:tutor-any id<=wub f:commander", limit=25
-   → owned generic tutors in Esper identity
+2. search_cards  query="<filterString> function:tutor-any id<=wub f:commander", limit=25
+   → tutors from owned sets in Esper identity, each with its own `rarity`
+
+3. For each result, compare its `rarity` to its set's tracked `level`/`rarities`
+   from step 1 — present commons/uncommons from a level-1 set as likely owned,
+   flag a rare/mythic from that same set as possible-but-unconfirmed rather
+   than omitting it.
 ```
 
 ### "Quickly look up Sol Ring"
