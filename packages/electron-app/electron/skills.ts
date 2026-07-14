@@ -1,7 +1,7 @@
 import { app, dialog, ipcMain, shell } from 'electron'
 import path from 'path'
 import fs from 'fs'
-import archiver from 'archiver'
+import { ZipArchive } from 'archiver'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -279,7 +279,7 @@ function unquote(s: string): string {
 function zipDirectory(sourceDir: string, destZip: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const output = fs.createWriteStream(destZip)
-    const archive = archiver('zip', { zlib: { level: 9 } })
+    const archive = new ZipArchive({ zlib: { level: 9 } })
     output.on('close', () => resolve())
     archive.on('error', (err) => reject(err))
     archive.pipe(output)
