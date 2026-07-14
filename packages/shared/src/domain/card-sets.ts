@@ -81,6 +81,11 @@ export function getNonCutEntries(deck: Deck): CardEntry[] {
   return deck.cardSets.filter(s => s.name !== CARD_SET.CUT).flatMap(s => s.entries)
 }
 
+/** Mainboard + sideboard entries — the playable deck, excluding alternates and cut (consideration lists). */
+export function getPlayableEntries(deck: Deck): CardEntry[] {
+  return [...getMainboard(deck), ...getSideboard(deck)]
+}
+
 // --- Entry Field Accessors ---
 // These wrap optional/derived fields on CardEntry so readers don't need to
 // scatter `?? defaultValue` coalescing across the codebase.
