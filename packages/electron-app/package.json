@@ -78,6 +78,7 @@
   "build": {
     "appId": "com.mtgdeckbuilder.app",
     "productName": "MTG Deckbuilder",
+    "executableName": "mtg-deckbuilder",
     "directories": {
       "output": "release"
     },
