@@ -156,6 +156,39 @@ describe('validateCardLimits', () => {
     const issues = validateCardLimits(deck)
     expect(issues).toHaveLength(1)
   })
+
+  it('excludes alternates from the count', () => {
+    const deck = makeDeck({
+      mainboard: [makeEntry('Sol Ring', { quantity: 1 })],
+      alternates: [makeEntry('Sol Ring', { quantity: 1 })],
+    })
+    expect(validateCardLimits(deck)).toHaveLength(0)
+  })
+
+  it('excludes duplicate entries within alternates only', () => {
+    const deck = makeDeck({
+      alternates: [makeEntry('Sol Ring', { quantity: 2 })],
+    })
+    expect(validateCardLimits(deck)).toHaveLength(0)
+  })
+
+  it('excludes cross-printing duplicates split between mainboard and alternates', () => {
+    const deck = makeDeck({
+      mainboard: [makeEntry('Sol Ring', { card: { name: 'Sol Ring', setCode: 'lea', collectorNumber: '1' } })],
+      alternates: [makeEntry('Sol Ring', { card: { name: 'Sol Ring', setCode: 'cmr', collectorNumber: '2' } })],
+    })
+    expect(validateCardLimits(deck)).toHaveLength(0)
+  })
+
+  it('counts commanders toward the limit', () => {
+    const deck = makeDeck({
+      commanders: [{ name: 'Sol Ring', setCode: 'lea', collectorNumber: '1' }],
+      mainboard: [makeEntry('Sol Ring')],
+    })
+    const issues = validateCardLimits(deck)
+    expect(issues).toHaveLength(1)
+    expect(issues[0].message).toBe('Sol Ring: 2 copies (limit: 1)')
+  })
 })
 
 describe('validateCommanderPresence', () => {

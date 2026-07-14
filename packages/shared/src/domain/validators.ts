@@ -1,7 +1,7 @@
 import type { Deck, ScryfallCard } from '../types/index.js'
 import { FORMAT_TYPE, getCardLimit, getCardCount, isCommanderLikeFormat } from '../types/index.js'
 import { isLegalInFormat } from '../scryfall/index.js'
-import { getSideboard, getNonCutEntries } from './card-sets.js'
+import { getSideboard, getNonCutEntries, getPlayableEntries } from './card-sets.js'
 import type { ValidationIssue } from './types.js'
 import { ISSUE_CATEGORY, composeValidators } from './types.js'
 
@@ -57,10 +57,16 @@ export function validateCardLimits(deck: Deck): ValidationIssue[] {
   const issues: ValidationIssue[] = []
   const cardCounts = new Map<string, number>()
 
-  // Aggregate quantities across all playable card sets (exclude cut)
-  for (const card of getNonCutEntries(deck)) {
+  // Aggregate quantities across the playable deck: mainboard, sideboard, and
+  // commanders. Alternates/cut are consideration lists, not part of the deck
+  // under format rules.
+  for (const card of getPlayableEntries(deck)) {
     const current = cardCounts.get(card.card.name) || 0
     cardCounts.set(card.card.name, current + card.quantity)
+  }
+  for (const commander of deck.commanders) {
+    const current = cardCounts.get(commander.name) || 0
+    cardCounts.set(commander.name, current + 1)
   }
 
   for (const [name, count] of cardCounts) {
