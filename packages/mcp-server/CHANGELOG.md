@@ -1,5 +1,23 @@
 # @mtg-deckbuilder/mcp-server
 
+## 0.12.5
+
+### Patch Changes
+
+- 6d18e6f: Document Scryfall's 500-character query limit in the `scryfall-search` skill (cause and mitigation), with a pointer from `mtg-deckbuilder-lookup` near `get_collection_filter`, the most common source of long `OR`-chains that hit it.
+- 99b835a: Fix skill export build failure after the `archiver` 8.0.0 bump dropped its `default` export. `zipDirectory` now imports the `ZipArchive` class and constructs it directly (`new ZipArchive({ zlib: { level: 9 } })`) instead of calling the removed `archiver('zip', options)` factory function.
+- 42642fd: Fix the Buy List view only showing "need to buy" cards from a deck's mainboard. `useBuyList` scanned `getMainboard(deck)`, so cards flagged `need_to_buy` in the `alternates` or `sideboard` sets — where this ownership tag is actually used most often — never appeared. It now scans `getNonCutEntries(deck)` (mainboard + sideboard + alternates, excluding the cut pile), matching the scope `DeckStats` already uses for its own "cards needing purchase" count.
+- 83d45f3: Fix `validateCardLimits` flagging legal decks as invalid because it counted copies across `alternates` (a consideration list, not part of the deck under format rules) alongside mainboard and sideboard. It also missed a card that appears both as a commander and in the mainboard, which should trip the singleton limit but previously didn't since commanders live outside `cardSets`. The check is now scoped to mainboard + sideboard + commanders.
+- 089ecf8: Fix collection levels (1-4) being used as a hard rarity filter instead of a likelihood hint. `get_collection_filter` baked `r:common OR r:uncommon...` into the generated Scryfall query per set, and the pull list view (`deck_pull_list`) silently dropped any owned-set printing whose rarity exceeded the tracked level — both presented an educated guess about how deeply a user has engaged with a set as certainty about which specific cards they own. `get_collection_filter` now scopes queries by set only (also keeping generated queries well under Scryfall's 500-character limit), while still returning each set's level/rarities as metadata; the pull list now includes higher-rarity printings from owned sets, flagged as lower-confidence rather than excluded.
+- 90ca0fa: Fix packaging failure after the `electron-builder` 26.15.3 bump. With no explicit `executableName` set, electron-builder derives the packaged binary's name from `package.json`'s `name` field on Linux (`appInfo.sanitizedName`) rather than `productName` — and unlike the sibling `linuxPackageName` getter, that path has no guard for scoped package names, so `@mtg-deckbuilder/electron-app` sanitized down to `@mtg-deckbuilderelectron-app`, an `@`-prefixed name electron-builder now rejects as an unsafe file path. `executableName` is now set explicitly to `mtg-deckbuilder` in the `build` config, so packaging no longer depends on that derivation.
+- Updated dependencies [6d18e6f]
+- Updated dependencies [99b835a]
+- Updated dependencies [42642fd]
+- Updated dependencies [83d45f3]
+- Updated dependencies [089ecf8]
+- Updated dependencies [90ca0fa]
+  - @mtg-deckbuilder/shared@0.12.5
+
 ## 0.12.4
 
 ### Patch Changes
