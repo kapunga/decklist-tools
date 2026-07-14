@@ -6,8 +6,8 @@
   "scripts": {
     "dev": "vite",
     "compile": "tsc && vite build",
-    "build": "tsc && vite build && electron-builder",
-    "build:unsigned": "tsc && vite build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder -c.mac.notarize=false",
+    "build": "tsc && vite build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder -c.mac.notarize=false",
+    "build:release": "tsc && vite build && electron-builder",
     "preview": "vite preview",
     "electron:dev": "vite",
     "test": "vitest run",
