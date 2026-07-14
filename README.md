@@ -43,10 +43,11 @@ mtg-deckbuilder/
 ## Build Commands
 
 ```bash
-pnpm build          # Build all packages in order
+pnpm build          # Build all packages in order (Electron app build is unsigned)
 pnpm build:shared   # Build shared package (must be built first)
 pnpm build:mcp      # Build MCP server
-pnpm build:electron  # Build Electron app
+pnpm build:electron # Build Electron app (unsigned)
+pnpm build:release  # Build all packages, with a signed + notarized Electron app (macOS signing secrets required)
 pnpm dev            # Full Electron + hot reload
 pnpm dev:mcp        # Run MCP server in development mode
 pnpm typecheck      # TypeScript checking across all packages
