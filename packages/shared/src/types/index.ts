@@ -570,6 +570,13 @@ export interface PullListItem {
   quantityPulledThisPrint: number
   quantityPulledTotal: number
   remainingNeeded: number
+  /**
+   * True when this printing's rarity exceeds what's typically included at
+   * the owning set's tracked collection level (e.g. a mythic pulled from a
+   * set tracked at level 1). A soft ownership-likelihood signal, not a
+   * filter — the printing still appears either way.
+   */
+  rarityAboveCollectionLevel?: boolean
 }
 
 export interface PullListGroup {

@@ -1410,7 +1410,7 @@ describe('Collection Filter', () => {
     expect(result.totalSets).toBe(1)
   })
 
-  it('generates rarity-filtered filter for lower levels', async () => {
+  it('scopes by set only regardless of collection level (no rarity gating)', async () => {
     mock._setSetCollection({
       version: 1, updatedAt: '', sets: [{
         setCode: 'one', setName: 'Phyrexia',
@@ -1418,9 +1418,11 @@ describe('Collection Filter', () => {
       }]
     })
     const result = await call('get_collection_filter') as any
-    expect(result.filterString).toContain('r:common')
-    expect(result.filterString).toContain('r:uncommon')
-    expect(result.filterString).not.toContain('r:rare')
+    expect(result.filterString).toBe('(set:one)')
+    expect(result.filterString).not.toContain('r:')
+    // level/rarities still exposed as metadata for the caller's own likelihood judgment
+    expect(result.sets[0].level).toBe(1)
+    expect(result.sets[0].rarities).toEqual(['common', 'uncommon'])
   })
 
   it('joins multiple sets with OR', async () => {

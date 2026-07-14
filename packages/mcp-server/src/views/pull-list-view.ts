@@ -9,10 +9,12 @@ const RARITY_ORDER: Record<string, number> = {
   'common': 3,
 }
 
-// Check if a rarity is included at a collection level
-function isRarityAvailable(rarity: string, collectionLevel: CollectionLevel): boolean {
-  const allowedRarities = COLLECTION_LEVEL_RARITIES[collectionLevel]
-  return allowedRarities.includes(rarity.toLowerCase())
+// Whether a printing's rarity exceeds what's typically included at a set's
+// tracked collection level. A soft likelihood signal, used only to flag
+// lower-confidence printings — never to exclude them.
+function rarityExceedsCollectionLevel(rarity: string, collectionLevel: CollectionLevel): boolean {
+  const typicalRarities = COLLECTION_LEVEL_RARITIES[collectionLevel]
+  return !typicalRarities.includes(rarity.toLowerCase())
 }
 
 export function renderPullListView(
@@ -122,11 +124,7 @@ export function renderPullListView(
 
     // Get printings from owned sets
     const allPrintings = printingsByName.get(cardName.toLowerCase()) || [cachedCard]
-    const ownedPrintings = allPrintings.filter(p => {
-      if (!ownedSetCodes.has(p.set.toLowerCase())) return false
-      const level = setLevelMap.get(p.set.toLowerCase()) || 1
-      return isRarityAvailable(p.rarity, level)
-    })
+    const ownedPrintings = allPrintings.filter(p => ownedSetCodes.has(p.set.toLowerCase()))
 
     // If no owned printings, show from original set
     if (ownedPrintings.length === 0) {
@@ -156,6 +154,8 @@ export function renderPullListView(
              p.collectorNumber === printing.collector_number
       )?.quantity ?? 0
 
+      const level = setLevelMap.get(printing.set.toLowerCase()) || 1
+
       const item: PullListItem = {
         cardName,
         setCode: printing.set,
@@ -168,7 +168,8 @@ export function renderPullListView(
         quantityNeeded: deckCardQty,
         quantityPulledThisPrint: pulledFromThisPrint,
         quantityPulledTotal: totalPulled,
-        remainingNeeded
+        remainingNeeded,
+        rarityAboveCollectionLevel: rarityExceedsCollectionLevel(printing.rarity, level)
       }
 
       if (remainingNeeded > 0) {
@@ -229,9 +230,16 @@ export function renderPullListView(
       for (const item of group.items) {
         const primaryType = item.typeLine.split(' ')[0] || 'Unknown'
         const rarityShort = item.rarity[0]?.toUpperCase() || '?'
+        const rarityCell = item.rarityAboveCollectionLevel ? `${rarityShort}*` : rarityShort
         const status = `${item.quantityPulledTotal}/${item.quantityNeeded}`
-        lines.push(`| ${item.collectorNumber} | ${rarityShort} | ${primaryType} | ${item.manaCost} | ${item.cardName} | ${status} |`)
+        lines.push(`| ${item.collectorNumber} | ${rarityCell} | ${primaryType} | ${item.manaCost} | ${item.cardName} | ${status} |`)
       }
+
+      if (group.items.some(i => i.rarityAboveCollectionLevel)) {
+        lines.push('')
+        lines.push("_\\* rarity exceeds this set's tracked collection level — may not be owned; treat as lower-confidence._")
+      }
+
       lines.push('')
     }
   } else {
