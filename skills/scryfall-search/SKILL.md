@@ -2,7 +2,7 @@
 name: scryfall-search
 description: How to construct Scryfall search queries for Magic the Gathering. Use when you need to find cards by attributes (color, type, mana cost, power/toughness, format legality, oracle text, etc.) or when composing a multi-operator query — on scryfall.com, through the Scryfall API, or via an MTG-aware MCP tool. For looking up specific function/oracle tag names, see the scryfall-tags skill instead.
 metadata:
-  version: "2026-05-24"
+  version: "2026-07-14"
 ---
 
 # Scryfall Search Syntax
@@ -210,6 +210,17 @@ art:dragon -t:dragon
 # Alchemy-exclusive rebalances of existing cards
 game:arena -game:paper is:digital
 ```
+
+## Query length limit
+
+Scryfall enforces a **hard 500-character ceiling** on a single query string. Queries over the limit are rejected, not truncated.
+
+**Why it bites deck-building queries specifically:** the usual way to blow past it is a large `OR`-chain — most often one `set:` clause per owned set, e.g. the output of `get_collection_filter` (`(s:dmu r<=r OR s:lci r<=r OR s:mh3 r<=m OR ...)`). A tracked collection spanning 20+ sets can exceed 500 characters before any other filter is even added.
+
+**Mitigation:**
+- Prefer compact operators over enumerating values — `r<=u` instead of `(r:c OR r:u)`.
+- If a filter is inherently large (a collection-scoped `OR`-chain, a long list of names), split it into multiple searches, each covering a subset of the clauses, and merge results client-side rather than building one all-encompassing query.
+- Avoid encoding a per-item filter that scales with collection/list size (one clause per set, per card). The query grows unbounded as the user's data grows. Prefer a coarser filter (rarity or format-level) plus client-side post-filtering.
 
 ## Gotchas
 
