@@ -78,7 +78,6 @@
   "build": {
     "appId": "com.mtgdeckbuilder.app",
     "productName": "MTG Deckbuilder",
-    "executableName": "mtg-deckbuilder",
     "directories": {
       "output": "release"
     },
@@ -151,6 +150,7 @@
     "linux": {
       "icon": "build/icon.png",
       "category": "Game",
+      "executableName": "mtg-deckbuilder",
       "target": [
         {
           "target": "AppImage",
