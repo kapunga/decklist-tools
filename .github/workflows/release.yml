@@ -33,7 +33,7 @@ jobs:
       - run: pnpm build:shared
 
       - name: Create Release Pull Request or Tag
-        uses: changesets/action@v1
+        uses: changesets/action@v2
         with:
           title: "Version Packages"
           commit: "Version Packages"
