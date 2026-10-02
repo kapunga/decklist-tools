@@ -522,6 +522,38 @@ describe('Card Search', () => {
       expect(result.cards).toHaveLength(1)
     })
 
+    it('surfaces Scryfall details when a syntax search returns nothing', async () => {
+      mockSearchCards.mockResolvedValue({
+        object: 'list', total_cards: 0, has_more: false, data: [],
+        details: "Your query didn't match any cards.",
+      } as any)
+      const result = await call('search_cards', { query: 't:instant cmc<<2' }) as any
+      expect(result).toContain('Found 0 cards')
+      expect(result).toContain("Scryfall: Your query didn't match any cards.")
+    })
+
+    it('appends Scryfall warnings to the header', async () => {
+      mockSearchCards.mockResolvedValue({
+        object: 'list', total_cards: 1, has_more: false, data: [bolCard],
+        warnings: ["Invalid expression 'foo:bar' was ignored"],
+      } as any)
+      const result = await call('search_cards', { query: 't:instant foo:bar' }) as any
+      expect(result).toContain("Warning: Invalid expression 'foo:bar' was ignored")
+    })
+
+    it('includes notes in json format', async () => {
+      mockSearchCards.mockResolvedValue({
+        object: 'list', total_cards: 0, has_more: false, data: [], details: 'bad syntax',
+      } as any)
+      const result = await call('search_cards', { query: 't:instant cmc<<2', format: 'json' }) as any
+      expect(result.notes).toEqual(['Scryfall: bad syntax'])
+    })
+
+    it('propagates Scryfall errors with their details', async () => {
+      mockSearchCards.mockRejectedValue(new Error('Too many results'))
+      await expect(call('search_cards', { query: 't:instant' })).rejects.toThrow('Too many results')
+    })
+
     it('throws when not found (fuzzy null + zero search results)', async () => {
       mockSearchCardByName.mockResolvedValue(null as any)
       mockSearchCards.mockResolvedValue({
@@ -602,6 +634,35 @@ describe('Views', () => {
       const result = await call('deck_list', { deck_id: deck.id }) as string
       expect(result).toContain('List Test')
       expect(result).toContain('commander')
+    })
+
+    it('accepts lowercase filter values (case-insensitive)', async () => {
+      const deck = makeDeck({ name: 'Filter Case' })
+      pushMainboard(deck, makeDeckCard('Lightning Bolt'))
+      mock._decks.set(deck.id, deck)
+      await expect(call('deck_list', {
+        deck_id: deck.id,
+        filters: [{ type: 'card-type', mode: 'include', values: ['instant'] }],
+      })).resolves.toBeDefined()
+    })
+
+    it('rejects an unrecognised filter value instead of returning an empty list', async () => {
+      const deck = makeDeck({ name: 'Filter Typo' })
+      mock._decks.set(deck.id, deck)
+      await expect(call('deck_list', {
+        deck_id: deck.id,
+        filters: [{ type: 'card-type', mode: 'include', values: ['lnad'] }],
+      })).rejects.toThrow(/Valid values: Creature/)
+    })
+
+    it('rejects an unknown role id in a role filter', async () => {
+      const deck = makeDeck({ name: 'Role Typo' })
+      pushMainboard(deck, makeDeckCard('Lightning Bolt'))
+      mock._decks.set(deck.id, deck)
+      await expect(call('deck_list', {
+        deck_id: deck.id,
+        filters: [{ type: 'role', mode: 'include', values: ['rmap'] }],
+      })).rejects.toThrow(/Invalid role filter value "rmap"/)
     })
 
     it('returns oracle text by default (the whole point of the split)', async () => {

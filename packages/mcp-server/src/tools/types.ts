@@ -1,3 +1,4 @@
+import { normalizeFilters } from '@mtg-deckbuilder/shared'
 import type { NoteType } from '@mtg-deckbuilder/shared'
 
 export interface ManageDeckArgs {
@@ -206,14 +207,14 @@ export function validateDeckListArgs(args: Record<string, unknown>): DeckListArg
     detail: detail as DetailLevel | undefined,
     sort_by: args.sort_by as string | undefined,
     group_by: args.group_by as string | undefined,
-    filters: args.filters as import('@mtg-deckbuilder/shared').CardFilter[] | undefined,
+    filters: normalizeFilters(args.filters),
   }
 }
 
 export function validateDeckCurveArgs(args: Record<string, unknown>): DeckCurveArgs {
   return {
     deck_id: requireString(args, 'deck_id'),
-    filters: args.filters as import('@mtg-deckbuilder/shared').CardFilter[] | undefined,
+    filters: normalizeFilters(args.filters),
   }
 }
 

@@ -15,6 +15,7 @@ import {
   isValidUUID,
   enrichCards,
   applyFilters,
+  resolveRoleFilters,
   getMainboard,
   getFormat,
 } from '@mtg-deckbuilder/shared'
@@ -163,13 +164,16 @@ function loadScryfallCache(storage: Storage, deck: Deck): Map<string, ScryfallCa
 // Returns undefined when no filters are supplied — the render functions treat
 // undefined as "no filter" rather than "empty set".
 function buildFilteredCardIds(
+  storage: Storage,
   deck: Deck,
   scryfallCache: Map<string, ScryfallCard>,
   filters: CardFilter[] | undefined,
 ): Set<string> | undefined {
   if (!filters || filters.length === 0) return undefined
+  const knownRoleIds = [...storage.getGlobalRoles(), ...deck.customRoles].map(r => r.id)
+  const resolved = resolveRoleFilters(filters, knownRoleIds) ?? []
   const enriched = enrichCards(getMainboard(deck), scryfallCache)
-  const filtered = applyFilters(enriched, filters)
+  const filtered = applyFilters(enriched, resolved)
   return new Set(filtered.map(e => e.deckCard.id))
 }
 
@@ -183,7 +187,7 @@ export function deckList(storage: Storage, args: DeckListArgs): string {
   const deck = getDeckOrThrow(storage, args.deck_id)
   const globalRoles = storage.getGlobalRoles()
   const scryfallCache = loadScryfallCache(storage, deck)
-  const filteredCardIds = buildFilteredCardIds(deck, scryfallCache, args.filters)
+  const filteredCardIds = buildFilteredCardIds(storage, deck, scryfallCache, args.filters)
   // Default to `compact` — the whole point of the split is that oracle text
   // is the first-look content an LLM wants for deck analysis.
   const detail = args.detail ?? 'compact'
@@ -193,7 +197,7 @@ export function deckList(storage: Storage, args: DeckListArgs): string {
 export function deckCurve(storage: Storage, args: DeckCurveArgs): string {
   const deck = getDeckOrThrow(storage, args.deck_id)
   const scryfallCache = loadScryfallCache(storage, deck)
-  const filteredCardIds = buildFilteredCardIds(deck, scryfallCache, args.filters)
+  const filteredCardIds = buildFilteredCardIds(storage, deck, scryfallCache, args.filters)
   return renderCurveView(deck, scryfallCache, filteredCardIds)
 }
 

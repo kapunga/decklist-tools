@@ -4,6 +4,7 @@ import type { EnrichedDeckCard, CardFilter, ManaPipCounts } from './types.js'
 
 export type { EnrichedDeckCard, FilterMode, CmcFilter, ColorFilter, CardTypeFilter, RoleFilter, OwnershipFilter, CardFilter, FilterGroup, ManaPipCounts } from './types.js'
 export { FILTER_GROUP_TYPES } from './types.js'
+export { normalizeFilters, resolveRoleFilters, FilterError } from './normalize.js'
 
 // Get CMC for a card, using Scryfall data if available
 function getCardCmc(enriched: EnrichedDeckCard): number {
