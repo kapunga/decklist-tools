@@ -251,6 +251,13 @@ function formatCardCompact(card: ScryfallCard): string {
   return lines.join('\n')
 }
 
+// Scryfall's own explanation for an empty result (it can't tell "no match" from
+// "bad syntax") plus any warnings about ignored parts of the query.
+function searchNotes(result: SearchResult): string[] {
+  const emptyNote = result.total_cards === 0 && result.details ? [`Scryfall: ${result.details}`] : []
+  return [...emptyNote, ...(result.warnings ?? []).map(w => `Warning: ${w}`)]
+}
+
 function buildSearchResponse(
   result: SearchResult,
   limit: number,
@@ -258,10 +265,13 @@ function buildSearchResponse(
   header: string,
 ) {
   const cards = result.data.slice(0, limit)
+  const notes = searchNotes(result)
   if (useCompact) {
-    return `${header}\n\n${cards.map(formatCardCompact).join('\n\n')}`
+    const heading = [header, ...notes].join('\n')
+    return `${heading}\n\n${cards.map(formatCardCompact).join('\n\n')}`
   }
   return {
+    ...(notes.length > 0 ? { notes } : {}),
     totalCards: result.total_cards,
     hasMore: result.data.length > limit,
     cards: cards.map(formatCardResponse),
@@ -288,7 +298,6 @@ export async function searchCardsHandler(args: SearchCardsArgs) {
 
   if (SCRYFALL_OPERATORS.test(args.query)) {
     const result = await searchCards(args.query)
-    if (!result) throw new Error(`Search failed for query: ${args.query}`)
     return buildSearchResponse(result, limit, useCompact, `Found ${result.total_cards} cards:`)
   }
 
@@ -306,7 +315,7 @@ export async function searchCardsHandler(args: SearchCardsArgs) {
   // Fall back to a name-substring search so Claude can disambiguate.
   const escapedName = args.query.replace(/"/g, '\\"')
   const fallback = await searchCards(`name:"${escapedName}"`)
-  if (!fallback || fallback.total_cards === 0) {
+  if (fallback.total_cards === 0) {
     throw new Error(`Card not found: ${args.query}`)
   }
   const shown = Math.min(limit, fallback.data.length)

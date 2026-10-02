@@ -522,6 +522,38 @@ describe('Card Search', () => {
       expect(result.cards).toHaveLength(1)
     })
 
+    it('surfaces Scryfall details when a syntax search returns nothing', async () => {
+      mockSearchCards.mockResolvedValue({
+        object: 'list', total_cards: 0, has_more: false, data: [],
+        details: "Your query didn't match any cards.",
+      } as any)
+      const result = await call('search_cards', { query: 't:instant cmc<<2' }) as any
+      expect(result).toContain('Found 0 cards')
+      expect(result).toContain("Scryfall: Your query didn't match any cards.")
+    })
+
+    it('appends Scryfall warnings to the header', async () => {
+      mockSearchCards.mockResolvedValue({
+        object: 'list', total_cards: 1, has_more: false, data: [bolCard],
+        warnings: ["Invalid expression 'foo:bar' was ignored"],
+      } as any)
+      const result = await call('search_cards', { query: 't:instant foo:bar' }) as any
+      expect(result).toContain("Warning: Invalid expression 'foo:bar' was ignored")
+    })
+
+    it('includes notes in json format', async () => {
+      mockSearchCards.mockResolvedValue({
+        object: 'list', total_cards: 0, has_more: false, data: [], details: 'bad syntax',
+      } as any)
+      const result = await call('search_cards', { query: 't:instant cmc<<2', format: 'json' }) as any
+      expect(result.notes).toEqual(['Scryfall: bad syntax'])
+    })
+
+    it('propagates Scryfall errors with their details', async () => {
+      mockSearchCards.mockRejectedValue(new Error('Too many results'))
+      await expect(call('search_cards', { query: 't:instant' })).rejects.toThrow('Too many results')
+    })
+
     it('throws when not found (fuzzy null + zero search results)', async () => {
       mockSearchCardByName.mockResolvedValue(null as any)
       mockSearchCards.mockResolvedValue({

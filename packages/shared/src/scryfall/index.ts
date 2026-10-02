@@ -247,16 +247,39 @@ export interface SearchResult {
   has_more: boolean
   next_page?: string
   data: ScryfallCard[]
+  /** Scryfall's non-fatal notes on a 200 response, e.g. "Invalid expression 'foo:bar' was ignored". */
+  warnings?: string[]
+  /** Scryfall's explanation when a 404 produced this empty result (no match, or malformed syntax). */
+  details?: string
+}
+
+/** A non-2xx Scryfall response, carrying Scryfall's own `details` text when it sent one. */
+export class ScryfallError extends Error {
+  constructor(readonly status: number, details?: string) {
+    super(details ?? `Scryfall API error: ${status}`)
+    this.name = 'ScryfallError'
+  }
+}
+
+async function readErrorDetails(response: Response): Promise<string | undefined> {
+  try {
+    const body = await response.json() as { details?: unknown }
+    return typeof body.details === 'string' ? body.details : undefined
+  } catch {
+    return undefined
+  }
 }
 
 const emptySearchResult = (): SearchResult => ({ object: 'list', total_cards: 0, has_more: false, data: [] })
 
-export async function searchCards(query: string): Promise<SearchResult | null> {
-  return fetchFromScryfall<SearchResult>(
-    `${BASE_URL}/cards/search?q=${encodeURIComponent(query)}`,
-    'searching cards',
-    emptySearchResult
-  )
+// Scryfall answers both "nothing matched" and "malformed query" with the same 404,
+// so a 404 stays an empty result (with Scryfall's explanation attached) rather than an error.
+// Any other failure throws, so callers see why instead of an empty list.
+export async function searchCards(query: string): Promise<SearchResult> {
+  const response = await rateLimitedFetch(`${BASE_URL}/cards/search?q=${encodeURIComponent(query)}`)
+  if (response.status === 404) return { ...emptySearchResult(), details: await readErrorDetails(response) }
+  if (!response.ok) throw new ScryfallError(response.status, await readErrorDetails(response))
+  return await response.json() as SearchResult
 }
 
 export async function searchCardsAll(query: string): Promise<ScryfallCard[]> {
