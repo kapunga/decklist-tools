@@ -27,8 +27,10 @@ import type { ManageCardArgs, SearchCardsArgs } from './types.js'
 // operator, a `-` negation prefix on a token, an exact-name `!"…"`, or a query that is
 // one quoted phrase. Detected structurally (not via an operator allow-list) so malformed
 // or unknown operators still reach Scryfall and come back with its own error instead of
-// "Card not found". Quotes embedded in an otherwise plain name stay a name lookup.
-const SEARCH_SYNTAX_MARKERS = /[()]|[a-z_]+(?::|[<>]=?|!=|=)|(?:^|\s)-\S|^!?".*"$/i
+// "Card not found". Quotes embedded in an otherwise plain name stay a name lookup, as do
+// names with a colon followed by a space ("Circle of Protection: Red"); operators never
+// have a space after the colon.
+const SEARCH_SYNTAX_MARKERS = /[()]|[a-z_]+(?::(?=\S)|[<>]=?|!=|=)|(?:^|\s)-\S|^!?".*"$/i
 
 export function looksLikeSearchSyntax(query: string): boolean {
   return SEARCH_SYNTAX_MARKERS.test(query)

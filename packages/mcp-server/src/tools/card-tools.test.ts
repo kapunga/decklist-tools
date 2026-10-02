@@ -28,6 +28,7 @@ describe('looksLikeSearchSyntax', () => {
     'Sephiroth',
     'Æther Vial',
     'She said "hi"',
+    'Circle of Protection: Red',
   ])('treats %j as a card name', query => {
     expect(looksLikeSearchSyntax(query)).toBe(false)
   })
