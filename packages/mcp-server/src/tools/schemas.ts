@@ -1,11 +1,20 @@
 import type { Tool } from '@modelcontextprotocol/sdk/types.js'
+import { PRIMARY_TYPES } from '@mtg-deckbuilder/shared'
 import { DECK_EXPORT_FORMATS } from './types.js'
 
 // Reused by deck_list and deck_curve — a CardFilter JSON shape for trimming
 // the card list shown in a rendered view.
 const CARD_FILTER_SCHEMA = {
   type: 'array',
-  description: 'Optional card filters to apply',
+  description:
+    'Optional card filters to apply; a card must pass every filter. Each filter is {type, mode, values}. ' +
+    'Legal values per type (case-insensitive): ' +
+    `card-type: ${PRIMARY_TYPES.join(', ')}; ` +
+    'color: W, U, B, R, G, C (C = colorless); ' +
+    'cmc: integers 0-7 (7 means 7 or more); ' +
+    'ownership: unknown, owned, need_to_buy; ' +
+    'role: role ids from list_roles. ' +
+    'An unrecognised value is an error, not an empty result.',
   items: {
     type: 'object',
     properties: {

@@ -636,6 +636,25 @@ describe('Views', () => {
       expect(result).toContain('commander')
     })
 
+    it('accepts lowercase filter values (case-insensitive)', async () => {
+      const deck = makeDeck({ name: 'Filter Case' })
+      pushMainboard(deck, makeDeckCard('Lightning Bolt'))
+      mock._decks.set(deck.id, deck)
+      await expect(call('deck_list', {
+        deck_id: deck.id,
+        filters: [{ type: 'card-type', mode: 'include', values: ['instant'] }],
+      })).resolves.toBeDefined()
+    })
+
+    it('rejects an unrecognised filter value instead of returning an empty list', async () => {
+      const deck = makeDeck({ name: 'Filter Typo' })
+      mock._decks.set(deck.id, deck)
+      await expect(call('deck_list', {
+        deck_id: deck.id,
+        filters: [{ type: 'card-type', mode: 'include', values: ['lnad'] }],
+      })).rejects.toThrow(/Valid values: Creature/)
+    })
+
     it('returns oracle text by default (the whole point of the split)', async () => {
       const deck = makeDeck({ name: 'Oracle Default' })
       pushMainboard(deck, makeDeckCard('Lightning Bolt'))
