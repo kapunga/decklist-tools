@@ -30,7 +30,7 @@ export function getToolDefinitions(): Tool[] {
     },
     {
       name: 'get_deck',
-      description: 'Returns raw deck JSON with Scryfall IDs, metadata, and format validation. Use for programmatic operations or exporting. For deck evaluation/analysis, use view_deck instead.',
+      description: 'Returns raw deck JSON with Scryfall IDs, metadata, and format validation. Use for programmatic operations or exporting. For deck evaluation/analysis, use deck_list instead.',
       inputSchema: {
         type: 'object',
         properties: {
