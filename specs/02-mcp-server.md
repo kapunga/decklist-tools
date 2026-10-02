@@ -25,7 +25,7 @@ Returns summary info for every saved deck.
 
 ### `get_deck`
 
-Returns the raw deck JSON (with Scryfall IDs, metadata, and a structural validation report). Use this for programmatic operations or exports. For human-readable deck analysis, use `view_deck` instead.
+Returns the raw deck JSON (with Scryfall IDs, metadata, and a structural validation report). Use this for programmatic operations or exports. For human-readable deck analysis, use `deck_list` instead.
 
 **Input:**
 - `identifier` *(string, required)* — deck UUID or name (case-insensitive).
