@@ -70,3 +70,11 @@ export function normalizeFilters(raw: unknown): CardFilter[] | undefined {
   if (!Array.isArray(raw)) throw new FilterError(`filters must be an array (got ${JSON.stringify(raw)})`)
   return raw.map(normalizeFilter)
 }
+
+// Role ids are user-defined (global + per-deck custom), so they can only be checked once the
+// deck's known ids are in hand. Canonicalises case and rejects ids that match no known role.
+export function resolveRoleFilters(filters: CardFilter[] | undefined, knownRoleIds: readonly string[]): CardFilter[] | undefined {
+  return filters?.map(f =>
+    f.type === 'role' ? { ...f, values: f.values.map(v => matchLegal('role', knownRoleIds, v)) } : f
+  )
+}

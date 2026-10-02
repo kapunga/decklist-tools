@@ -13,7 +13,7 @@ const CARD_FILTER_SCHEMA = {
     'color: W, U, B, R, G, C (C = colorless); ' +
     'cmc: integers 0-7 (7 means 7 or more); ' +
     'ownership: unknown, owned, need_to_buy; ' +
-    'role: role ids from list_roles. ' +
+    'role: a role id from list_roles (global or deck-specific). ' +
     'An unrecognised value is an error, not an empty result.',
   items: {
     type: 'object',

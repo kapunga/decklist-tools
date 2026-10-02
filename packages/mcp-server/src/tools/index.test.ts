@@ -655,6 +655,16 @@ describe('Views', () => {
       })).rejects.toThrow(/Valid values: Creature/)
     })
 
+    it('rejects an unknown role id in a role filter', async () => {
+      const deck = makeDeck({ name: 'Role Typo' })
+      pushMainboard(deck, makeDeckCard('Lightning Bolt'))
+      mock._decks.set(deck.id, deck)
+      await expect(call('deck_list', {
+        deck_id: deck.id,
+        filters: [{ type: 'role', mode: 'include', values: ['rmap'] }],
+      })).rejects.toThrow(/Invalid role filter value "rmap"/)
+    })
+
     it('returns oracle text by default (the whole point of the split)', async () => {
       const deck = makeDeck({ name: 'Oracle Default' })
       pushMainboard(deck, makeDeckCard('Lightning Bolt'))

@@ -8,6 +8,7 @@ import {
   buildArtCropUrlFromId,
   listLegalities,
   searchCards,
+  searchCardsAll,
   ScryfallError,
   WUBRG_ORDER,
 } from './index.js'
@@ -320,5 +321,15 @@ describe('searchCards error handling', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, body)))
     const result = await searchCards('foo:bar')
     expect(result.warnings).toEqual(["Invalid expression 'foo:bar' was ignored"])
+  })
+
+  it('searchCardsAll throws instead of returning a truncated list when a later page fails', async () => {
+    const page1 = { object: 'list', total_cards: 2, has_more: true, next_page: 'https://api.scryfall.com/next', data: [{ id: 'a' }] }
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(jsonResponse(200, page1))
+      .mockResolvedValueOnce(jsonResponse(500, { object: 'error', status: 500, details: 'boom' })))
+    const error = await searchCardsAll('anything').catch(e => e)
+    expect(error).toBeInstanceOf(ScryfallError)
+    expect(error.message).toBe('boom')
   })
 })

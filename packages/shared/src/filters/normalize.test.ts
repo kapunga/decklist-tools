@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { normalizeFilters, FilterError } from './normalize.js'
+import { normalizeFilters, resolveRoleFilters, FilterError } from './normalize.js'
 
 const filter = (type: string, values: unknown[], mode = 'include') => ({ type, mode, values })
 
@@ -60,5 +60,28 @@ describe('normalizeFilters', () => {
   it('rejects non-array filters and non-array values', () => {
     expect(() => normalizeFilters('land')).toThrow(FilterError)
     expect(() => normalizeFilters([{ type: 'color', mode: 'include', values: 'W' }])).toThrow(/values must be an array/)
+  })
+})
+
+describe('resolveRoleFilters', () => {
+  const known = ['ramp', 'removal', 'my-custom']
+
+  it('passes undefined through', () => {
+    expect(resolveRoleFilters(undefined, known)).toBeUndefined()
+  })
+
+  it('canonicalises case against known role ids', () => {
+    expect(resolveRoleFilters([filter('role', ['RAMP', 'my-custom'])] as any, known))
+      .toEqual([filter('role', ['ramp', 'my-custom'])])
+  })
+
+  it('leaves non-role filters untouched', () => {
+    const color = filter('color', ['W']) as any
+    expect(resolveRoleFilters([color], known)).toEqual([color])
+  })
+
+  it('rejects an unknown role id, listing the known ones', () => {
+    expect(() => resolveRoleFilters([filter('role', ['rmap'])] as any, known))
+      .toThrow(/"rmap".*Valid values: ramp, removal, my-custom/)
   })
 })

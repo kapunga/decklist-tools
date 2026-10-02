@@ -275,23 +275,24 @@ const emptySearchResult = (): SearchResult => ({ object: 'list', total_cards: 0,
 // Scryfall answers both "nothing matched" and "malformed query" with the same 404,
 // so a 404 stays an empty result (with Scryfall's explanation attached) rather than an error.
 // Any other failure throws, so callers see why instead of an empty list.
-export async function searchCards(query: string): Promise<SearchResult> {
-  const response = await rateLimitedFetch(`${BASE_URL}/cards/search?q=${encodeURIComponent(query)}`)
+async function fetchSearchPage(url: string): Promise<SearchResult> {
+  const response = await rateLimitedFetch(url)
   if (response.status === 404) return { ...emptySearchResult(), details: await readErrorDetails(response) }
   if (!response.ok) throw new ScryfallError(response.status, await readErrorDetails(response))
   return await response.json() as SearchResult
 }
 
+const searchUrl = (query: string) => `${BASE_URL}/cards/search?q=${encodeURIComponent(query)}`
+
+export async function searchCards(query: string): Promise<SearchResult> {
+  return fetchSearchPage(searchUrl(query))
+}
+
 export async function searchCardsAll(query: string): Promise<ScryfallCard[]> {
   const all: ScryfallCard[] = []
-  let url: string | undefined = `${BASE_URL}/cards/search?q=${encodeURIComponent(query)}`
+  let url: string | undefined = searchUrl(query)
   while (url) {
-    const page: SearchResult | null = await fetchFromScryfall<SearchResult>(
-      url,
-      'searching cards (paginated)',
-      emptySearchResult
-    )
-    if (!page) break
+    const page: SearchResult = await fetchSearchPage(url)
     all.push(...page.data)
     url = page.has_more ? page.next_page : undefined
   }
@@ -413,7 +414,7 @@ export async function searchCardsWithFilters(
   query: string,
   format?: string,
   colorIdentity?: string[]
-): Promise<SearchResult | null> {
+): Promise<SearchResult> {
   // Build Scryfall query with filters
   let fullQuery = query
 
