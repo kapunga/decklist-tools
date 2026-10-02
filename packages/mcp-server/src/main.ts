@@ -6,9 +6,22 @@ import {
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js'
 
+import * as fs from 'fs'
 import * as path from 'path'
 import { Storage, loadCardDeckLimits } from '@mtg-deckbuilder/shared'
 import { handleToolCall, getToolDefinitions } from './tools/index.js'
+import { listBundledSkills } from './tools/skill-tools.js'
+import { buildInstructions } from './instructions.js'
+
+// Both dist/main.js and dist/bundle.js sit one level below package.json.
+function readPackageVersion(): string {
+  try {
+    const pkgPath = new URL('../package.json', import.meta.url)
+    return JSON.parse(fs.readFileSync(pkgPath, 'utf-8')).version ?? 'unknown'
+  } catch {
+    return 'unknown'
+  }
+}
 
 function parseFlag(argv: string[], flag: string): string | undefined {
   const i = argv.indexOf(flag)
@@ -29,12 +42,13 @@ async function main() {
   const server = new Server(
     {
       name: 'mtg-deckbuilder-mcp',
-      version: '0.1.0',
+      version: readPackageVersion(),
     },
     {
       capabilities: {
         tools: {},
       },
+      instructions: buildInstructions(listBundledSkills(skillsDir)),
     }
   )
 

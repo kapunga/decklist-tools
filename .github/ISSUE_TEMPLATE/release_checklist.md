@@ -31,7 +31,7 @@ assignees: ""
 - [ ] `list_decks` returns decks created in the desktop app
 - [ ] `create_deck` creates a deck visible in the desktop app
 - [ ] `add_card` resolves cards via Scryfall
-- [ ] `view_deck` renders correctly
+- [ ] `deck_list` renders correctly
 - [ ] `import_deck` imports a decklist
 
 ## Cross-App Sync
