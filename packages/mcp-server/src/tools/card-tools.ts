@@ -23,8 +23,16 @@ import {
 import { getDeckOrThrow, fetchScryfallCard, parseCardString } from './helpers.js'
 import type { ManageCardArgs, SearchCardsArgs } from './types.js'
 
-// Scryfall operator patterns for detecting search queries
-const SCRYFALL_OPERATORS = /(?:^|\s)(?:t:|c:|ci:|o:|pow:|tou:|cmc[<>=!]|mv[<>=!]|is:|has:|not:|set:|e:|r:|f:|id:|mana:|devotion:|produces:|keyword:|oracle:|name:|flavor:|art:|border:|frame:|game:|year:|date:|usd[<>=!]|eur[<>=!]|tix[<>=!])/i
+// Structural markers of Scryfall search syntax: parens, a `word:` / `word<=` style
+// operator, a `-` negation prefix on a token, an exact-name `!"…"`, or a query that is
+// one quoted phrase. Detected structurally (not via an operator allow-list) so malformed
+// or unknown operators still reach Scryfall and come back with its own error instead of
+// "Card not found". Quotes embedded in an otherwise plain name stay a name lookup.
+const SEARCH_SYNTAX_MARKERS = /[()]|[a-z_]+(?::|[<>]=?|!=|=)|(?:^|\s)-\S|^!?".*"$/i
+
+export function looksLikeSearchSyntax(query: string): boolean {
+  return SEARCH_SYNTAX_MARKERS.test(query)
+}
 
 function resolveCards(args: ManageCardArgs): string[] {
   if (args.cards && args.cards.length > 0) return args.cards
@@ -296,7 +304,7 @@ export async function searchCardsHandler(args: SearchCardsArgs) {
     return formatCard(scryfallCard)
   }
 
-  if (SCRYFALL_OPERATORS.test(args.query)) {
+  if (looksLikeSearchSyntax(args.query)) {
     const result = await searchCards(args.query)
     return buildSearchResponse(result, limit, useCompact, `Found ${result.total_cards} cards:`)
   }
