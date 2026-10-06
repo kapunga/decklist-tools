@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import {
   sortColorsWUBRG,
   getCardImageUrl,
@@ -7,6 +7,9 @@ import {
   getColorIdentityString,
   buildArtCropUrlFromId,
   listLegalities,
+  searchCards,
+  searchCardsAll,
+  ScryfallError,
   WUBRG_ORDER,
 } from './index.js'
 import type { ScryfallCard } from '../types/index.js'
@@ -276,5 +279,57 @@ describe('listLegalities', () => {
     expect(result.someBanned).toContain('modern')
     expect(result.intersection).toContain('commander')
     expect(result.someLegal).toContain('modern')
+  })
+})
+
+describe('searchCards error handling', () => {
+  const jsonResponse = (status: number, body: unknown) =>
+    new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
+
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('keeps Scryfall details on a 404 so a bad query is distinguishable from silence', async () => {
+    const details = "Your query didn't match any cards."
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
+      jsonResponse(404, { object: 'error', code: 'not_found', status: 404, details })
+    ))
+    const result = await searchCards('cmc<<2')
+    expect(result.total_cards).toBe(0)
+    expect(result.data).toEqual([])
+    expect(result.details).toBe(details)
+  })
+
+  it('throws ScryfallError carrying status and details on other 4xx', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
+      jsonResponse(400, { object: 'error', status: 400, details: 'Too many results' })
+    ))
+    const error = await searchCards('anything').catch(e => e)
+    expect(error).toBeInstanceOf(ScryfallError)
+    expect(error.status).toBe(400)
+    expect(error.message).toBe('Too many results')
+  })
+
+  it('falls back to a status message when the error body is not JSON', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('<html>', { status: 503 })))
+    const error = await searchCards('anything').catch(e => e)
+    expect(error).toBeInstanceOf(ScryfallError)
+    expect(error.message).toContain('503')
+  })
+
+  it('passes warnings through on a successful search', async () => {
+    const body = { object: 'list', total_cards: 0, has_more: false, data: [], warnings: ["Invalid expression 'foo:bar' was ignored"] }
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, body)))
+    const result = await searchCards('foo:bar')
+    expect(result.warnings).toEqual(["Invalid expression 'foo:bar' was ignored"])
+  })
+
+  it('searchCardsAll throws instead of returning a truncated list when a later page fails', async () => {
+    const page1 = { object: 'list', total_cards: 2, has_more: true, next_page: 'https://api.scryfall.com/next', data: [{ id: 'a' }] }
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(jsonResponse(200, page1))
+      .mockResolvedValueOnce(jsonResponse(500, { object: 'error', status: 500, details: 'boom' })))
+    const error = await searchCardsAll('anything').catch(e => e)
+    expect(error).toBeInstanceOf(ScryfallError)
+    expect(error.message).toBe('boom')
   })
 })
