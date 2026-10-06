@@ -89,6 +89,7 @@ export function SelectCommanderModal({
       // Partner keyword and skips identity filtering (Partners union).
       const partnerClause = partnerOnly ? ' kw:partner' : ''
       const result = await searchCards(`${searchQuery} t:legendary t:creature${partnerClause}`)
+        .catch(() => null) // autocomplete is best-effort; a failed lookup just shows no suggestions
       if (result?.data) {
         const names = result.data
           .filter(card => {

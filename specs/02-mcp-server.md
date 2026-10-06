@@ -95,6 +95,10 @@ Search for cards on Scryfall. Accepts a card name (fuzzy or exact), a Scryfall U
 - `set_code`, `collector_number` *(string)* — narrow to a specific printing.
 - `format` *(string)* — `compact` (default, human-readable) | `json`.
 
+**Query detection:** a query is treated as Scryfall search syntax when it contains parentheses, any `word:` / `word<=` style operator (known or not), a `-` negation prefix on a token, `!"…"`, or is entirely one quoted phrase. Everything else is a card name. Malformed or unknown operators therefore reach Scryfall and return its own error rather than "Card not found".
+
+**Errors and notes:** Scryfall answers both "nothing matched" and "malformed query" with the same 404, so a zero-result search stays a normal result but includes Scryfall's explanation (`Scryfall: …` in compact output, `notes` in json). Other Scryfall failures (400, 429, 5xx) are raised as tool errors carrying Scryfall's `details`. Warnings Scryfall attaches to a successful search (e.g. an ignored expression) are appended as `Warning: …` / `notes`.
+
 ### `get_collection_filter`
 
 Generate a Scryfall filter string based on the user's set collection. The filter narrows search results to cards the user likely owns, including appropriate rarity filters per set's configured collection level. Combine with `search_cards` to constrain a search to the user's collection.
@@ -119,7 +123,7 @@ Deck rendering is split across four per-view tools rather than one multiplexed `
 - `filters` *(array)* — optional card filters. Each filter has `type`, `mode`, and `values`.
   - `type`: `cmc` | `color` | `card-type` | `role` | `ownership`.
   - `mode`: `include` | `exclude`.
-  - `values`: array of permitted values (depends on `type`).
+  - `values`: array of permitted values (depends on `type`). Matching is case-insensitive: `card-type` is one of `Creature`, `Planeswalker`, `Battle`, `Artifact`, `Enchantment`, `Land`, `Instant`, `Sorcery`, `Other`; `color` is `W`/`U`/`B`/`R`/`G`/`C`; `ownership` is `unknown`/`owned`/`need_to_buy`; `cmc` is an integer 0-7 (7 means 7+; numeric strings are accepted); `role` is a role id. An unrecognised value is an error listing the valid values, never a silent empty result.
 
 ### `deck_curve`
 
