@@ -1,5 +1,15 @@
 # @mtg-deckbuilder/mcp-server
 
+## 0.12.7
+
+### Patch Changes
+
+- 15fc77b: MCP server now sends `instructions` on initialize, telling the model to load the bundled mtg-deckbuilder skills when available (and to proceed with the tools when not). Also reports its real package version and fixes the `get_deck` description that pointed at the removed `view_deck` tool.
+- 9443a9a: `search_cards` now surfaces Scryfall's own error details and warnings instead of reporting broken queries as "Found 0 cards", and detects search syntax structurally so malformed queries like `(t:instant` no longer fail with "Card not found". `deck_list` / `deck_curve` filter values are now case-insensitive, document their legal values, and reject unrecognised values with an error instead of returning an empty list.
+- Updated dependencies [15fc77b]
+- Updated dependencies [9443a9a]
+  - @mtg-deckbuilder/shared@0.12.7
+
 ## 0.12.6
 
 ### Patch Changes
