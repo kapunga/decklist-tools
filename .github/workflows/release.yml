@@ -35,8 +35,9 @@ jobs:
       - name: Create Release Pull Request or Tag
         uses: changesets/action@v2
         with:
-          title: "Version Packages"
-          commit: "Version Packages"
-          version: pnpm version-packages
-        env:
-          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          pr-title: "Version Packages"
+          commit-message: "Version Packages"
+          version-script: pnpm version-packages
+          # v2 ignores the GITHUB_TOKEN env var. A PAT is needed so the
+          # Version Packages PR triggers CI (GITHUB_TOKEN-created PRs don't).
+          github-token: ${{ secrets.RELEASE_TOKEN }}
