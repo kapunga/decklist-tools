@@ -6,6 +6,20 @@ The single source of truth for tool schemas is `packages/mcp-server/src/tools/sc
 
 ---
 
+## Server instructions
+
+On `initialize`, the server returns an `instructions` string that MCP clients inject into the model's context for the whole session. It is built by `buildInstructions` in `packages/mcp-server/src/instructions.ts` and has three parts:
+
+1. **Skill loading.** Before any deck, list, or card-search task, the model should load the matching mtg-deckbuilder skill *if it appears in its available skills*. When the server was started with `--skills-dir` and finds skills there, the sentence also names each bundled skill and points at `list_bundled_skills`.
+2. **Install nudge.** If a skill is missing, the model must not invoke or wait for it. It mentions once that skills ship with the MTG Deckbuilder app (Settings → Skills), then proceeds with the tools.
+3. **Tool guidance.** Card-set names (`deck_export` calls `alternates` "maybeboard") and "start deck-analysis tasks with `deck_list`."
+
+Every skill sentence is conditional: skills are installed by the Electron app, so a standalone server user may not have them, and the tools must work on their own. Whether a client actually surfaces `instructions` to the model varies by client.
+
+The server also reports its `package.json` version in the `initialize` response.
+
+---
+
 ## Conventions
 
 - All tools take a single object argument; all arguments are JSON values.
@@ -255,6 +269,18 @@ Add, update, or delete a deck note. Notes can optionally be associated with one 
 - `card_names` *(string[])* — card names ordered by relevance.
 - `role_id` *(string, optional)* — role to propagate to associated cards.
 - `remove_role` *(boolean)* — for `update`/`delete`, also remove the propagated role from associated cards.
+
+---
+
+## Skills
+
+### `list_bundled_skills`
+
+Lists the SKILL.md skills bundled with the running app: each skill's `name`, `version` (a date), and `description`. Clients use it to check whether installed copies (in `~/.claude/skills`, `~/.gemini/skills`, Claude Desktop's Capabilities, etc.) are current by comparing `version` against the local SKILL.md's `metadata.version`.
+
+The Electron app passes `--skills-dir <path>` when it spawns the server. Without that flag, or if the directory is missing, the tool returns `skills_dir_configured: false` with an empty list, so callers can tell "no skills directory" apart from "no skills."
+
+**Input:** none.
 
 ---
 
