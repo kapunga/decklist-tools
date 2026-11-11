@@ -247,7 +247,7 @@ function baseToolDefinitions(): Tool[] {
           section: {
             type: 'string',
             enum: ['mainboard', 'sideboard', 'maybeboard'],
-            description: 'Emit only the named section. Useful for Moxfield-style imports where each section pastes into a separate UI box. Omit to emit the full deck.',
+            description: 'Emit only the named section (`maybeboard` is the deck\'s `alternates` card set). Useful for Moxfield-style imports where each section pastes into a separate UI box. Omit to emit the full deck.',
           },
         },
         required: ['deck_id', 'format'],
