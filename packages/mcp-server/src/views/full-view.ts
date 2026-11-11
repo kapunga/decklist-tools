@@ -1,6 +1,20 @@
 import type { Deck, CardEntry, RoleDefinition, ScryfallCard } from '@mtg-deckbuilder/shared'
-import { getEntryPrimaryType, getCardCount, getCardDisplayName, getCanonicalSuffix, buildRoleLookup, CARD_TYPE_ORDER, isCardFullyPulled, getMainboard, getSideboard, getAlternates } from '@mtg-deckbuilder/shared'
-import { formatCardLine, formatMissingDataWarning, unresolvedAmong, type DetailLevel } from './formatters.js'
+import { getCardCount, buildRoleLookup, getCommanderEntries, getMainboard, getSideboard, getAlternates } from '@mtg-deckbuilder/shared'
+import { formatCardLine, formatMissingDataWarning, unresolvedAmong, countCopies, type DetailLevel } from './formatters.js'
+import { selectGrouping, type CardGroup, type Grouping } from './groupings.js'
+
+// --- deck_list ---
+// Every section (Commander(s), Main Deck, Alternates, Sideboard) goes through
+// `renderSection`, and every card through one `CardLine` built on
+// `formatCardLine`, whatever the grouping. Groupings only partition entries.
+
+/** A titled deck section and the entries it lists. */
+interface DeckSection {
+  title: string
+  entries: CardEntry[]
+}
+
+type CardLine = (entry: CardEntry) => string
 
 export function renderFullView(
   deck: Deck,
@@ -12,164 +26,60 @@ export function renderFullView(
   detail?: DetailLevel,
   unresolved: CardEntry[] = []
 ): string {
-  const lines: string[] = []
+  const cache = scryfallCache ?? new Map<string, ScryfallCard>()
   const roleLookup = buildRoleLookup(globalRoles, deck.customRoles)
-
-  lines.push(`# ${deck.name}`)
-  lines.push('')
-  lines.push(`**Format:** ${deck.format.type}`)
-  if (deck.archetype) lines.push(`**Archetype:** ${deck.archetype}`)
-  if (deck.description) lines.push(`**Description:** ${deck.description}`)
-  lines.push(`**Cards:** ${getCardCount(deck)}/${deck.format.deckSize}`)
-  lines.push('')
-
-  const mainboard = getMainboard(deck)
-  const mainboardCards = filteredCardIds
-    ? mainboard.filter(c => filteredCardIds.has(c.id))
-    : mainboard
-  const listsOtherSets = !groupBy && sortBy !== 'set'
-  const alternates = listsOtherSets ? getAlternates(deck) : []
-  const sideboard = listsOtherSets ? getSideboard(deck) : []
-  const missing = unresolvedAmong(unresolved, [...mainboardCards, ...alternates, ...sideboard])
+  const commanders: DeckSection = { title: 'Commander(s)', entries: getCommanderEntries(deck) }
+  const sections = deckSections(deck, filteredCardIds)
+  const missing = unresolvedAmong(unresolved, [commanders, ...sections].flatMap(s => s.entries))
   const missingIds = new Set(missing.map(c => c.id))
-  const cardLine = (c: CardEntry) =>
-    formatCardLine(c, globalRoles, deck.customRoles, scryfallCache, detail, roleLookup, missingIds.has(c.id))
+  const cardLine: CardLine = c =>
+    formatCardLine(c, globalRoles, deck.customRoles, cache, detail, roleLookup, missingIds.has(c.id))
+  const grouping = selectGrouping(groupBy, sortBy, cache, roleLookup)
 
-  lines.push(...formatMissingDataWarning(missing))
-
-  if (deck.commanders.length > 0) {
-    lines.push('## Commander(s)')
-    for (const c of deck.commanders) {
-      lines.push(`- ${getCardDisplayName(c)}${getCanonicalSuffix(c)} (${c.setCode.toUpperCase()} ${c.collectorNumber})`)
-    }
-    lines.push('')
-  }
-
-  if (groupBy === 'role') {
-    renderByRole(lines, mainboardCards, roleLookup)
-  } else if (groupBy === 'type') {
-    renderByType(lines, mainboardCards, scryfallCache)
-  } else if (sortBy === 'set') {
-    renderChecklist(lines, mainboardCards)
-  } else {
-    if (mainboardCards.length > 0) {
-      lines.push('## Main Deck')
-      for (const c of mainboardCards) {
-        lines.push(cardLine(c))
-      }
-      lines.push('')
-    }
-  }
-
-  if (alternates.length > 0) {
-    lines.push('## Alternates')
-    for (const c of alternates) {
-      lines.push(cardLine(c))
-    }
-    lines.push('')
-  }
-
-  if (sideboard.length > 0) {
-    lines.push('## Sideboard')
-    for (const c of sideboard) {
-      lines.push(cardLine(c))
-    }
-    lines.push('')
-  }
-
-  return lines.join('\n')
+  return [
+    ...renderDeckHeader(deck),
+    ...formatMissingDataWarning(missing),
+    ...renderSection(commanders, undefined, cardLine),
+    ...sections.flatMap(s => renderSection(s, grouping, cardLine)),
+  ].join('\n')
 }
 
-function renderByRole(
-  lines: string[],
-  cards: CardEntry[],
-  roleLookup: Map<string, RoleDefinition>
-): void {
-  const byRole = new Map<string, CardEntry[]>()
-  const noRole: CardEntry[] = []
-
-  for (const card of cards) {
-    if (card.roles.length === 0) {
-      noRole.push(card)
-    } else {
-      for (const roleId of card.roles) {
-        if (!byRole.has(roleId)) {
-          byRole.set(roleId, [])
-        }
-        byRole.get(roleId)!.push(card)
-      }
-    }
-  }
-
-  const sortedRoles = [...byRole.entries()].sort((a, b) => a[0].localeCompare(b[0]))
-
-  for (const [roleId, roleCards] of sortedRoles) {
-    const role = roleLookup.get(roleId)
-    const roleName = role?.name || roleId
-    const count = roleCards.reduce((sum, c) => sum + c.quantity, 0)
-    lines.push(`## ${roleName} (${count})`)
-    if (role?.description) {
-      lines.push(`*${role.description}*`)
-    }
-    for (const c of roleCards) {
-      lines.push(`- ${c.quantity}x ${getCardDisplayName(c.card)}${getCanonicalSuffix(c.card)}`)
-    }
-    lines.push('')
-  }
-
-  if (noRole.length > 0) {
-    const count = noRole.reduce((sum, c) => sum + c.quantity, 0)
-    lines.push(`## Unassigned (${count})`)
-    for (const c of noRole) {
-      lines.push(`- ${c.quantity}x ${getCardDisplayName(c.card)}${getCanonicalSuffix(c.card)}`)
-    }
-  }
+/** The card-set sections, in display order. Filters currently narrow the Main Deck only. */
+function deckSections(deck: Deck, filteredCardIds?: Set<string>): DeckSection[] {
+  const keep = (e: CardEntry) => !filteredCardIds || filteredCardIds.has(e.id)
+  return [
+    { title: 'Main Deck', entries: getMainboard(deck).filter(keep) },
+    { title: 'Alternates', entries: getAlternates(deck) },
+    { title: 'Sideboard', entries: getSideboard(deck) },
+  ]
 }
 
-function renderByType(lines: string[], cards: CardEntry[], scryfallCache?: Map<string, ScryfallCard>): void {
-  const cache = scryfallCache || new Map<string, ScryfallCard>()
-  const byType = new Map<string, CardEntry[]>()
-
-  for (const card of cards) {
-    const type = getEntryPrimaryType(card, cache)
-    if (!byType.has(type)) {
-      byType.set(type, [])
-    }
-    byType.get(type)!.push(card)
-  }
-
-  const sortedTypes = [...byType.entries()].sort((a, b) => {
-    const aIndex = CARD_TYPE_ORDER.indexOf(a[0] as typeof CARD_TYPE_ORDER[number])
-    const bIndex = CARD_TYPE_ORDER.indexOf(b[0] as typeof CARD_TYPE_ORDER[number])
-    return aIndex - bIndex
-  })
-
-  for (const [type, typeCards] of sortedTypes) {
-    const count = typeCards.reduce((sum, c) => sum + c.quantity, 0)
-    lines.push(`## ${type} (${count})`)
-    const sortedCards = [...typeCards].sort((a, b) => a.card.name.localeCompare(b.card.name))
-    for (const c of sortedCards) {
-      lines.push(`- ${c.quantity}x ${getCardDisplayName(c.card)}${getCanonicalSuffix(c.card)}`)
-    }
-    lines.push('')
-  }
+function renderDeckHeader(deck: Deck): string[] {
+  return [
+    `# ${deck.name}`,
+    '',
+    `**Format:** ${deck.format.type}`,
+    ...(deck.archetype ? [`**Archetype:** ${deck.archetype}`] : []),
+    ...(deck.description ? [`**Description:** ${deck.description}`] : []),
+    `**Cards:** ${getCardCount(deck)}/${deck.format.deckSize}`,
+    '',
+  ]
 }
 
-function renderChecklist(lines: string[], cards: CardEntry[]): void {
-  const sortedCards = [...cards].sort((a, b) => {
-    const setCompare = a.card.setCode.localeCompare(b.card.setCode)
-    if (setCompare !== 0) return setCompare
-    return a.card.collectorNumber.localeCompare(b.card.collectorNumber, undefined, { numeric: true })
-  })
+/** A section heading followed by its cards, flat or grouped. Empty sections render nothing. */
+function renderSection(section: DeckSection, grouping: Grouping | undefined, cardLine: CardLine): string[] {
+  if (section.entries.length === 0) return []
+  const body = grouping
+    ? grouping(section.entries).flatMap(g => renderGroup(g, cardLine))
+    : [...section.entries.map(cardLine), '']
+  return [`## ${section.title}`, ...body]
+}
 
-  let currentSet = ''
-  for (const card of sortedCards) {
-    if (card.card.setCode !== currentSet) {
-      if (currentSet) lines.push('')
-      currentSet = card.card.setCode
-      lines.push(`## ${currentSet.toUpperCase()}`)
-    }
-    const checkbox = isCardFullyPulled(card) ? '[x]' : '[ ]'
-    lines.push(`${checkbox} ${card.quantity}x ${getCardDisplayName(card.card)}${getCanonicalSuffix(card.card)} #${card.card.collectorNumber}`)
-  }
+function renderGroup(group: CardGroup, cardLine: CardLine): string[] {
+  return [
+    `### ${group.heading} (${countCopies(group.entries)})`,
+    ...(group.description ? [`*${group.description}*`] : []),
+    ...group.entries.map(cardLine),
+    '',
+  ]
 }

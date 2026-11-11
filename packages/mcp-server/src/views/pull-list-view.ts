@@ -1,6 +1,6 @@
 import type { Deck, CardEntry, SetCollectionFile, ScryfallCard, CollectionLevel, PullListItem, PullListGroup } from '@mtg-deckbuilder/shared'
 import { formatMissingDataWarning, unresolvedAmong } from './formatters.js'
-import { getTotalPulledQuantity, getCardDisplayName, COLLECTION_LEVEL_RARITIES, isBasicLand, OWNERSHIP_STATUS, CARD_SOURCE, getMainboard, getSideboard, getAlternates, getPulledPrintings, getTypeLine, getPrimaryType, getCardManaCost } from '@mtg-deckbuilder/shared'
+import { getTotalPulledQuantity, getCardDisplayName, COLLECTION_LEVEL_RARITIES, isBasicLand, getCommanderEntries, getMainboard, getSideboard, getAlternates, getPulledPrintings, getTypeLine, getPrimaryType, getCardManaCost } from '@mtg-deckbuilder/shared'
 
 // Rarity order for sorting
 const RARITY_ORDER: Record<string, number> = {
@@ -60,16 +60,7 @@ export function renderPullListView(
     confirmedCards = [
       ...mainCards,
       ...sideboardCards,
-      ...deck.commanders.map(cmd => ({
-        id: `commander-${cmd.name}`,
-        card: cmd,
-        quantity: 1,
-        ownership: OWNERSHIP_STATUS.UNKNOWN,
-        roles: ['commander'],
-        typeLine: '',
-        addedAt: deck.createdAt,
-        source: CARD_SOURCE.USER
-      }))
+      ...getCommanderEntries(deck),
     ]
   }
 

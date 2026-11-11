@@ -134,13 +134,17 @@ Deck rendering is split across four per-view tools rather than one multiplexed `
 
 ### `deck_list`
 
-**Primary deck-analysis view.** Returns the deck's card list as markdown, with oracle text on every card by default. Renders separate sections for `## Commander(s)`, `## Main Deck`, `## Alternates`, and `## Sideboard`.
+**Primary deck-analysis view.** Returns the deck's card list as markdown, with oracle text on every card by default. Renders separate sections for `## Commander(s)`, `## Main Deck`, `## Alternates`, and `## Sideboard`; empty sections are omitted.
+
+**One card-line format everywhere.** Every card in every section, commanders included, is rendered by the same formatter (`formatCardLine`), in every grouping mode: quantity, name, mana cost, type line, P/T, role names, and the `[NEED TO BUY]` / `[PULLED]` flag at the chosen `detail`. Grouping only partitions a section's entries (`views/groupings.ts`) and never changes how a card line looks. Commander cards that are not cached are fetched like any other card, and named in the missing-data warning if they cannot be resolved.
+
+**Cards in more than one section.** The same card may legitimately appear in both Main Deck and Alternates (e.g. a Commander "maybeboard" copy). Ownership is stored per entry, so each copy shows its own flag and the two lines can differ.
 
 **Input:**
 - `deck_id` *(string, required)*.
-- `detail` *(string)* — `summary` | `compact` | `full`. **Defaults to `compact`** (includes oracle text — the first-look content for deck analysis). `summary` drops oracle text for a terser one-line-per-card form. `full` adds set code and rarity on top of compact.
-- `sort_by` *(string)* — sort key within each section. Supported values: `name`, `set`.
-- `group_by` *(string)* — group cards into sections. Supported values: `none` (default), `role`, `type`.
+- `detail` *(string)* — `summary` | `compact` | `full`. **Defaults to `compact`** (includes oracle text — the first-look content for deck analysis). `summary` drops oracle text for a terser one-line-per-card form. `full` adds set code and rarity on top of compact. Honoured in every `group_by` / `sort_by` mode.
+- `sort_by` *(string)* — sort key within each section. Supported values: `name`, `set`. `set` groups each section by set code (`### SET (N)`), ordered by collector number.
+- `group_by` *(string)* — group the cards of each section. Supported values: `none` (default), `role`, `type`. Groups render as `### Heading (N)` sub-headings under each `##` section (N = copies in the group). `type` uses the shared card classification below, so it matches `deck_curve`. `role` lists a card under each of its roles, then `### Unassigned (N)`. `group_by` takes precedence over `sort_by: set`.
 - `filters` *(array)* — optional card filters. Each filter has `type`, `mode`, and `values`.
   - `type`: `cmc` | `color` | `card-type` | `role` | `ownership`.
   - `mode`: `include` | `exclude`.

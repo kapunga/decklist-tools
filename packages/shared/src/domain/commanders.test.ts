@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { addCommander, removeCommander, swapCommander, getDeckColorIdentity } from './commanders.js'
+import { addCommander, removeCommander, swapCommander, getDeckColorIdentity, getCommanderEntries } from './commanders.js'
 import type { Deck, CardIdentifier, CardEntry } from '../types/index.js'
 import { CARD_SET, CARD_SOURCE, FORMAT_TYPE, OWNERSHIP_STATUS } from '../types/index.js'
 
@@ -201,5 +201,25 @@ describe('getDeckColorIdentity', () => {
       format: { type: FORMAT_TYPE.KITCHEN_TABLE, deckSize: 60, sideboardSize: 15, cardLimit: Infinity },
     })
     expect(getDeckColorIdentity(deck)).toEqual([])
+  })
+})
+
+describe('getCommanderEntries', () => {
+  it('turns each commander into a one-copy entry with no roles', () => {
+    const deck = makeDeck({ commanders: [makeCommander('Tymna'), makeCommander('Thrasios')] })
+    const entries = getCommanderEntries(deck)
+    expect(entries.map(e => e.card.name)).toEqual(['Tymna', 'Thrasios'])
+    expect(entries.every(e => e.quantity === 1 && e.roles.length === 0)).toBe(true)
+    expect(entries[0].card).toBe(deck.commanders[0])
+  })
+
+  it('gives stable, distinct ids', () => {
+    const deck = makeDeck({ commanders: [makeCommander('Tymna'), makeCommander('Thrasios')] })
+    expect(getCommanderEntries(deck).map(e => e.id)).toEqual(getCommanderEntries(deck).map(e => e.id))
+    expect(new Set(getCommanderEntries(deck).map(e => e.id)).size).toBe(2)
+  })
+
+  it('is empty for a deck without commanders', () => {
+    expect(getCommanderEntries(makeDeck())).toEqual([])
   })
 })

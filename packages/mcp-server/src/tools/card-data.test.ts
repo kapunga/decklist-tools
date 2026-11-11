@@ -122,6 +122,38 @@ describe('unresolvable cards', () => {
   })
 })
 
+describe('uncached commanders', () => {
+  const kenrith = mockScryfallCard('Kenrith', { mana_cost: '{4}{W}', oracle_text: 'TRAMPLE-AND-HASTE' })
+
+  function seedCommanderDeck() {
+    const deck = makeDeck({ name: 'Commander' })
+    deck.commanders.push({ scryfallId: kenrith.id, name: 'Kenrith', setCode: 'test', collectorNumber: '1' })
+    mock._decks.set(deck.id, deck)
+    return deck
+  }
+
+  it('fetches an uncached commander and renders its oracle text', async () => {
+    const deck = seedCommanderDeck()
+    const fetchCards = fetcherReturning(kenrith)
+
+    const list = await deckList(mock.storage, { deck_id: deck.id }, fetchCards)
+
+    expect(fetchCards).toHaveBeenCalledWith([kenrith.id])
+    expect(mock.storage.cacheCardsWithIndex).toHaveBeenCalledWith([kenrith])
+    expect(list).toContain('{4}{W}')
+    expect(list).toContain('TRAMPLE-AND-HASTE')
+    expect(list).not.toContain('Warning')
+  })
+
+  it('warns about a commander that cannot be fetched', async () => {
+    const deck = seedCommanderDeck()
+    const list = await deckList(mock.storage, { deck_id: deck.id }, async () => [])
+    expect(list).toContain('Warning')
+    expect(list).toMatch(/1 card without Scryfall data.*: Kenrith\./)
+    expect(list).toMatch(/1x Kenrith.*\[no Scryfall data\]/)
+  })
+})
+
 describe('loadCardData bounds', () => {
   it('caps the number of ids sent to the fetcher', async () => {
     const entries = Array.from({ length: 5 }, (_, i) => makeDeckCard(`Card ${i}`))

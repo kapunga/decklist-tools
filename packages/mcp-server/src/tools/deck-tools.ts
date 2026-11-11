@@ -12,6 +12,7 @@ import {
   validateDeckStructure,
   getSideboard,
   getAllDeckEntries,
+  getCommanderEntries,
   isValidUUID,
   enrichCards,
   applyFilters,
@@ -147,11 +148,11 @@ export function manageDeck(storage: Storage, args: ManageDeckArgs) {
   }
 }
 
-// Shared helper: card data for every entry in a deck, fetching what the
-// Scryfall cache is missing. Used by deck_list, deck_curve and deck_pull_list
-// (deck_notes doesn't need it).
+// Shared helper: card data for every entry in a deck (commanders included),
+// fetching what the Scryfall cache is missing. Used by deck_list, deck_curve
+// and deck_pull_list (deck_notes doesn't need it).
 function loadDeckCardData(storage: Storage, deck: Deck, fetchCards: CardFetcher): Promise<CardData> {
-  return loadCardData(storage, getAllDeckEntries(deck), fetchCards)
+  return loadCardData(storage, [...getCommanderEntries(deck), ...getAllDeckEntries(deck)], fetchCards)
 }
 
 // Shared helper: build the set of card entry IDs that match a filter list.
