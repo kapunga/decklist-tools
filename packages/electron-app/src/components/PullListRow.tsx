@@ -3,6 +3,7 @@ import { Check, Package } from 'lucide-react'
 import { ManaCost } from '@/components/ManaCost'
 import { PullQuantityModal } from '@/components/PullQuantityModal'
 import { useStore } from '@/hooks/useStore'
+import { getPrimaryType } from '@mtg-deckbuilder/shared'
 import { captionTagStyle, captionLabelStyle, editorialTextStyle } from '@/lib/mastheadStyles'
 import type { CSSProperties } from 'react'
 import type { PullListItem } from '@/hooks/usePullList'
@@ -33,14 +34,6 @@ const RARITY_SHORT: Record<string, string> = {
 }
 
 const bodyCellStyle: CSSProperties = { padding: '8px 12px' }
-
-function getPrimaryType(typeLine: string): string {
-  const types = ['Creature', 'Planeswalker', 'Instant', 'Sorcery', 'Enchantment', 'Artifact', 'Land', 'Battle']
-  for (const type of types) {
-    if (typeLine.includes(type)) return type
-  }
-  return 'Other'
-}
 
 export function PullListRow({ item, deckId, isFocused, onFocus }: PullListRowProps) {
   const pullCards = useStore(state => state.pullCards)

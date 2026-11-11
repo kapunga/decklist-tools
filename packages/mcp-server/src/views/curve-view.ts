@@ -1,5 +1,5 @@
 import type { Deck, ScryfallCard } from '@mtg-deckbuilder/shared'
-import { getPrimaryType, getCardCount, CARD_TYPE_ORDER, enrichCards, getCmcDistribution, countManaPips, getMainboard, getTypeLine } from '@mtg-deckbuilder/shared'
+import { getEntryPrimaryType, isLandEntry, getCardCount, CARD_TYPE_ORDER, enrichCards, getCmcDistribution, countManaPips, getMainboard } from '@mtg-deckbuilder/shared'
 
 export function renderCurveView(deck: Deck, scryfallCache?: Map<string, ScryfallCard>, filteredCardIds?: Set<string>): string {
   const lines: string[] = []
@@ -55,7 +55,7 @@ export function renderCurveView(deck: Deck, scryfallCache?: Map<string, Scryfall
   // Type distribution
   const byType = new Map<string, number>()
   for (const card of activeCards) {
-    const type = getPrimaryType(getTypeLine(card, cache) || 'Unknown')
+    const type = getEntryPrimaryType(card, cache)
     byType.set(type, (byType.get(type) || 0) + card.quantity)
   }
 
@@ -70,12 +70,9 @@ export function renderCurveView(deck: Deck, scryfallCache?: Map<string, Scryfall
   lines.push('')
 
   // Card counts
-  let landCount = 0
-  for (const card of activeCards) {
-    if ((getTypeLine(card, cache) || '').toLowerCase().includes('land')) {
-      landCount += card.quantity
-    }
-  }
+  const landCount = activeCards
+    .filter(card => isLandEntry(card, cache))
+    .reduce((sum, card) => sum + card.quantity, 0)
 
   lines.push('## Card Counts')
   lines.push(`- Lands: ${landCount}`)
