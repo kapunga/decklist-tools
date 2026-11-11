@@ -50,7 +50,8 @@ export async function loadCardData(
   return { cache, unresolved: findUncachedEntries(entries, cache) }
 }
 
-function readCachedCards(storage: Storage, entries: CardEntry[]): Map<string, ScryfallCard> {
+/** The cached Scryfall cards for `entries`, keyed by id. Reads only; never fetches. */
+export function readCachedCards(storage: Storage, entries: CardEntry[]): Map<string, ScryfallCard> {
   const pairs = entries.flatMap(entry => {
     const id = entry.card.scryfallId
     const card = id ? (storage.getCachedCard(id) as ScryfallCard | null) : null
