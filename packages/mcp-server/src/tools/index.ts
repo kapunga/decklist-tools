@@ -59,7 +59,7 @@ export async function handleToolCall(
     case 'manage_card':
       return manageCard(storage, validateManageCardArgs(args))
     case 'search_cards':
-      return searchCardsHandler(validateSearchCardsArgs(args))
+      return searchCardsHandler(storage, validateSearchCardsArgs(args))
     case 'deck_list':
       return deckList(storage, validateDeckListArgs(args))
     case 'deck_curve':

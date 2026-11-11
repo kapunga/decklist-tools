@@ -2,33 +2,34 @@ import type { FormatType, ScryfallCard } from '../types/index.js'
 import { FORMAT_TYPE } from '../types/index.js'
 import { SCRYFALL } from '../constants/index.js'
 
+import { ScryfallError } from './errors.js'
+import { createDefaultScryfallTransport, type ScryfallTransport } from './transport.js'
+
 // Export cached client
 export { CachedScryfallClient } from './cachedClient.js'
+export { ScryfallError, ScryfallRateLimitError } from './errors.js'
+export {
+  createRateLimiter,
+  createScryfallTransport,
+  DEFAULT_RETRY_POLICY,
+  systemClock,
+  type Clock,
+  type RateLimiter,
+  type RetryPolicy,
+  type ScryfallTransport,
+} from './transport.js'
 
 const BASE_URL = 'https://api.scryfall.com'
-const USER_AGENT = 'MTGDeckbuilder/1.0'
 
-// Simple request queue for rate limiting
-let lastRequestTime = 0
+// One transport per process so every caller shares a single request queue.
+const defaultTransport = (): ScryfallTransport =>
+  createDefaultScryfallTransport(SCRYFALL.MIN_REQUEST_INTERVAL_MS)
 
-async function awaitRateLimit(): Promise<void> {
-  const now = Date.now()
-  const timeSinceLastRequest = now - lastRequestTime
-  if (timeSinceLastRequest < SCRYFALL.MIN_REQUEST_INTERVAL_MS) {
-    await new Promise(resolve =>
-      setTimeout(resolve, SCRYFALL.MIN_REQUEST_INTERVAL_MS - timeSinceLastRequest)
-    )
-  }
-  lastRequestTime = Date.now()
-}
+let transport: ScryfallTransport = defaultTransport()
 
-async function rateLimitedFetch(url: string): Promise<Response> {
-  await awaitRateLimit()
-  return fetch(url, {
-    headers: {
-      'User-Agent': USER_AGENT
-    }
-  })
+/** Swap the transport (tests inject fake fetch/clock); call with no argument to restore the default. */
+export function setScryfallTransport(next?: ScryfallTransport): void {
+  transport = next ?? defaultTransport()
 }
 
 // Scryfall Set type
@@ -44,19 +45,20 @@ export interface ScryfallSet {
 
 // Generic Scryfall fetch with standard error handling.
 // Returns null on 404 by default; pass on404 to override (e.g., return empty search results).
+// HTTP failures (rate limit, persistent 5xx, other 4xx) throw ScryfallError so callers never
+// mistake them for "not found"; only network-level failures are logged and become null.
 async function fetchFromScryfall<T>(
   url: string,
   context: string,
   on404?: () => T
 ): Promise<T | null> {
   try {
-    const response = await rateLimitedFetch(url)
-    if (!response.ok) {
-      if (response.status === 404) return on404 ? on404() : null
-      throw new Error(`Scryfall API error: ${response.status}`)
-    }
+    const response = await transport(url)
+    if (response.status === 404) return on404 ? on404() : null
+    if (!response.ok) throw new ScryfallError(response.status, await readErrorDetails(response))
     return await response.json() as T
   } catch (error) {
+    if (error instanceof ScryfallError) throw error
     console.error(`Error ${context}:`, error)
     return null
   }
@@ -91,7 +93,7 @@ export async function getAllSets(): Promise<ScryfallSet[]> {
   }
 
   try {
-    const response = await rateLimitedFetch(`${BASE_URL}/sets`)
+    const response = await transport(`${BASE_URL}/sets`)
 
     if (!response.ok) {
       throw new Error(`Scryfall API error: ${response.status}`)
@@ -172,6 +174,10 @@ function identifierKey(id: ScryfallIdentifier): string {
  *
  * `onChunkProgress` is invoked after each completed chunk with the cumulative
  * input count processed — useful for driving an import progress UI.
+ *
+ * Deliberately lenient: a chunk that still fails after the transport's retries
+ * (including an exhausted rate limit) is logged and left as nulls, so the
+ * Electron import flow can fall back to per-card lookups instead of aborting.
  */
 export async function lookupCardsByIdentifiers(
   identifiers: ScryfallIdentifier[],
@@ -182,10 +188,9 @@ export async function lookupCardsByIdentifiers(
   for (let i = 0; i < identifiers.length; i += SCRYFALL_COLLECTION_MAX) {
     const chunk = identifiers.slice(i, i + SCRYFALL_COLLECTION_MAX)
     try {
-      await awaitRateLimit()
-      const response = await fetch(`${BASE_URL}/cards/collection`, {
+      const response = await transport(`${BASE_URL}/cards/collection`, {
         method: 'POST',
-        headers: { 'User-Agent': USER_AGENT, 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ identifiers: chunk }),
       })
       if (!response.ok) {
@@ -227,7 +232,7 @@ export async function autocomplete(query: string): Promise<string[]> {
   if (query.length < 2) return []
 
   try {
-    const response = await rateLimitedFetch(
+    const response = await transport(
       `${BASE_URL}/cards/autocomplete?q=${encodeURIComponent(query)}`
     )
 
@@ -253,14 +258,6 @@ export interface SearchResult {
   details?: string
 }
 
-/** A non-2xx Scryfall response, carrying Scryfall's own `details` text when it sent one. */
-export class ScryfallError extends Error {
-  constructor(readonly status: number, details?: string) {
-    super(details ?? `Scryfall API error: ${status}`)
-    this.name = 'ScryfallError'
-  }
-}
-
 async function readErrorDetails(response: Response): Promise<string | undefined> {
   try {
     const body = await response.json() as { details?: unknown }
@@ -276,7 +273,7 @@ const emptySearchResult = (): SearchResult => ({ object: 'list', total_cards: 0,
 // so a 404 stays an empty result (with Scryfall's explanation attached) rather than an error.
 // Any other failure throws, so callers see why instead of an empty list.
 async function fetchSearchPage(url: string): Promise<SearchResult> {
-  const response = await rateLimitedFetch(url)
+  const response = await transport(url)
   if (response.status === 404) return { ...emptySearchResult(), details: await readErrorDetails(response) }
   if (!response.ok) throw new ScryfallError(response.status, await readErrorDetails(response))
   return await response.json() as SearchResult

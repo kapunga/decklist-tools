@@ -102,6 +102,7 @@ export function createMockStorage() {
     }),
     cacheCard: vi.fn(),
     cacheCardWithIndex: vi.fn((card: ScryfallCard) => { cachedCards.set(card.id, card) }),
+    cacheCardsWithIndex: vi.fn((cards: ScryfallCard[]) => { for (const card of cards) cachedCards.set(card.id, card) }),
     getSetCollection: vi.fn(() => setCollection),
     saveSetCollection: vi.fn(),
     getBasePath: vi.fn(() => '/tmp/test'),

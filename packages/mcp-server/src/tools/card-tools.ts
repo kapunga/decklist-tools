@@ -4,10 +4,6 @@ import {
   type ScryfallCard,
   type SearchResult,
   type CardSetName,
-  searchCardByNameExact,
-  searchCardByName,
-  getCardBySetAndNumber,
-  getCardById,
   searchCards,
   getOracleText,
   CARD_SET,
@@ -20,7 +16,7 @@ import {
   getPrimaryType,
   createCardIdentifier,
 } from '@mtg-deckbuilder/shared'
-import { getDeckOrThrow, fetchScryfallCard, parseCardString } from './helpers.js'
+import { getDeckOrThrow, fetchScryfallCard, getCachedScryfallClient, parseCardString } from './helpers.js'
 import type { ManageCardArgs, SearchCardsArgs } from './types.js'
 
 // Structural markers of Scryfall search syntax: parens, a `word:` / `word<=` style
@@ -288,43 +284,51 @@ function buildSearchResponse(
   }
 }
 
-export async function searchCardsHandler(args: SearchCardsArgs) {
+// Name, id and set/collector lookups go through the card cache; repeats never hit Scryfall.
+export async function searchCardsHandler(storage: Storage, args: SearchCardsArgs) {
   const useCompact = args.format !== 'json'
   const formatCard = useCompact ? formatCardCompact : formatCardResponse
   const limit = args.limit ?? 10
+  const client = getCachedScryfallClient(storage)
+
+  const searchAndRemember = async (query: string): Promise<SearchResult> => {
+    const result = await searchCards(query)
+    client.rememberCards(result.data.slice(0, limit))
+    return result
+  }
 
   if (args.set_code && args.collector_number) {
-    const scryfallCard = await getCardBySetAndNumber(args.set_code, args.collector_number)
+    const scryfallCard = await client.getCardBySetCollector(args.set_code, args.collector_number)
     if (!scryfallCard) throw new Error(`Card not found: ${args.set_code} ${args.collector_number}`)
     return formatCard(scryfallCard)
   }
 
   const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
   if (uuidPattern.test(args.query)) {
-    const scryfallCard = await getCardById(args.query)
+    const scryfallCard = await client.getCardById(args.query)
     if (!scryfallCard) throw new Error(`Card not found with ID: ${args.query}`)
     return formatCard(scryfallCard)
   }
 
   if (looksLikeSearchSyntax(args.query)) {
-    const result = await searchCards(args.query)
+    const result = await searchAndRemember(args.query)
     return buildSearchResponse(result, limit, useCompact, `Found ${result.total_cards} cards:`)
   }
 
   if (args.exact) {
-    const scryfallCard = await searchCardByNameExact(args.query)
+    const scryfallCard = await client.getCardByName(args.query, true)
     if (!scryfallCard) throw new Error(`Card not found: ${args.query}`)
     return formatCard(scryfallCard)
   }
 
-  const scryfallCard = await searchCardByName(args.query)
+  const scryfallCard = await client.getCardByName(args.query)
   if (scryfallCard) return formatCard(scryfallCard)
 
   // Scryfall's /cards/named?fuzzy returns 404 for both "no match" AND
   // "ambiguous match" (e.g. "Sephiroth" matches multiple printings).
   // Fall back to a name-substring search so Claude can disambiguate.
   const escapedName = args.query.replace(/"/g, '\\"')
-  const fallback = await searchCards(`name:"${escapedName}"`)
+  const fallback = await searchAndRemember(`name:"${escapedName}"`)
   if (fallback.total_cards === 0) {
     throw new Error(`Card not found: ${args.query}`)
   }

@@ -10,6 +10,12 @@ import {
   getCardFaceImageUrl
 } from './index.js'
 
+const sameName = (a: ScryfallCard, b: ScryfallCard): boolean =>
+  a.name.toLowerCase() === b.name.toLowerCase()
+
+const firstPerName = (cards: ScryfallCard[]): ScryfallCard[] =>
+  cards.filter((card, i) => cards.findIndex(other => sameName(other, card)) === i)
+
 export class CachedScryfallClient {
   constructor(private storage: Storage) {}
 
@@ -33,6 +39,16 @@ export class CachedScryfallClient {
     }
 
     return card
+  }
+
+  /**
+   * Cache cards seen in search results so later name/id lookups skip the network.
+   * A name that already resolves to a cached printing keeps that printing (it may be
+   * the one a deck uses), and only the first printing of each name in the batch is kept.
+   */
+  rememberCards(cards: ScryfallCard[]): void {
+    const fresh = firstPerName(cards).filter(card => !this.storage.getCachedCardByName(card.name))
+    if (fresh.length > 0) this.storage.cacheCardsWithIndex(fresh)
   }
 
   /**
