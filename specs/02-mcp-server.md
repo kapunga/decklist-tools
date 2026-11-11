@@ -164,6 +164,45 @@ Mana curve analysis: CMC distribution, color pip counts, type breakdown, and car
 - Two-image layouts (transform, modal DFC, reversible) have no top-level cost, so the **front face's** cost is used: Vincent Valentine // Galian Beast shows `{2}{B}{B}` and contributes two black pips.
 - One-image multi-part layouts (split, adventure, flip) keep their top-level cost as Scryfall prints it, e.g. Fire // Ice shows `{1}{R} // {1}{U}` and its pips count both halves.
 
+**Mana pips (`## Mana Pips`, shared by `deck_curve` and the Electron curve).** `tallyManaCosts` in `@mtg-deckbuilder/shared` parses every `{...}` symbol of each nonland card's cost (`parseManaCost`) and multiplies by quantity. Each symbol counts at most one pip per option, never fractions:
+- `{W}` `{U}` `{B}` `{R}` `{G}` — one pip of that colour.
+- `{C}` — one **Colorless** pip. Only real `{C}` symbols are colorless.
+- `{N}` — generic mana. It is **not** a pip and is reported on its own `Generic` line (sum of all `{N}`), never folded into Colorless.
+- Hybrid `{W/U}` (and `{C/W}`, hybrid Phyrexian `{W/U/P}`) — one pip toward **each** option, since either colour can pay it.
+- Twobrid `{2/W}` — one pip of its colour; the `2` alternative is not counted as generic.
+- Phyrexian `{G/P}` — one pip of its colour.
+- `{X}`/`{Y}`/`{Z}`, snow `{S}` and anything else (half mana, etc.) — not counted.
+
+Lands and cards without Scryfall data contribute nothing (see below). Colour lines with a zero count are omitted; the section is omitted when every count is zero.
+
+```
+## Mana Pips
+- White: 20
+- Green: 15
+- Colorless: 2
+- Generic: 62 _(total of {N} costs; not a pip)_
+```
+
+**Card counts (`## Card Counts`).** Lands and Nonlands always come from the same set of cards, and the printed lines always add up. Unfiltered, the commander(s) get their own line so `Lands + Nonlands + Commander(s) = Total`:
+
+```
+## Card Counts
+- Lands: 36
+- Nonlands: 63
+- Commander: 1
+- Total: 100/100
+```
+
+With `filters`, the heading says `(filtered)`, Lands + Nonlands = `Matching` (the filtered mainboard cards, commanders never included), and the whole-deck size is printed separately:
+
+```
+## Card Counts (filtered)
+- Lands: 0
+- Nonlands: 28
+- Matching: 28 of 99 mainboard cards (commander not included)
+- Deck total: 100/100
+```
+
 **Missing Scryfall data — "fetch, then warn" (shared by `deck_list`, `deck_curve` and `deck_pull_list`).** Card data comes from the Scryfall cache, but these views never silently treat a missing card as mana value 0 or type `Other`:
 1. The tool handler (`loadCardData` in `packages/mcp-server/src/tools/card-data.ts`) reads the cache for every deck entry and finds the entries it lacks (`findUncachedEntries` in `@mtg-deckbuilder/shared`).
 2. It fetches the missing cards by Scryfall id through the rate-limited batch `/cards/collection` lookup (`getCardsByIds`) and writes them to the cache (`cacheCardsWithIndex`), so later calls are fully cached. The fetch is bounded: at most 150 cards per call (two collection requests) and a 10-second timeout. A fetch that fails, throws or times out counts as "nothing resolved"; it never fails the tool call. A fully cached deck makes no network call. Entries without a `scryfallId` can't be fetched.

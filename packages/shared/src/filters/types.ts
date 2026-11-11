@@ -51,13 +51,3 @@ export const FILTER_GROUP_TYPES: Record<FilterGroup, CardFilter['type'][]> = {
   role: ['role'],
   status: ['ownership'],
 }
-
-// Mana pip counts for pie chart
-export interface ManaPipCounts {
-  W: number
-  U: number
-  B: number
-  R: number
-  G: number
-  C: number
-}
