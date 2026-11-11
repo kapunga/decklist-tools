@@ -5,6 +5,7 @@ import { migrateCardEntryCleanup } from './003-card-entry-cleanup.js'
 import { migrateStripTypeLine } from './004-strip-typeline.js'
 import { migrateStripFormatCardLists } from './005-strip-format-card-lists.js'
 import { migrateDenormalizePrimaryType } from './006-denormalize-primary-type.js'
+import { migrateReclassifyPrimaryType } from './007-reclassify-primary-type.js'
 
 // --- Migration Types ---
 
@@ -28,6 +29,7 @@ const migrations: Migration[] = [
   migrateStripTypeLine,
   migrateStripFormatCardLists,
   migrateDenormalizePrimaryType,
+  migrateReclassifyPrimaryType,
 ]
 
 /**

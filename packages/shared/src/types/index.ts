@@ -456,6 +456,7 @@ export interface ScryfallCard {
   card_faces?: Array<{
     name: string
     mana_cost?: string
+    cmc?: number  // Present on faces of reversible cards, which have no top-level cmc
     type_line?: string
     oracle_text?: string
     power?: string

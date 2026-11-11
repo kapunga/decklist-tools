@@ -1,5 +1,5 @@
-import type { CardEntry, ScryfallCard } from '../types/index.js'
-import { getPrimaryType } from '../constants/index.js'
+import type { CardEntry, PrimaryType, ScryfallCard } from '../types/index.js'
+import { getCardManaValue, isLandPrimaryType, resolvePrimaryType } from '../domain/classification.js'
 import type { EnrichedDeckCard, CardFilter, ManaPipCounts } from './types.js'
 
 export type { EnrichedDeckCard, FilterMode, CmcFilter, ColorFilter, CardTypeFilter, RoleFilter, OwnershipFilter, CardFilter, FilterGroup, ManaPipCounts } from './types.js'
@@ -8,10 +8,12 @@ export { normalizeFilters, resolveRoleFilters, FilterError } from './normalize.j
 
 // Get CMC for a card, using Scryfall data if available
 function getCardCmc(enriched: EnrichedDeckCard): number {
-  if (enriched.scryfallCard) {
-    return enriched.scryfallCard.cmc
-  }
-  return 0
+  return getCardManaValue(enriched.scryfallCard) ?? 0
+}
+
+// Primary type via the shared classification (stored primaryType, else front face)
+function getEnrichedPrimaryType(enriched: EnrichedDeckCard): PrimaryType {
+  return resolvePrimaryType(enriched.deckCard, enriched.scryfallCard)
 }
 
 // Get CMC bucket (7+ grouped together)
@@ -30,8 +32,7 @@ function getCardColors(enriched: EnrichedDeckCard): string[] {
 
 // Check if a card is a land
 function isLand(enriched: EnrichedDeckCard): boolean {
-  const typeLine = enriched.scryfallCard?.type_line || ''
-  return typeLine.toLowerCase().includes('land')
+  return isLandPrimaryType(getEnrichedPrimaryType(enriched))
 }
 
 // Apply a single filter to a card
@@ -48,8 +49,7 @@ function matchesFilter(card: EnrichedDeckCard, filter: CardFilter): boolean {
       return filter.mode === 'include' ? matches : !matches
     }
     case 'card-type': {
-      const typeLine = card.scryfallCard?.type_line || 'Other'
-      const primaryType = getPrimaryType(typeLine)
+      const primaryType = getEnrichedPrimaryType(card)
       const matches = filter.values.includes(primaryType)
       return filter.mode === 'include' ? matches : !matches
     }

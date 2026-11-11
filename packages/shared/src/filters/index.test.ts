@@ -182,6 +182,36 @@ describe('getCmcDistribution', () => {
   })
 })
 
+describe('double-faced and uncached classification', () => {
+  it('counts a transform card with an artifact front in the curve (Treasure Map)', () => {
+    const dist = getCmcDistribution([makeEnriched({ cmc: 2, typeLine: 'Artifact // Land' })])
+    expect(dist[2]).toBe(1)
+  })
+
+  it('excludes a land-front transform card from the curve (Balamb Garden)', () => {
+    const dist = getCmcDistribution([makeEnriched({ cmc: 0, typeLine: 'Land — Town // Legendary Artifact — Vehicle' })])
+    expect(dist[0]).toBe(0)
+  })
+
+  it('excludes a stored Land entry from the curve even when uncached', () => {
+    const card = makeEnriched({ cmc: 0 })
+    const uncached: EnrichedDeckCard = { deckCard: { ...card.deckCard, primaryType: 'Land' } }
+    expect(getCmcDistribution([uncached])[0]).toBe(0)
+  })
+
+  it('classifies a noncreature-front card by its front face for the card-type filter', () => {
+    const esper = makeEnriched({ name: 'Esper Origins', typeLine: 'Sorcery // Enchantment Creature — Saga Human' })
+    expect(applyFilters([esper], [{ type: 'card-type', mode: 'include', values: ['Creature'] }])).toHaveLength(0)
+    expect(applyFilters([esper], [{ type: 'card-type', mode: 'include', values: ['Sorcery'] }])).toHaveLength(1)
+  })
+
+  it('uses the stored primaryType for the card-type filter when uncached', () => {
+    const card = makeEnriched({ name: 'Adewale' })
+    const uncached: EnrichedDeckCard = { deckCard: { ...card.deckCard, primaryType: 'Creature' } }
+    expect(applyFilters([uncached], [{ type: 'card-type', mode: 'include', values: ['Creature'] }])).toHaveLength(1)
+  })
+})
+
 describe('enrichCards', () => {
   it('pairs deck cards with cached Scryfall data', () => {
     const deckCard: CardEntry = {

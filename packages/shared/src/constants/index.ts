@@ -42,38 +42,35 @@ export const CARD_TYPE_SORT_ORDER: Record<PrimaryType, number> = {
   Other: 8
 }
 
-// Extract primary type from type line
-// For bimodal cards (Adventures, Omens, MDFCs with "//"), prioritize permanent types over spells
-// This ensures cards like "Land // Instant" categorize as Land, not Instant
+// Types checked in priority order when a single face carries several card types.
+// Creature wins over Land (Dryad Arbor is a Creature); Land wins over Artifact and
+// Enchantment (Seat of the Synod, Urza's Saga are Lands).
+const PRIMARY_TYPE_PRIORITY: readonly PrimaryType[] = [
+  'Creature',
+  'Planeswalker',
+  'Battle',
+  'Land',
+  'Instant',
+  'Sorcery',
+  'Artifact',
+  'Enchantment',
+]
+
+/** The front face of a type line: everything before the first `//`. */
+function getFrontFaceTypeLine(typeLine: string): string {
+  return typeLine.split('//')[0]
+}
+
+/**
+ * Extract the primary type from a type line. Multi-face cards (transform, MDFC,
+ * adventure, split, omen — any `Front // Back` line) are classified by their
+ * FRONT face only, so `Sorcery // Land` is a Sorcery and `Land // Artifact` is a
+ * Land. This is the single classification rule for every grouping, filter,
+ * land count and curve exclusion.
+ */
 export function getPrimaryType(typeLine: string): PrimaryType {
-  const lower = typeLine.toLowerCase()
-
-  // These permanent types always have highest priority
-  if (lower.includes('creature')) return 'Creature'
-  if (lower.includes('planeswalker')) return 'Planeswalker'
-  if (lower.includes('battle')) return 'Battle'
-
-  // For bimodal cards, prioritize remaining permanents over spells
-  const isBimodal = lower.includes('//')
-
-  if (isBimodal) {
-    // Check remaining permanent types before spell types
-    if (lower.includes('artifact')) return 'Artifact'
-    if (lower.includes('enchantment')) return 'Enchantment'
-    if (lower.includes('land')) return 'Land'
-    // Then spell types
-    if (lower.includes('instant')) return 'Instant'
-    if (lower.includes('sorcery')) return 'Sorcery'
-  } else {
-    // Original order for non-bimodal cards
-    if (lower.includes('instant')) return 'Instant'
-    if (lower.includes('sorcery')) return 'Sorcery'
-    if (lower.includes('artifact')) return 'Artifact'
-    if (lower.includes('enchantment')) return 'Enchantment'
-    if (lower.includes('land')) return 'Land'
-  }
-
-  return 'Other'
+  const front = getFrontFaceTypeLine(typeLine).toLowerCase()
+  return PRIMARY_TYPE_PRIORITY.find(type => front.includes(type.toLowerCase())) ?? 'Other'
 }
 
 export function getTypeSortOrder(typeLine: string): number {
