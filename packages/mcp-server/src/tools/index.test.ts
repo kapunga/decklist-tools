@@ -19,6 +19,9 @@ const _mockFns = vi.hoisted(() => ({
   getCardBySetAndNumber: vi.fn(),
   getCardById: vi.fn(),
   searchCards: vi.fn(),
+  // Batch lookup used by the read-only deck views to fetch uncached cards.
+  // Resolves nothing, so view tests never touch the network.
+  getCardsByIds: vi.fn(async () => []),
 }))
 
 vi.mock('@mtg-deckbuilder/shared', async (importOriginal) => {

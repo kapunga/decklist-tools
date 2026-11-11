@@ -3,13 +3,57 @@ import { getEntryPrimaryType, getRoleById, isCardFullyPulled, getOracleText, get
 
 export type DetailLevel = 'summary' | 'compact' | 'full'
 
+// --- Missing Scryfall data ---
+// Views receive the entries the tool handler could not resolve (after trying
+// to fetch them) and must say so rather than render guessed values.
+
+const NO_DATA_MARKER = '[no Scryfall data]'
+const MAX_NAMED_CARDS = 25
+
+/** The unresolved entries that a view actually renders (matched by entry id). */
+export function unresolvedAmong(unresolved: CardEntry[], rendered: CardEntry[]): CardEntry[] {
+  const renderedIds = new Set(rendered.map(e => e.id))
+  return unresolved.filter(e => renderedIds.has(e.id))
+}
+
+/** Total copies across entries. */
+export function countCopies(entries: CardEntry[]): number {
+  return entries.reduce((sum, e) => sum + e.quantity, 0)
+}
+
+/** `1 card` / `4 cards`. */
+export function pluralizeCards(count: number): string {
+  return `${count} ${count === 1 ? 'card' : 'cards'}`
+}
+
+function nameList(entries: CardEntry[]): string {
+  const names = [...new Set(entries.map(e => getCardDisplayName(e.card)))]
+  const shown = names.slice(0, MAX_NAMED_CARDS)
+  const more = names.length > shown.length ? `, and ${names.length - shown.length} more` : ''
+  return `${shown.join(', ')}${more}`
+}
+
+/**
+ * Warning block naming entries with no Scryfall data, followed by a blank
+ * line. Empty when every entry is resolved.
+ */
+export function formatMissingDataWarning(unresolved: CardEntry[]): string[] {
+  if (unresolved.length === 0) return []
+  const count = pluralizeCards(countCopies(unresolved))
+  return [
+    `> **Warning:** ${count} without Scryfall data (not cached and could not be fetched); their oracle text, mana value and mana pips are missing: ${nameList(unresolved)}.`,
+    '',
+  ]
+}
+
 export function formatCardLine(
   card: CardEntry,
   globalRoles: RoleDefinition[],
   customRoles: RoleDefinition[],
   scryfallCache?: Map<string, ScryfallCard>,
   detail?: DetailLevel,
-  roleLookup?: Map<string, RoleDefinition>
+  roleLookup?: Map<string, RoleDefinition>,
+  missingData = false
 ): string {
   const level = detail || 'summary'
   const cache = scryfallCache || new Map<string, ScryfallCard>()
@@ -38,6 +82,7 @@ export function formatCardLine(
     if (typeLine || card.primaryType) {
       headerParts.push(`[${getEntryPrimaryType(card, cache)}]`)
     }
+    if (missingData) headerParts.push(NO_DATA_MARKER)
   }
 
   if (card.roles.length > 0) {

@@ -1,6 +1,6 @@
 import type { Deck, CardEntry, RoleDefinition, ScryfallCard } from '@mtg-deckbuilder/shared'
 import { getEntryPrimaryType, getCardCount, getCardDisplayName, getCanonicalSuffix, buildRoleLookup, CARD_TYPE_ORDER, isCardFullyPulled, getMainboard, getSideboard, getAlternates } from '@mtg-deckbuilder/shared'
-import { formatCardLine, type DetailLevel } from './formatters.js'
+import { formatCardLine, formatMissingDataWarning, unresolvedAmong, type DetailLevel } from './formatters.js'
 
 export function renderFullView(
   deck: Deck,
@@ -9,7 +9,8 @@ export function renderFullView(
   groupBy?: string,
   filteredCardIds?: Set<string>,
   scryfallCache?: Map<string, ScryfallCard>,
-  detail?: DetailLevel
+  detail?: DetailLevel,
+  unresolved: CardEntry[] = []
 ): string {
   const lines: string[] = []
   const roleLookup = buildRoleLookup(globalRoles, deck.customRoles)
@@ -22,18 +23,26 @@ export function renderFullView(
   lines.push(`**Cards:** ${getCardCount(deck)}/${deck.format.deckSize}`)
   lines.push('')
 
+  const mainboard = getMainboard(deck)
+  const mainboardCards = filteredCardIds
+    ? mainboard.filter(c => filteredCardIds.has(c.id))
+    : mainboard
+  const listsOtherSets = !groupBy && sortBy !== 'set'
+  const alternates = listsOtherSets ? getAlternates(deck) : []
+  const sideboard = listsOtherSets ? getSideboard(deck) : []
+  const missing = unresolvedAmong(unresolved, [...mainboardCards, ...alternates, ...sideboard])
+  const missingIds = new Set(missing.map(c => c.id))
+  const cardLine = (c: CardEntry) =>
+    formatCardLine(c, globalRoles, deck.customRoles, scryfallCache, detail, roleLookup, missingIds.has(c.id))
+
+  lines.push(...formatMissingDataWarning(missing))
+
   if (deck.commanders.length > 0) {
     lines.push('## Commander(s)')
     for (const c of deck.commanders) {
       lines.push(`- ${getCardDisplayName(c)}${getCanonicalSuffix(c)} (${c.setCode.toUpperCase()} ${c.collectorNumber})`)
     }
     lines.push('')
-  }
-
-  const mainboard = getMainboard(deck)
-  let mainboardCards = mainboard
-  if (filteredCardIds) {
-    mainboardCards = mainboardCards.filter(c => filteredCardIds.has(c.id))
   }
 
   if (groupBy === 'role') {
@@ -46,30 +55,26 @@ export function renderFullView(
     if (mainboardCards.length > 0) {
       lines.push('## Main Deck')
       for (const c of mainboardCards) {
-        lines.push(formatCardLine(c, globalRoles, deck.customRoles, scryfallCache, detail, roleLookup))
+        lines.push(cardLine(c))
       }
       lines.push('')
     }
   }
 
-  if (!groupBy && sortBy !== 'set') {
-    const alternates = getAlternates(deck)
-    if (alternates.length > 0) {
-      lines.push('## Alternates')
-      for (const c of alternates) {
-        lines.push(formatCardLine(c, globalRoles, deck.customRoles, scryfallCache, detail, roleLookup))
-      }
-      lines.push('')
+  if (alternates.length > 0) {
+    lines.push('## Alternates')
+    for (const c of alternates) {
+      lines.push(cardLine(c))
     }
+    lines.push('')
+  }
 
-    const sideboard = getSideboard(deck)
-    if (sideboard.length > 0) {
-      lines.push('## Sideboard')
-      for (const c of sideboard) {
-        lines.push(formatCardLine(c, globalRoles, deck.customRoles, scryfallCache, detail, roleLookup))
-      }
-      lines.push('')
+  if (sideboard.length > 0) {
+    lines.push('## Sideboard')
+    for (const c of sideboard) {
+      lines.push(cardLine(c))
     }
+    lines.push('')
   }
 
   return lines.join('\n')

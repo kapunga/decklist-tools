@@ -1,7 +1,21 @@
-import type { Deck, ScryfallCard } from '@mtg-deckbuilder/shared'
+import type { CardEntry, Deck, ScryfallCard } from '@mtg-deckbuilder/shared'
 import { getEntryPrimaryType, isLandEntry, getCardCount, CARD_TYPE_ORDER, enrichCards, getCmcDistribution, countManaPips, getMainboard } from '@mtg-deckbuilder/shared'
+import { countCopies, formatMissingDataWarning, pluralizeCards, unresolvedAmong } from './formatters.js'
 
-export function renderCurveView(deck: Deck, scryfallCache?: Map<string, ScryfallCard>, filteredCardIds?: Set<string>): string {
+/** Note for nonland cards left out of the curve and pips; empty when none. */
+function excludedFromCurveNote(missing: CardEntry[], cache: Map<string, ScryfallCard>): string[] {
+  const excluded = countCopies(missing.filter(card => !isLandEntry(card, cache)))
+  if (excluded === 0) return []
+  const verb = excluded === 1 ? 'is' : 'are'
+  return [`_${pluralizeCards(excluded)} without Scryfall data ${verb} excluded from the curve and pips._`]
+}
+
+export function renderCurveView(
+  deck: Deck,
+  scryfallCache?: Map<string, ScryfallCard>,
+  filteredCardIds?: Set<string>,
+  unresolved: CardEntry[] = []
+): string {
   const lines: string[] = []
   lines.push(`# ${deck.name} (Mana Curve)`)
   lines.push('')
@@ -13,12 +27,15 @@ export function renderCurveView(deck: Deck, scryfallCache?: Map<string, Scryfall
 
   const cache = scryfallCache || new Map<string, ScryfallCard>()
   const enriched = enrichCards(activeCards, cache)
+  const missing = unresolvedAmong(unresolved, activeCards)
+  lines.push(...formatMissingDataWarning(missing))
 
-  // CMC Distribution
+  // CMC Distribution (cards without Scryfall data have no mana value and are left out)
   const cmcDist = getCmcDistribution(enriched)
   const hasCmcData = Object.values(cmcDist).some(v => v > 0)
+  const excludedNote = excludedFromCurveNote(missing, cache)
 
-  if (hasCmcData) {
+  if (hasCmcData || excludedNote.length > 0) {
     lines.push('## Mana Curve')
     for (let cmc = 0; cmc <= 7; cmc++) {
       const count = cmcDist[cmc] || 0
@@ -28,6 +45,7 @@ export function renderCurveView(deck: Deck, scryfallCache?: Map<string, Scryfall
         lines.push(`${label.padEnd(4)} ${bar} ${count}`)
       }
     }
+    lines.push(...excludedNote)
     lines.push('')
   }
 

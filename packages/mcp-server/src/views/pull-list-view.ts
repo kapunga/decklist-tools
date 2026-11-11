@@ -1,4 +1,5 @@
 import type { Deck, CardEntry, SetCollectionFile, ScryfallCard, CollectionLevel, PullListItem, PullListGroup } from '@mtg-deckbuilder/shared'
+import { formatMissingDataWarning, unresolvedAmong } from './formatters.js'
 import { getTotalPulledQuantity, getCardDisplayName, COLLECTION_LEVEL_RARITIES, isBasicLand, OWNERSHIP_STATUS, CARD_SOURCE, getMainboard, getSideboard, getAlternates, getPulledPrintings, getTypeLine, getPrimaryType, getCardManaCost } from '@mtg-deckbuilder/shared'
 
 // Rarity order for sorting
@@ -21,7 +22,13 @@ export function renderPullListView(
   deck: Deck,
   setCollection: SetCollectionFile,
   scryfallCache: Map<string, ScryfallCard>,
-  options?: { showPulled?: boolean; hideBasicLands?: boolean; source?: 'mainDeck' | 'maybeboard' }
+  options?: {
+    showPulled?: boolean
+    hideBasicLands?: boolean
+    source?: 'mainDeck' | 'maybeboard'
+    /** Entries with no Scryfall data after the handler's fetch attempt. */
+    unresolved?: CardEntry[]
+  }
 ): string {
   const lines: string[] = []
   const showPulled = options?.showPulled ?? true
@@ -65,6 +72,8 @@ export function renderPullListView(
       }))
     ]
   }
+
+  lines.push(...formatMissingDataWarning(unresolvedAmong(options?.unresolved ?? [], confirmedCards)))
 
   // Build set lookup maps
   const ownedSetCodes = new Set(
