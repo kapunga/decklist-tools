@@ -243,11 +243,11 @@ function baseToolDefinitions(): Tool[] {
             description: 'Target export format.',
           },
           include_sideboard: { type: 'boolean', description: 'Include sideboard section (default true).' },
-          include_maybeboard: { type: 'boolean', description: 'Include maybeboard section (default true).' },
+          include_maybeboard: { type: 'boolean', description: 'Include maybeboard section (default true). `maybeboard` is the export name for the `alternates` set; `cut` is never exported.' },
           section: {
             type: 'string',
             enum: ['mainboard', 'sideboard', 'maybeboard'],
-            description: 'Emit only the named section (`maybeboard` is the deck\'s `alternates` card set). Useful for Moxfield-style imports where each section pastes into a separate UI box. Omit to emit the full deck.',
+            description: 'Emit only the named section Useful for Moxfield-style imports where each section pastes into a separate UI box. Omit to emit the full deck. `maybeboard` is the export name for the `alternates` set; `cut` is never exported.',
           },
         },
         required: ['deck_id', 'format'],
