@@ -79,7 +79,9 @@ Five actions on `manage_card_list`. Required fields vary:
 | `delete` | `id` | (none — fails on interest list) |
 | `rename` | `id`, `name` | `description` |
 | `add` | `id`, `name` (= card name) | `set_code`, `collector_number`, `quantity`, `notes`, `potential_decks`, `source` |
-| `remove` | `id`, `card_name` | (none) |
+| `remove` | `id`, plus `entry_id` (preferred, from `get_card_list`) or `card_name` | `set_code` + `collector_number` (narrow a name) |
+
+`remove` returns the removed entry. A `card_name` matching more than one entry (duplicates or different printings) is refused and nothing is removed; the error lists each candidate's id, printing, and whether it has notes or potential decks. Retry with `entry_id`, or add `set_code` + `collector_number`.
 
 Note the **field-name reuse**: on `add`, `name` is the **card name** being added. On `create` / `rename`, `name` is the **list name**. Same parameter; different meaning by action.
 
@@ -177,7 +179,7 @@ For each card, decide which deck(s) it fits, then either:
 - Add to those decks via mtg-deckbuilder-decks (`manage_card add`)
 - Update potential_decks on the list entry (re-add with new potential_decks)
 - Remove from interest list once it's placed in a deck:
-  manage_card_list  action=remove, id=<list_id>, card_name=<name>
+  manage_card_list  action=remove, id=<list_id>, entry_id=<entry id from get_card_list>
 ```
 
 ### "Add all the cards from a Scryfall search to my interest list"

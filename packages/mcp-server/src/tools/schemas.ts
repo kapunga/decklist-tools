@@ -340,7 +340,7 @@ function baseToolDefinitions(): Tool[] {
     },
     {
       name: 'manage_card_list',
-      description: 'Create, rename, or delete a card list, or add/remove cards within a list.\n\n**Actions:**\n- create: requires `name`; optional `kind` (interest, collection, scan, wishlist, custom — defaults to custom) and `description`.\n- delete: requires `id`. The well-known interest list cannot be deleted.\n- rename: requires `id` and `name`; optional `description`.\n- add: requires `id` and `name` (card name). Set/collector are optional. Optional `quantity`, `notes`, `potential_decks`, `source`.\n- remove: requires `id` and `card_name`.',
+      description: 'Create, rename, or delete a card list, or add/remove cards within a list.\n\n**Actions:**\n- create: requires `name`; optional `kind` (interest, collection, scan, wishlist, custom — defaults to custom) and `description`.\n- delete: requires `id`. The well-known interest list cannot be deleted.\n- rename: requires `id` and `name`; optional `description`.\n- add: requires `id` and `name` (card name). Set/collector are optional. Optional `quantity`, `notes`, `potential_decks`, `source`.\n- remove: requires `id` and `entry_id` (preferred; from get_card_list) or `card_name`. A name matching several entries is refused with the candidates listed; narrow with `set_code`+`collector_number` or use `entry_id`. Returns the removed entry.',
       inputSchema: {
         type: 'object',
         properties: {
@@ -356,7 +356,8 @@ function baseToolDefinitions(): Tool[] {
             enum: ['interest', 'collection', 'scan', 'wishlist', 'custom'],
             description: 'List kind (create only). Defaults to custom.',
           },
-          card_name: { type: 'string', description: 'Card name to remove (required for remove)' },
+          card_name: { type: 'string', description: 'Card name to remove (remove: use this or entry_id). Fails if it matches more than one entry.' },
+          entry_id: { type: 'string', description: 'Entry id to remove (remove). Preferred over card_name; ids come from get_card_list.' },
           set_code: { type: 'string' },
           collector_number: { type: 'string' },
           notes: { type: 'string' },
