@@ -3,7 +3,7 @@ import { getEntryPrimaryType, CARD_TYPE_ORDER } from '@mtg-deckbuilder/shared'
 
 // --- deck_list groupings ---
 // A grouping only partitions a section's entries into labelled groups; it
-// never formats cards. Every grouping feeds the same section renderer and
+// never formats or reorders cards (sorting happens once, before grouping). Every grouping feeds the same section renderer and
 // card-line formatter (full-view.ts), so flat and grouped output cannot drift.
 
 /** A labelled subset of a section's entries. */
@@ -32,12 +32,30 @@ export function selectGrouping(
   return undefined
 }
 
-/** One group per primary type (as `deck_curve` classifies), in CARD_TYPE_ORDER, cards by name. */
+/** A comparator over a section's entries. */
+export type EntryOrder = (a: CardEntry, b: CardEntry) => number
+
+/**
+ * The card order for a `deck_list` call, applied to every section before
+ * grouping (groupings keep their input order within each group).
+ * `set` orders by set code, then collector number; anything else (the
+ * default) orders by card name. Ties fall back to name.
+ */
+export function selectOrder(sortBy: string | undefined): EntryOrder {
+  return sortBy === 'set' ? byPrinting : byName
+}
+
+/** A sorted copy of `entries`; the input is never mutated. */
+export function sortEntries(entries: CardEntry[], order: EntryOrder): CardEntry[] {
+  return [...entries].sort(order)
+}
+
+/** One group per primary type (as `deck_curve` classifies), in CARD_TYPE_ORDER. */
 export function groupByType(cache: Map<string, ScryfallCard>): Grouping {
   return entries =>
     [...partition(entries, e => [getEntryPrimaryType(e, cache)])]
       .sort(([a], [b]) => typeRank(a) - typeRank(b))
-      .map(([type, typeEntries]) => ({ heading: type, entries: sortByName(typeEntries) }))
+      .map(([type, typeEntries]) => ({ heading: type, entries: typeEntries }))
 }
 
 /** One group per role (by role id), then `Unassigned` for entries without roles. */
@@ -51,11 +69,11 @@ export function groupByRole(roleLookup: Map<string, RoleDefinition>): Grouping {
   }
 }
 
-/** One group per set code (alphabetical), cards by collector number. */
+/** One group per set code (alphabetical). */
 export const groupBySet: Grouping = entries =>
   [...partition(entries, e => [e.card.setCode])]
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([setCode, setEntries]) => ({ heading: setCode.toUpperCase(), entries: sortByCollectorNumber(setEntries) }))
+    .map(([setCode, setEntries]) => ({ heading: setCode.toUpperCase(), entries: setEntries }))
 
 function roleGroup(role: RoleDefinition | undefined, roleId: string, entries: CardEntry[]): CardGroup {
   return { heading: role?.name || roleId, description: role?.description || undefined, entries }
@@ -73,10 +91,9 @@ function typeRank(type: PrimaryType): number {
   return CARD_TYPE_ORDER.indexOf(type as typeof CARD_TYPE_ORDER[number])
 }
 
-function sortByName(entries: CardEntry[]): CardEntry[] {
-  return [...entries].sort((a, b) => a.card.name.localeCompare(b.card.name))
-}
+const byName: EntryOrder = (a, b) => a.card.name.localeCompare(b.card.name)
 
-function sortByCollectorNumber(entries: CardEntry[]): CardEntry[] {
-  return [...entries].sort((a, b) => a.card.collectorNumber.localeCompare(b.card.collectorNumber, undefined, { numeric: true }))
-}
+const byPrinting: EntryOrder = (a, b) =>
+  a.card.setCode.localeCompare(b.card.setCode) ||
+  a.card.collectorNumber.localeCompare(b.card.collectorNumber, undefined, { numeric: true }) ||
+  byName(a, b)

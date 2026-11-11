@@ -189,7 +189,7 @@ function baseToolDefinitions(): Tool[] {
             enum: ['summary', 'compact', 'full'],
             description: 'Card detail level. **Defaults to `compact`** — each card is listed with its Oracle text, which is what you want for deck analysis. Use `summary` for a terser one-line-per-card form when you only need names and quantities. Use `full` to additionally include set code and rarity.',
           },
-          sort_by: { type: 'string', description: 'Sort key within each section. Supported values: `name`, `set`.' },
+          sort_by: { type: 'string', description: 'Card order within every section and group. Supported values: `name` (default, alphabetical), `set` (set code then collector number). Filters, when given, apply to every section (Main Deck, Alternates, Sideboard); sections with no matches are omitted.' },
           group_by: { type: 'string', description: 'Group the cards of each section (Main Deck, Alternates, Sideboard) under counted sub-headings. Supported values: `none` (default), `role`, `type`. Card lines keep the chosen `detail` in every mode.' },
           filters: CARD_FILTER_SCHEMA,
         },

@@ -44,8 +44,9 @@ This is the single most important pattern in this skill. When a user says any of
 ### `deck_list` grouping and sorting
 
 - `group_by`: `none` (default), `role`, `type`. Use `role` to see whether the deck has enough removal/ramp/draw; use `type` for an at-a-glance creature/spell/land breakdown.
-- `sort_by`: `name`, `set`. Defaults to name within sections. `set` groups each section by set code.
-- Grouping never changes what a card line shows: `detail`, roles and flags apply the same in every mode, and the Commander(s), Main Deck, Alternates and Sideboard sections are always listed. Groups appear as counted `### Heading (N)` sub-headings inside each section.
+- `sort_by`: `name` (default), `set`. The order applies to every section and within every group: `name` is alphabetical by card name; `set` is by set code then collector number (and, without `group_by`, groups each section by set code).
+- Grouping never changes what a card line shows: `detail`, roles and flags apply the same in every mode, and the Commander(s), Main Deck, Alternates and Sideboard sections are listed whenever they have cards. Groups appear as counted `### Heading (N)` sub-headings inside each section.
+- Every section heading carries its card-copy count, e.g. `## Main Deck (99)` (quantities summed, like `deck_curve`).
 - Commander lines use the same format as every other card (mana cost, type line and oracle text at `compact`).
 - A card may sit in both Main Deck and Alternates. Each copy shows its own `[NEED TO BUY]` / `[PULLED]` flag, so the two lines can differ.
 
@@ -57,6 +58,8 @@ Same filter schema as `deck_curve` (see "Filter schema" below). Examples:
 - Drop lands: `filters: [{type: "card-type", mode: "exclude", values: ["Land"]}]`
 - Cards I still need to buy: `filters: [{type: "ownership", mode: "include", values: ["need_to_buy"]}]`
 - Cards in a specific role: `filters: [{type: "role", mode: "include", values: ["ramp"]}]`
+
+Filters apply to every section (Main Deck, Alternates and Sideboard; commanders are always shown). A section with no matching cards is omitted, and a note under the deck header says filters were applied. Section headings show the matching count of the section total, e.g. `## Alternates (12 of 80)`. Filters don't add type headings; pass `group_by: type` for those. A card without Scryfall data has an unknown mana value, so it never matches a `cmc` include filter (and is not dropped by a `cmc` exclude filter).
 
 ## Delegating deck evaluation
 
