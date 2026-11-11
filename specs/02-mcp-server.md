@@ -249,6 +249,8 @@ Exports a deck as text in one of the supported decklist formats (`moxfield`, `ar
 
 Cards grouped by set for physical collection pulling, with pulled-status checkboxes. Use when preparing to physically assemble a deck.
 
+Section headings use full set names (resolved from the set collection, then from cached Scryfall card data, falling back to the uppercased code). Cards with no printing in a collected set appear under their original set's heading suffixed ` — not in collection`, so each heading is unique and says which set to look in.
+
 **Input:**
 - `deck_id` *(string, required)*.
 

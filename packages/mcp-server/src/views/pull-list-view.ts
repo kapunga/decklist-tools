@@ -1,6 +1,6 @@
-import type { Deck, CardEntry, SetCollectionFile, ScryfallCard, CollectionLevel, PullListItem, PullListGroup } from '@mtg-deckbuilder/shared'
+import type { Deck, CardEntry, SetCollectionFile, ScryfallCard, CollectionLevel, PullListItem } from '@mtg-deckbuilder/shared'
 import { formatMissingDataWarning, unresolvedAmong } from './formatters.js'
-import { getTotalPulledQuantity, getCardDisplayName, COLLECTION_LEVEL_RARITIES, isBasicLand, getCommanderEntries, getMainboard, getSideboard, getAlternates, getPulledPrintings, getTypeLine, getPrimaryType, getCardManaCost } from '@mtg-deckbuilder/shared'
+import { getTotalPulledQuantity, getCardDisplayName, COLLECTION_LEVEL_RARITIES, isBasicLand, getCommanderEntries, getMainboard, getSideboard, getAlternates, getPulledPrintings, getTypeLine, getPrimaryType, getCardManaCost, buildSetNameResolver, groupPullListItems, pullListGroupHeading } from '@mtg-deckbuilder/shared'
 
 // Rarity order for sorting
 const RARITY_ORDER: Record<string, number> = {
@@ -73,9 +73,7 @@ export function renderPullListView(
   const setLevelMap = new Map(
     setCollection.sets.map(s => [s.setCode.toLowerCase(), s.collectionLevel])
   )
-  const setNameMap = new Map(
-    setCollection.sets.map(s => [s.setCode.toLowerCase(), s.setName])
-  )
+  const resolveSetName = buildSetNameResolver(setCollection.sets, scryfallCache.values())
 
   // Build printings map from scryfall cache
   const printingsByName = new Map<string, ScryfallCard[]>()
@@ -107,7 +105,7 @@ export function renderPullListView(
         unpulledItems.push({
           cardName,
           setCode: deckCard.card.setCode,
-          setName: setNameMap.get(deckCard.card.setCode.toLowerCase()) || deckCard.card.setCode.toUpperCase(),
+          setName: resolveSetName(deckCard.card.setCode),
           collectorNumber: deckCard.card.collectorNumber,
           rarity: 'unknown',
           typeLine: getTypeLine(deckCard, scryfallCache) || '',
@@ -132,7 +130,8 @@ export function renderPullListView(
         unpulledItems.push({
           cardName,
           setCode: cachedCard.set,
-          setName: 'Not in collection',
+          setName: resolveSetName(cachedCard.set),
+          notInCollection: true,
           collectorNumber: cachedCard.collector_number,
           rarity: cachedCard.rarity,
           typeLine: cachedCard.type_line,
@@ -159,7 +158,7 @@ export function renderPullListView(
       const item: PullListItem = {
         cardName,
         setCode: printing.set,
-        setName: setNameMap.get(printing.set.toLowerCase()) || printing.set.toUpperCase(),
+        setName: resolveSetName(printing.set),
         collectorNumber: printing.collector_number,
         rarity: printing.rarity,
         typeLine: printing.type_line,
@@ -180,40 +179,12 @@ export function renderPullListView(
     }
   }
 
-  // Group by set
-  const groupBySet = (items: PullListItem[]): PullListGroup[] => {
-    const bySet = new Map<string, PullListItem[]>()
+  const comparePullItems = (a: PullListItem, b: PullListItem): number =>
+    (RARITY_ORDER[a.rarity] ?? 99) - (RARITY_ORDER[b.rarity] ?? 99) ||
+    a.cardName.localeCompare(b.cardName)
 
-    for (const item of items) {
-      const key = item.setCode.toLowerCase()
-      if (!bySet.has(key)) {
-        bySet.set(key, [])
-      }
-      bySet.get(key)!.push(item)
-    }
-
-    const groups: PullListGroup[] = []
-    for (const [setCode, setItems] of bySet) {
-      // Sort items by rarity, then name
-      setItems.sort((a, b) => {
-        const rarityDiff = (RARITY_ORDER[a.rarity] ?? 99) - (RARITY_ORDER[b.rarity] ?? 99)
-        if (rarityDiff !== 0) return rarityDiff
-        return a.cardName.localeCompare(b.cardName)
-      })
-
-      groups.push({
-        setCode,
-        setName: setItems[0]?.setName || setCode.toUpperCase(),
-        items: setItems
-      })
-    }
-
-    groups.sort((a, b) => a.setName.localeCompare(b.setName))
-    return groups
-  }
-
-  const unpulledGroups = groupBySet(unpulledItems)
-  const pulledGroups = groupBySet(pulledItems)
+  const unpulledGroups = groupPullListItems(unpulledItems, comparePullItems)
+  const pulledGroups = groupPullListItems(pulledItems, comparePullItems)
 
   const uniqueUnpulledCards = new Set(unpulledItems.map(i => i.cardName)).size
 
@@ -223,7 +194,7 @@ export function renderPullListView(
     lines.push('')
 
     for (const group of unpulledGroups) {
-      lines.push(`### ${group.setName}`)
+      lines.push(`### ${pullListGroupHeading(group)}`)
       lines.push('| # | Rarity | Type | Cost | Name | Status |')
       lines.push('|---|--------|------|------|------|--------|')
 
@@ -255,7 +226,7 @@ export function renderPullListView(
     lines.push('')
 
     for (const group of pulledGroups) {
-      lines.push(`### ${group.setName}`)
+      lines.push(`### ${pullListGroupHeading(group)}`)
       lines.push('| # | Rarity | Name | Qty |')
       lines.push('|---|--------|------|-----|')
 

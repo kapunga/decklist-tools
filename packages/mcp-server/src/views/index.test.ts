@@ -929,3 +929,62 @@ describe('deck_list filters, sort and heading counts', () => {
     expect(result).toContain('## Main Deck (2 of 4)\n### Creature (2)')
   })
 })
+
+describe('pull list view headings', () => {
+  const emptyCollection: SetCollectionFile = { version: 1, updatedAt: '', sets: [] }
+
+  function render(
+    cards: Array<{ name: string; set: string; setName?: string }>,
+    setCollection: SetCollectionFile = emptyCollection,
+  ): string {
+    const deck = makeDeck()
+    const cache = new Map<string, ScryfallCard>()
+    cards.forEach((c, i) => {
+      const id = `scryfall-${i}`
+      pushMainboard(deck, makeDeckCard(c.name, {
+        quantity: 1,
+        card: { scryfallId: id, name: c.name, setCode: c.set, collectorNumber: String(i + 1) },
+      }))
+      cache.set(id, mockScryfallCard(c.name, { id, set: c.set, collector_number: String(i + 1), set_name: c.setName }))
+    })
+    return renderPullListView(deck, setCollection, cache, { showPulled: true })
+  }
+
+  const headings = (output: string) => output.split('\n').filter(l => l.startsWith('### '))
+
+  it('emits no duplicate headings for not-in-collection cards from different sets', () => {
+    const hs = headings(render([
+      { name: 'Card One', set: 'hob', setName: 'The Hobbit' },
+      { name: 'Card Two', set: 'msc', setName: 'Misc Set' },
+    ]))
+    expect(new Set(hs).size).toBe(hs.length)
+    expect(hs).toContain('### The Hobbit — not in collection')
+    expect(hs).toContain('### Misc Set — not in collection')
+  })
+
+  it('names sets outside the collection from cached card data, not raw codes', () => {
+    const collection: SetCollectionFile = {
+      version: 1, updatedAt: '',
+      sets: [{ setCode: 'grn', setName: 'Guilds of Ravnica', collectionLevel: 3, addedAt: '' }],
+    }
+    const hs = headings(render([
+      { name: 'Owned', set: 'grn', setName: 'Guilds of Ravnica' },
+      { name: 'Other', set: '2xm', setName: 'Double Masters' },
+    ], collection))
+    expect(hs).toContain('### Guilds of Ravnica')
+    expect(hs).toContain('### Double Masters — not in collection')
+    expect(hs.some(h => h.includes('2XM'))).toBe(false)
+  })
+
+  it('names the set of an uncached deck card from other cached printings in that set', () => {
+    const deck = makeDeck()
+    pushMainboard(deck, makeDeckCard('Uncached', {
+      quantity: 1, card: { name: 'Uncached', setCode: 'clb', collectorNumber: '2' },
+    }))
+    const cache = new Map<string, ScryfallCard>([
+      ['s-known', mockScryfallCard('Known', { id: 's-known', set: 'clb', set_name: 'Battle for Baldurs Gate' })],
+    ])
+    const hs = headings(renderPullListView(deck, emptyCollection, cache, { showPulled: true }))
+    expect(hs).toEqual(['### Battle for Baldurs Gate'])
+  })
+})

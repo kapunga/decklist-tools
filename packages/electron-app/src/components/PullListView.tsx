@@ -6,6 +6,7 @@ import { IdentifyModeList } from '@/components/IdentifyModeList'
 import { CardImage } from '@/components/CardImage'
 import { CollapsibleSection } from '@/components/CollapsibleSection'
 import { usePullList, type PullListGroup, type PullListItem } from '@/hooks/usePullList'
+import { pullListGroupHeading } from '@mtg-deckbuilder/shared'
 import { getCardById } from '@/lib/scryfall'
 import { lookupOrNull } from '@/lib/scryfallOutcome'
 import {
@@ -46,7 +47,7 @@ function CollapsibleSetSection({ group, deckId, defaultOpen = true, focusedItemK
               letterSpacing: '-0.01em',
             }}
           >
-            {group.setName}
+            {pullListGroupHeading(group)}
           </span>
           <span style={captionLabelStyle}>{group.setCode.toUpperCase()}</span>
         </div>
@@ -258,7 +259,7 @@ export function PullListView({ deck }: PullListViewProps) {
                 <div className="space-y-4">
                   {unpulledGroups.map(group => (
                     <CollapsibleSetSection
-                      key={group.setCode}
+                      key={`${group.setCode}-${group.notInCollection ? 'missing' : 'owned'}`}
                       group={group}
                       deckId={deck.id}
                       defaultOpen={true}
@@ -284,7 +285,7 @@ export function PullListView({ deck }: PullListViewProps) {
                 <div className="space-y-4 opacity-75">
                   {pulledGroups.map(group => (
                     <CollapsibleSetSection
-                      key={group.setCode}
+                      key={`${group.setCode}-${group.notInCollection ? 'missing' : 'owned'}`}
                       group={group}
                       deckId={deck.id}
                       defaultOpen={false}
