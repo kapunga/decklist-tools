@@ -139,6 +139,24 @@ describe('countManaPips', () => {
     expect(pips.U).toBe(1)
   })
 
+  it('counts the front-face cost of a transform card', () => {
+    const base = makeEnriched({ typeLine: 'Legendary Creature — Human Assassin // Legendary Creature — Werewolf Beast', quantity: 2 })
+    const transform: EnrichedDeckCard = {
+      ...base,
+      scryfallCard: {
+        ...base.scryfallCard!,
+        layout: 'transform',
+        mana_cost: undefined,
+        card_faces: [
+          { name: 'Vincent Valentine', mana_cost: '{2}{B}{B}', type_line: 'Legendary Creature — Human Assassin' },
+          { name: 'Galian Beast', mana_cost: '', type_line: 'Legendary Creature — Werewolf Beast' },
+        ],
+      },
+    }
+    const pips = countManaPips([transform])
+    expect(pips.B).toBe(4)
+  })
+
   it('multiplies by quantity', () => {
     const cards = [makeEnriched({ manaCost: '{R}', quantity: 4, typeLine: 'Instant' })]
     const pips = countManaPips(cards)

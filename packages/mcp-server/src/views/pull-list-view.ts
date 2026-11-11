@@ -1,5 +1,5 @@
 import type { Deck, CardEntry, SetCollectionFile, ScryfallCard, CollectionLevel, PullListItem, PullListGroup } from '@mtg-deckbuilder/shared'
-import { getTotalPulledQuantity, getCardDisplayName, COLLECTION_LEVEL_RARITIES, isBasicLand, OWNERSHIP_STATUS, CARD_SOURCE, getMainboard, getSideboard, getAlternates, getPulledPrintings, getTypeLine, getPrimaryType } from '@mtg-deckbuilder/shared'
+import { getTotalPulledQuantity, getCardDisplayName, COLLECTION_LEVEL_RARITIES, isBasicLand, OWNERSHIP_STATUS, CARD_SOURCE, getMainboard, getSideboard, getAlternates, getPulledPrintings, getTypeLine, getPrimaryType, getCardManaCost } from '@mtg-deckbuilder/shared'
 
 // Rarity order for sorting
 const RARITY_ORDER: Record<string, number> = {
@@ -136,7 +136,7 @@ export function renderPullListView(
           collectorNumber: cachedCard.collector_number,
           rarity: cachedCard.rarity,
           typeLine: cachedCard.type_line,
-          manaCost: cachedCard.mana_cost || '',
+          manaCost: getCardManaCost(cachedCard) ?? '',
           cmc: cachedCard.cmc,
           quantityNeeded: deckCardQty,
           quantityPulledThisPrint: 0,
@@ -163,7 +163,7 @@ export function renderPullListView(
         collectorNumber: printing.collector_number,
         rarity: printing.rarity,
         typeLine: printing.type_line,
-        manaCost: printing.mana_cost || '',
+        manaCost: getCardManaCost(printing) ?? '',
         cmc: printing.cmc,
         quantityNeeded: deckCardQty,
         quantityPulledThisPrint: pulledFromThisPrint,

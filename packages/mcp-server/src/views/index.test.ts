@@ -468,3 +468,70 @@ describe('pull list view', () => {
     expect(result).not.toContain('Legendary')
   })
 })
+
+describe('double-faced card mana costs', () => {
+  // Modelled on Scryfall JSON: transform and modal_dfc layouts have no
+  // top-level `mana_cost`; the cost lives on the front face.
+  function vincentValentine(): ScryfallCard {
+    return mockScryfallCard('Vincent Valentine', {
+      id: 'scryfall-vincent-valentine',
+      name: 'Vincent Valentine // Galian Beast',
+      layout: 'transform',
+      cmc: 4,
+      mana_cost: undefined,
+      type_line: 'Legendary Creature — Human Assassin // Legendary Creature — Werewolf Beast',
+      colors: undefined,
+      color_identity: ['B'],
+      card_faces: [
+        { name: 'Vincent Valentine', mana_cost: '{2}{B}{B}', type_line: 'Legendary Creature — Human Assassin', colors: ['B'] },
+        { name: 'Galian Beast', mana_cost: '', type_line: 'Legendary Creature — Werewolf Beast', colors: ['B'] },
+      ],
+    })
+  }
+
+  function shatterskullSmashing(): ScryfallCard {
+    return mockScryfallCard('Shatterskull Smashing', {
+      id: 'scryfall-shatterskull-smashing',
+      name: 'Shatterskull Smashing // Shatterskull, the Hammer Pass',
+      layout: 'modal_dfc',
+      cmc: 2,
+      mana_cost: undefined,
+      type_line: 'Sorcery // Land',
+      colors: undefined,
+      color_identity: ['R'],
+      card_faces: [
+        { name: 'Shatterskull Smashing', mana_cost: '{X}{R}{R}', type_line: 'Sorcery', colors: ['R'] },
+        { name: 'Shatterskull, the Hammer Pass', mana_cost: '', type_line: 'Land', colors: [] },
+      ],
+    })
+  }
+
+  function dfcDeck(): { deck: Deck; cache: Map<string, ScryfallCard> } {
+    const deck = makeDeck()
+    pushMainboard(deck, makeDeckCard('Vincent Valentine'))
+    pushMainboard(deck, makeDeckCard('Shatterskull Smashing'))
+    const cache = new Map([vincentValentine(), shatterskullSmashing()].map(c => [c.id, c]))
+    return { deck, cache }
+  }
+
+  it.each(['summary', 'compact', 'full'] as const)('deck_list %s shows the front-face mana cost', (detail) => {
+    const { deck, cache } = dfcDeck()
+    const result = renderDeckView(deck, 'full', globalRoles, undefined, undefined, undefined, cache, detail)
+    expect(result).toMatch(/Vincent Valentine.*\{2\}\{B\}\{B\}/)
+    expect(result).toMatch(/Shatterskull Smashing.*\{X\}\{R\}\{R\}/)
+  })
+
+  it('deck_curve counts front-face pips of double-faced cards', () => {
+    const { deck, cache } = dfcDeck()
+    const result = renderDeckView(deck, 'curve', globalRoles, undefined, undefined, undefined, cache)
+    expect(result).toContain('Black: 2')
+    expect(result).toContain('Red: 2')
+  })
+
+  it('deck_pull_list shows the front-face mana cost', () => {
+    const { deck, cache } = dfcDeck()
+    const result = renderPullListView(deck, { version: 1, updatedAt: '', sets: [] }, cache, { showPulled: true })
+    expect(result).toContain('{2}{B}{B}')
+    expect(result).toContain('{X}{R}{R}')
+  })
+})
