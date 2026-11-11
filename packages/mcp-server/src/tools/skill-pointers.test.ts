@@ -16,7 +16,7 @@ describe('skill pointers in tool descriptions', () => {
       const exempt = SKILL_EXEMPT_TOOLS.includes(tool.name)
       const mapped = tool.name in TOOL_SKILLS
       expect(exempt !== mapped, `${tool.name} must be mapped xor exempt`).toBe(true)
-      if (mapped) expect(tool.description).toContain(skillPointer(TOOL_SKILLS[tool.name]))
+      if (mapped) expect(tool.description?.startsWith(skillPointer(TOOL_SKILLS[tool.name]))).toBe(true)
       else expect(tool.description).not.toContain('skill is in your available skills')
     }
   })
@@ -41,6 +41,6 @@ describe('skill pointers in tool descriptions', () => {
     const base = { name: 'list_bundled_skills', description: 'x', inputSchema: { type: 'object' as const } }
     expect(withSkillPointer(base)).toEqual(base)
     const mapped = withSkillPointer({ ...base, name: 'deck_list', description: 'Show it.' })
-    expect(mapped.description?.startsWith('Show it. ')).toBe(true)
+    expect(mapped.description?.endsWith(' Show it.')).toBe(true)
   })
 })

@@ -47,5 +47,5 @@ export const withSkillPointer = (tool: Tool): Tool => {
   const skill = TOOL_SKILLS[tool.name]
   return skill === undefined
     ? tool
-    : { ...tool, description: `${tool.description ?? ''} ${skillPointer(skill)}`.trim() }
+    : { ...tool, description: `${skillPointer(skill)} ${tool.description ?? ''}`.trim() }
 }
