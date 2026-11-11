@@ -1,11 +1,21 @@
 import { useState, useCallback, useRef } from 'react'
-import { formats, detectFormat, type ParsedCard, type ScryfallIdentifier } from '@mtg-deckbuilder/shared'
+import { formats, detectFormat, type ParsedCard } from '@mtg-deckbuilder/shared'
 import { searchCardByName, lookupCardsByIdentifiers } from '@/lib/scryfall'
-import { OWNERSHIP_STATUS, CARD_SOURCE, CARD_SET, makeCardEntry, getPrimaryType, createCardIdentifier } from '@/types'
+import { describeScryfallError } from '@/lib/scryfallOutcome'
 import type { ScryfallCard } from '@/types'
+import { resolveImportedCards } from './importLookup'
 import type { ImportProgress, ResolvedCard, UseImportCardsResult } from './types'
 
 export type { ImportProgress, ResolvedCard, UseImportCardsResult } from './types'
+
+async function persistToLocalCache(cards: ScryfallCard[]): Promise<void> {
+  if (cards.length === 0) return
+  try {
+    await window.electronAPI.saveCachedCards(cards)
+  } catch (error) {
+    console.error('Failed to persist imported cards to local cache:', error)
+  }
+}
 
 /**
  * Hook to encapsulate shared import logic between ImportDialog and ImportNewDeckDialog.
@@ -57,6 +67,9 @@ export function useImportCards(sideboardSize?: number): UseImportCardsResult {
    * printing; the rest go in by name (exact match). Anything Scryfall couldn't
    * resolve falls back to per-card fuzzy `searchCardByName` — the slow path,
    * but realistically only hit by typos in hand-typed lists.
+   *
+   * Never leaves `isImporting` set: lookup failures (e.g. Scryfall rate limiting)
+   * land in `errors`, which the import dialogs already display.
    */
   const lookupCards = useCallback(async (): Promise<{ resolvedCards: ResolvedCard[]; errors: string[] }> => {
     if (parsedCards.length === 0) {
@@ -68,71 +81,28 @@ export function useImportCards(sideboardSize?: number): UseImportCardsResult {
     progressRef.current = { current: 0, total: parsedCards.length }
     setImportProgress({ current: 0, total: parsedCards.length })
 
-    const identifiers: ScryfallIdentifier[] = parsedCards.map(p =>
-      p.setCode && p.collectorNumber
-        ? { set: p.setCode, collector_number: p.collectorNumber }
-        : { name: p.name },
-    )
-
-    const batched = await lookupCardsByIdentifiers(identifiers, (processed) => {
-      progressRef.current = { current: processed, total: parsedCards.length }
-      setImportProgress({ ...progressRef.current })
-    })
-
-    const resolved: (ScryfallCard | null)[] = await Promise.all(
-      batched.map(async (card, i) =>
-        card ?? (await searchCardByName(parsedCards[i].name)) as ScryfallCard | null,
-      ),
-    )
-
-    const newErrors: string[] = []
-    const resolvedCards: ResolvedCard[] = []
-    const fetchedScryfallCards: ScryfallCard[] = []
-
-    const hasSideboard = sideboardSize !== undefined && sideboardSize > 0
-
-    for (let i = 0; i < parsedCards.length; i++) {
-      const parsed = parsedCards[i]
-      const scryfallCard = resolved[i]
-      if (!scryfallCard) {
-        newErrors.push(`Card not found: ${parsed.name}`)
-        continue
-      }
-
-      fetchedScryfallCards.push(scryfallCard)
-
-      const deckCard = makeCardEntry({
-        card: createCardIdentifier(scryfallCard, {
-          setCode: parsed.setCode,
-          collectorNumber: parsed.collectorNumber,
-        }),
-        quantity: parsed.quantity,
-        ownership: OWNERSHIP_STATUS.OWNED,
-        roles: [...(parsed.roles || [])],
-        source: CARD_SOURCE.IMPORT,
-        primaryType: getPrimaryType(scryfallCard.type_line),
-      })
-
-      const listType = parsed.isSideboard
-        ? (hasSideboard ? CARD_SET.SIDEBOARD : CARD_SET.ALTERNATES)
-        : parsed.isMaybeboard ? CARD_SET.ALTERNATES
-        : CARD_SET.MAINBOARD
-
-      resolvedCards.push({ card: deckCard, listType })
+    try {
+      const { resolvedCards, fetchedScryfallCards, errors: newErrors } = await resolveImportedCards(
+        parsedCards,
+        sideboardSize,
+        {
+          lookupBatch: identifiers => lookupCardsByIdentifiers(identifiers, (processed) => {
+            progressRef.current = { current: processed, total: parsedCards.length }
+            setImportProgress({ ...progressRef.current })
+          }),
+          lookupByName: searchCardByName,
+        },
+      )
+      await persistToLocalCache(fetchedScryfallCards)
+      setErrors(newErrors)
+      return { resolvedCards, errors: newErrors }
+    } catch (error) {
+      const newErrors = [`Import failed: ${describeScryfallError(error)}`]
+      setErrors(newErrors)
+      return { resolvedCards: [], errors: newErrors }
+    } finally {
+      setIsImporting(false)
     }
-
-    if (fetchedScryfallCards.length > 0) {
-      try {
-        await window.electronAPI.saveCachedCards(fetchedScryfallCards)
-      } catch (error) {
-        console.error('Failed to persist imported cards to local cache:', error)
-      }
-    }
-
-    setErrors(newErrors)
-    setIsImporting(false)
-
-    return { resolvedCards, errors: newErrors }
   }, [parsedCards, sideboardSize])
 
   const reset = useCallback(() => {
