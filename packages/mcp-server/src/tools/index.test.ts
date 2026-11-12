@@ -1533,6 +1533,49 @@ describe('Validation', () => {
     expect(result.validation.issues).toContainEqual(expect.stringContaining('Lightning Bolt'))
   })
 
+  it('reports color identity violations with category and code', async () => {
+    const deck = makeDeck({ colorIdentity: ['U'] })
+    pushMainboard(deck, makeDeckCard('Lightning Bolt', {
+      card: { scryfallId: 'bolt', name: 'Lightning Bolt', setCode: 'test', collectorNumber: '1', colorIdentity: ['R'] },
+    }))
+    mock._decks.set(deck.id, deck)
+
+    const result = await call('get_deck', { identifier: deck.id }) as any
+    expect(result.validation.valid).toBe(false)
+    expect(result.validation.issues).toContainEqual(expect.stringContaining('outside deck\'s color identity'))
+    expect(result.validation.issueDetails).toContainEqual(expect.objectContaining({
+      category: 'legality',
+      code: 'color_identity_violation',
+    }))
+  })
+
+  it('reports format legality violations from cached Scryfall data', async () => {
+    const deck = makeDeck()
+    pushMainboard(deck, makeDeckCard('Banned Card'))
+    mock._cachedCards.set('scryfall-banned-card', mockScryfallCard('Banned Card', {
+      legalities: { commander: 'banned' },
+    }))
+    mock._decks.set(deck.id, deck)
+
+    const result = await call('get_deck', { identifier: deck.id }) as any
+    expect(result.validation.issues).toContainEqual('Banned Card is not legal in commander')
+    expect(result.validation.issueDetails).toContainEqual(expect.objectContaining({
+      category: 'legality',
+      code: 'not_legal_in_format',
+    }))
+    expect(result.validation.notChecked).toEqual([])
+  })
+
+  it('lists uncached cards as not checked instead of reporting violations', async () => {
+    const deck = makeDeck()
+    pushMainboard(deck, makeDeckCard('Mystery Card'))
+    mock._decks.set(deck.id, deck)
+
+    const result = await call('get_deck', { identifier: deck.id }) as any
+    expect(result.validation.issues).not.toContainEqual(expect.stringContaining('Mystery Card'))
+    expect(result.validation.notChecked).toEqual(['Mystery Card'])
+  })
+
   it('valid deck with enough cards and commander', async () => {
     const deck = makeDeck()
     deck.commanders.push({ name: 'Kenrith', setCode: 'eld', collectorNumber: '303' })

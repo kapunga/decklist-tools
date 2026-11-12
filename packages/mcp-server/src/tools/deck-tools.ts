@@ -10,6 +10,11 @@ import {
   getCardCount,
   type ScryfallCard,
   validateDeckStructure,
+  validateColorIdentity,
+  validateFormatLegality,
+  getNonCutEntries,
+  findUncachedEntries,
+  FORMAT_TYPE,
   getSideboard,
   getAllDeckEntries,
   getCommanderEntries,
@@ -25,7 +30,7 @@ import {
   renderNotesView,
   renderPullListView,
 } from '../views/index.js'
-import { loadCardData, fetchCardsFromScryfall, type CardData, type CardFetcher } from './card-data.js'
+import { loadCardData, readCachedCards, fetchCardsFromScryfall, type CardData, type CardFetcher } from './card-data.js'
 import type {
   GetDeckDetail,
   ManageDeckArgs,
@@ -73,7 +78,9 @@ export function getDeck(storage: Storage, identifier: string, detail: GetDeckDet
     throw new Error(`Deck not found: ${identifier}`)
   }
 
-  const validation = validateDeck(deck)
+  // Cache only: get_deck stays offline. Uncached cards are reported in
+  // validation.notChecked rather than fetched.
+  const validation = validateDeck(deck, readCachedCards(storage, getNonCutEntries(deck)))
 
   if (detail === 'full') {
     return { ...deck, validation }
@@ -86,14 +93,28 @@ export function getDeck(storage: Storage, identifier: string, detail: GetDeckDet
   }
 }
 
-function validateDeck(deck: Deck) {
-  const validationIssues = validateDeckStructure(deck)
+// Names of cards whose legality could not be checked because their Scryfall
+// data is not cached. Reported rather than guessed at, so a cache miss is never
+// mistaken for a violation (or for a clean bill of health).
+function legalityNotChecked(deck: Deck, scryfallCache: Map<string, ScryfallCard>): string[] {
+  if (deck.format.type === FORMAT_TYPE.KITCHEN_TABLE) return []
+  return findUncachedEntries(getNonCutEntries(deck), scryfallCache).map(e => e.card.name)
+}
+
+function validateDeck(deck: Deck, scryfallCache: Map<string, ScryfallCard>) {
+  const validationIssues = [
+    ...validateDeckStructure(deck),
+    ...validateColorIdentity(deck),
+    ...validateFormatLegality(deck, scryfallCache),
+  ]
   const cardCount = getCardCount(deck)
   const sideboardCount = getSideboard(deck).reduce((sum, c) => sum + c.quantity, 0)
 
   return {
     valid: validationIssues.length === 0,
     issues: validationIssues.map(i => i.message),
+    issueDetails: validationIssues,
+    notChecked: legalityNotChecked(deck, scryfallCache),
     summary: {
       cardCount,
       deckSize: deck.format.deckSize,

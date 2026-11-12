@@ -41,11 +41,13 @@ Returns summary info for every saved deck.
 
 ### `get_deck`
 
-Returns the raw deck JSON (with Scryfall IDs, metadata, and a structural validation report). Use this for programmatic operations or exports. For human-readable deck analysis, use `deck_list` instead.
+Returns the raw deck JSON (with Scryfall IDs, metadata, and a validation report). Use this for programmatic operations or exports. For human-readable deck analysis, use `deck_list` instead.
 
 **Input:**
 - `identifier` *(string, required)* — deck UUID or name (case-insensitive).
 - `detail` *(string, optional)* — `summary` (default) | `full`. Summary mode strips per-entry `id`, `addedAt`, `source`, and `pulledPrintings` from each `CardEntry` — these are only needed for surgical edit operations or collection-pull tracking. Full mode preserves every field.
+
+**Validation output:** `validation` contains `valid`, `issues` (message strings), `issueDetails` (`{category, code, message}` per issue; category is `structure` or `legality`), `notChecked` (names of cards whose format legality could not be checked because their Scryfall data is not cached; never reported as violations), and `summary`. Checks: deck structure, color identity (commander-like formats), and format legality (from cached Scryfall data, skipped for `kitchen_table`).
 
 ### `manage_deck`
 
