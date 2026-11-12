@@ -1,13 +1,17 @@
 import type { CardEntry, Deck, ScryfallCard } from '@mtg-deckbuilder/shared'
 import { getEntryPrimaryType, isLandEntry, getCardCount, CARD_TYPE_ORDER, enrichCards, getCmcDistribution, countManaPips, getMainboard } from '@mtg-deckbuilder/shared'
-import { countCopies, formatMissingDataWarning, pluralizeCards, unresolvedAmong } from './formatters.js'
+import { countCopies, formatMissingDataWarning, unresolvedAmong } from './formatters.js'
 
-/** Note for nonland cards left out of the curve and pips; empty when none. */
+/**
+ * Note for nonland cards left out of the curve and pips; empty when none.
+ * The warning above counts every card without data (lands included), so the
+ * note says it counts only the nonland ones among them.
+ */
 function excludedFromCurveNote(missing: CardEntry[], cache: Map<string, ScryfallCard>): string[] {
   const excluded = countCopies(missing.filter(card => !isLandEntry(card, cache)))
   if (excluded === 0) return []
-  const verb = excluded === 1 ? 'is' : 'are'
-  return [`_${pluralizeCards(excluded)} without Scryfall data ${verb} excluded from the curve and pips._`]
+  const what = excluded === 1 ? 'is a nonland card and is' : 'are nonland cards and are'
+  return [`_Of the cards without Scryfall data, ${excluded} ${what} excluded from the curve and pips._`]
 }
 
 export function renderCurveView(

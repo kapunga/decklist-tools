@@ -74,7 +74,7 @@ describe('unresolvable cards', () => {
     expect(curve).toContain('Warning')
     expect(curve).toContain('Lightning Bolt')
     expect(curve).not.toMatch(/^0 +█/m)
-    expect(curve).toContain('4 cards without Scryfall data are excluded from the curve and pips')
+    expect(curve).toContain('Of the cards without Scryfall data, 4 are nonland cards and are excluded from the curve and pips.')
     expect(curve).toMatch(/^Instant +█+ 4$/m)
   })
 

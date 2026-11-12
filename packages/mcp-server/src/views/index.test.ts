@@ -547,6 +547,24 @@ describe('missing Scryfall data warning', () => {
     expect(result).not.toContain('Card 25,')
   })
 
+  it('deck_curve footnote counts only the nonland cards among those the warning counts', () => {
+    const deck = makeDeck()
+    const bolts = makeDeckCard('Lightning Bolt', { primaryType: 'Instant', quantity: 3 })
+    const forests = makeDeckCard('Forest', { primaryType: 'Land', quantity: 2 })
+    pushMainboard(deck, bolts, forests)
+    const result = renderCurveView(deck, new Map(), undefined, [bolts, forests])
+    expect(result).toContain('5 cards without Scryfall data')
+    expect(result).toContain('_Of the cards without Scryfall data, 3 are nonland cards and are excluded from the curve and pips._')
+  })
+
+  it('deck_curve footnote uses the singular for one nonland card', () => {
+    const deck = makeDeck()
+    const bolt = makeDeckCard('Lightning Bolt', { primaryType: 'Instant' })
+    pushMainboard(deck, bolt)
+    const result = renderCurveView(deck, new Map(), undefined, [bolt])
+    expect(result).toContain('_Of the cards without Scryfall data, 1 is a nonland card and is excluded from the curve and pips._')
+  })
+
   it('only warns about unresolved cards the view renders', () => {
     const deck = makeDeck()
     const sideboardOnly = makeDeckCard('Sideboard Card')

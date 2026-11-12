@@ -177,7 +177,7 @@ The warning is a blockquote placed directly below the view's heading block:
 
 The count is in copies. Up to 25 distinct names are listed, followed by `, and N more` when there are more. In addition:
 - `deck_list` tags each unresolved card line with `[no Scryfall data]`.
-- `deck_curve` leaves unresolved nonland cards out of the mana curve rows and pip counts (`getCmcDistribution` skips any nonland card without a mana value). It adds `_N cards without Scryfall data are excluded from the curve and pips._` under the `## Mana Curve` rows.
+- `deck_curve` leaves unresolved nonland cards out of the mana curve rows and pip counts (`getCmcDistribution` skips any nonland card without a mana value). It adds `_Of the cards without Scryfall data, N are nonland cards and are excluded from the curve and pips._` (singular: `1 is a nonland card and is excluded`) under the `## Mana Curve` rows. N counts only the nonland copies, so it can be smaller than the warning's count, which includes lands.
 
 ### `deck_notes`
 
