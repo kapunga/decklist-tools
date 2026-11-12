@@ -1,6 +1,7 @@
 import type { Tool } from '@modelcontextprotocol/sdk/types.js'
 import { PRIMARY_TYPES } from '@mtg-deckbuilder/shared'
 import { DECK_EXPORT_FORMATS, SEARCH_CARDS_MAX_NAMES } from './types.js'
+import { withSkillPointer } from './skill-pointers.js'
 
 // Reused by deck_list and deck_curve — a CardFilter JSON shape for trimming
 // the card list shown in a rendered view.
@@ -27,6 +28,10 @@ const CARD_FILTER_SCHEMA = {
 } as const
 
 export function getToolDefinitions(): Tool[] {
+  return baseToolDefinitions().map(withSkillPointer)
+}
+
+function baseToolDefinitions(): Tool[] {
   return [
     // Deck Management
     {

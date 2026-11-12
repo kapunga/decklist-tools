@@ -16,6 +16,8 @@ On `initialize`, the server returns an `instructions` string that MCP clients in
 
 Every skill sentence is conditional: skills are installed by the Electron app, so a standalone server user may not have them, and the tools must work on their own. Whether a client actually surfaces `instructions` to the model varies by client.
 
+**Subagents.** Subagents receive tool schemas but not `instructions`, so every tool description (except `list_bundled_skills`) also starts with one conditional sentence naming its matching skill, e.g. "If the `mtg-deckbuilder-analysis` skill is in your available skills, load it before using this tool; otherwise proceed." The tool→skill map lives in `packages/mcp-server/src/tools/skill-pointers.ts` and is applied in `getToolDefinitions`. The pointer appears regardless of `--skills-dir`, since it is conditional on the client's skills, not the server's.
+
 The server also reports its `package.json` version in the `initialize` response.
 
 ---
