@@ -2,7 +2,7 @@
 name: mtg-deckbuilder-analysis
 description: Inspect and analyze decks stored in the mtg-deckbuilder MCP server — viewing card lists with oracle text, computing mana curves, reading strategic notes, generating physical pull lists, and searching for cards across decks. Use when a user asks "show me the deck", "what's in this deck", "what's the mana curve", "what's the strategy", or "which decks contain card X".
 metadata:
-  version: "2026-05-31"
+  version: "2026-11-11"
 ---
 
 # MTG Deckbuilder — Analysis & Views
@@ -15,11 +15,11 @@ How to inspect a deck and answer questions about its contents, mana base, strate
 |------|---------|
 | `deck_list` | **Primary deck-analysis view.** Markdown list of every card with oracle text. The right tool for "show me the deck". |
 | `deck_curve` | Mana curve breakdown — CMC distribution, color pip counts, type counts. Separate tool from `deck_list`. |
-| `deck_notes` | Read strategic notes (combos, synergies, themes) attached to a deck. Read-only — to add/edit notes, use `manage_deck_note`. |
+| `deck_notes` | Read strategic notes (combos, synergies, themes) attached to a deck, as markdown. Read-only, no note ids — to add/edit notes, use `manage_deck_note`. |
 | `deck_pull_list` | Physical-assembly view: cards grouped by set with checkboxes for pull tracking. |
 | `get_deck` | **Raw deck JSON.** Programmatic / surgical-edit use only. *Do not use for human-readable views — that's `deck_list`.* |
 | `search_decks_for_card` | Find which decks contain a given card by name (checks commander zone too). |
-| `list_deck_notes` | List every note attached to a deck. |
+| `list_deck_notes` | JSON of every note with ids, role ids, and timestamps. Use it to get the `note_id` for `manage_deck_note` update/delete. |
 | `manage_deck_note` | Add, update, or delete a deck note. |
 
 ## "Show me the deck" → `deck_list`
@@ -134,7 +134,7 @@ Pass an array of filter objects to AND them together. Each filter's `mode` contr
 
 This view doesn't require the Scryfall cache and is fast. It's distinct from `deck_list` which is about cards; `deck_notes` is about intent.
 
-To add or modify notes, use `manage_deck_note` (covered below).
+`deck_notes` returns markdown without note ids. To edit or delete a note you need its `note_id`: call `list_deck_notes` (JSON with ids, role ids, timestamps, and full bodies), then `manage_deck_note` (covered below).
 
 ## `deck_pull_list` — physical assembly
 
@@ -177,7 +177,7 @@ On `update` and `delete`, `remove_role: true` will strip the propagated role fro
 
 - **`deck_list` vs `get_deck`.** When in doubt: `deck_list`. `get_deck` returns JSON; humans want markdown with oracle text.
 - **`deck_curve` is not part of `deck_list`.** A prompt about mana curve needs the separate `deck_curve` tool.
-- **`deck_notes` is read-only.** To add a note, use `manage_deck_note`.
+- **`deck_notes` vs `list_deck_notes`.** Same notes, different output: `deck_notes` is read-only markdown for reading strategy (no ids); `list_deck_notes` is JSON with ids, needed for `manage_deck_note` update/delete.
 - **`detail` means different things on `deck_list` vs `get_deck`.** `deck_list.detail` controls card-line verbosity (with or without oracle text). `get_deck.detail` controls whether audit fields are stripped from the JSON.
 
 ## Worked workflows

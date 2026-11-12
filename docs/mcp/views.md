@@ -60,7 +60,7 @@ Mana curve analysis for a deck: CMC distribution, color pip counts, and type bre
 
 ## `deck_notes`
 
-Deck strategy notes: combos, synergies, themes, and game-plan commentary.
+Deck strategy notes: combos, synergies, themes, and game-plan commentary. Read-only markdown with role names resolved; it contains no note ids. To get a `note_id` for editing or deleting, use [`list_deck_notes`](notes.md#list-deck-notes).
 
 | Param | Type | Required | Description |
 |-------|------|----------|-------------|
