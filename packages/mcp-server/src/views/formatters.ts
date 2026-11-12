@@ -1,5 +1,5 @@
 import type { CardEntry, RoleDefinition, ScryfallCard } from '@mtg-deckbuilder/shared'
-import { getEntryPrimaryType, getRoleById, isCardFullyPulled, getOracleText, getCardDisplayName, getCanonicalSuffix, OWNERSHIP_STATUS, getTypeLine } from '@mtg-deckbuilder/shared'
+import { getEntryPrimaryType, getRoleById, isCardFullyPulled, getOracleText, getCardDisplayName, getCanonicalSuffix, OWNERSHIP_STATUS, getTypeLine, getCachedCard, getCardManaCost } from '@mtg-deckbuilder/shared'
 
 export type DetailLevel = 'summary' | 'compact' | 'full'
 
@@ -13,8 +13,10 @@ export function formatCardLine(
 ): string {
   const level = detail || 'summary'
   const cache = scryfallCache || new Map<string, ScryfallCard>()
-  const cached = card.card.scryfallId ? cache.get(card.card.scryfallId) : undefined
+  const cached = getCachedCard(card, cache)
   const typeLine = getTypeLine(card, cache)
+  const manaCost = getCardManaCost(cached)
+  const mana = manaCost ? `${manaCost} ` : ''
 
   const displayName = getCardDisplayName(card.card)
   const canonicalSuffix = getCanonicalSuffix(card.card)
@@ -22,15 +24,12 @@ export function formatCardLine(
 
   if (level === 'full' && cached) {
     const setInfo = `${cached.set.toUpperCase()}#${cached.collector_number}`
-    const mana = cached.mana_cost ? `${cached.mana_cost} ` : ''
     const pt = cached.power && cached.toughness ? ` ${cached.power}/${cached.toughness}` : ''
     headerParts.push(`- ${card.quantity}x ${displayName}${canonicalSuffix} • ${setInfo} • ${cached.rarity} • ${mana}${typeLine ?? ''}${pt}`)
   } else if (level === 'compact' && cached) {
-    const mana = cached.mana_cost ? `${cached.mana_cost} ` : ''
     const pt = cached.power && cached.toughness ? ` ${cached.power}/${cached.toughness}` : ''
     headerParts.push(`- ${card.quantity}x ${displayName}${canonicalSuffix} • ${mana}${typeLine ?? ''}${pt}`)
   } else {
-    const manaCost = cached?.mana_cost
     if (manaCost) {
       headerParts.push(`- ${card.quantity}x ${displayName}${canonicalSuffix} • ${manaCost}`)
     } else {

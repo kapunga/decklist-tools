@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { CardImage } from '@/components/CardImage'
 import type { ScryfallCard, DeckFormat, RoleDefinition, CardSetName } from '@/types'
-import { getCardLimit, FORMAT_TYPE, CARD_SET, isCommanderLikeFormat } from '@/types'
+import { getCardLimit, FORMAT_TYPE, CARD_SET, isCommanderLikeFormat, getCardManaCost } from '@/types'
 import { getAllRoles } from '@/lib/constants'
 import { isLegalInFormat, matchesColorIdentity } from '@/lib/scryfall'
 import { useGlobalRoles } from '@/hooks/useStore'
@@ -207,8 +207,8 @@ export function CardAddModal({
             {/* Card Info */}
             <div className="space-y-1 text-sm text-muted-foreground">
               <p><span className="font-medium">Type:</span> {card.type_line}</p>
-              {card.mana_cost && (
-                <p><span className="font-medium">Mana Cost:</span> {card.mana_cost}</p>
+              {getCardManaCost(card) && (
+                <p><span className="font-medium">Mana Cost:</span> {getCardManaCost(card)}</p>
               )}
               <p><span className="font-medium">Set:</span> {card.set.toUpperCase()}</p>
             </div>

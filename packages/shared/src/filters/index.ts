@@ -1,5 +1,5 @@
 import type { CardEntry, PrimaryType, ScryfallCard } from '../types/index.js'
-import { getCardManaValue, isLandPrimaryType, resolvePrimaryType } from '../domain/classification.js'
+import { getCardManaCost, getCardManaValue, isLandPrimaryType, resolvePrimaryType } from '../domain/classification.js'
 import type { EnrichedDeckCard, CardFilter, ManaPipCounts } from './types.js'
 
 export type { EnrichedDeckCard, FilterMode, CmcFilter, ColorFilter, CardTypeFilter, RoleFilter, OwnershipFilter, CardFilter, FilterGroup, ManaPipCounts } from './types.js'
@@ -76,11 +76,7 @@ export function countManaPips(cards: EnrichedDeckCard[]): ManaPipCounts {
 
   for (const card of cards) {
     if (isLand(card)) continue
-    const sc = card.scryfallCard
-    if (!sc) continue
-
-    const manaCost = sc.mana_cost || ''
-    // Handle DFCs — only count front face
+    const manaCost = getCardManaCost(card.scryfallCard) ?? ''
     const qty = card.deckCard.quantity
 
     // Count colored pips

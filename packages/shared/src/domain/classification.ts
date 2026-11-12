@@ -24,6 +24,17 @@ export function getCardManaValue(card: ScryfallCard | undefined): number | undef
   return card?.cmc ?? card?.card_faces?.[0]?.cmc
 }
 
+/**
+ * A Scryfall card's mana cost. Two-image layouts (transform, modal_dfc,
+ * reversible) have no top-level `mana_cost`, so fall back to the front face's.
+ * One-image multi-part layouts (split, adventure, flip) keep their top-level
+ * cost unchanged — e.g. Fire // Ice is `{1}{R} // {1}{U}`. `undefined` when
+ * there is no card or it has no mana cost (lands).
+ */
+export function getCardManaCost(card: ScryfallCard | undefined): string | undefined {
+  return card?.mana_cost || card?.card_faces?.[0]?.mana_cost || undefined
+}
+
 /** Look up an entry's Scryfall card in the cache, if it has one. */
 export function getCachedCard(entry: CardEntry, cache: Map<string, ScryfallCard>): ScryfallCard | undefined {
   return entry.card.scryfallId ? cache.get(entry.card.scryfallId) : undefined

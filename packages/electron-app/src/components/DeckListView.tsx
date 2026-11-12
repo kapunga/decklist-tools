@@ -18,7 +18,7 @@ import type { CardEntry, ScryfallCard, Deck, CardSetName } from '@/types'
 import { getCardLimit, isCardFullyPulled, getCardDisplayName, getCanonicalSuffix, OWNERSHIP_STATUS, CARD_SOURCE, CARD_SET } from '@/types'
 import { CARD_TYPE_SORT_ORDER, getAllRoles } from '@/lib/constants'
 import type { CardFilter } from '@mtg-deckbuilder/shared'
-import { enrichCards, applyFilters, getMainboard, getCardSetEntries, getEntryPrimaryType } from '@mtg-deckbuilder/shared'
+import { enrichCards, applyFilters, getMainboard, getCardSetEntries, getEntryPrimaryType, getCardManaCost } from '@mtg-deckbuilder/shared'
 
 interface DeckListViewProps {
   deck: Deck
@@ -39,6 +39,7 @@ export function DeckListView({ deck, listType }: DeckListViewProps) {
   const globalRoles = useGlobalRoles()
 
   const [focusedScryfallCard, setFocusedScryfallCard] = useState<ScryfallCard | null>(null)
+  const focusedManaCost = getCardManaCost(focusedScryfallCard ?? undefined)
   const [loadingCard, setLoadingCard] = useState(false)
 
   // Convert commanders to virtual CardEntry entries for display
@@ -257,9 +258,9 @@ export function DeckListView({ deck, listType }: DeckListViewProps) {
               )}
             </div>
             <div className="flex flex-col gap-1.5 pt-1">
-              {focusedScryfallCard.mana_cost && (
+              {focusedManaCost && (
                 <MetaRow label="Cost">
-                  <ManaCost cost={focusedScryfallCard.mana_cost} size="sm" />
+                  <ManaCost cost={focusedManaCost} size="sm" />
                 </MetaRow>
               )}
               {focusedScryfallCard.set_name && (
