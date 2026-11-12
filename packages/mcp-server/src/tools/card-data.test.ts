@@ -1,5 +1,10 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import type { ScryfallCard } from '@mtg-deckbuilder/shared'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import {
+  ScryfallRateLimitError,
+  setScryfallTransport,
+  type ScryfallCard,
+  type ScryfallTransport,
+} from '@mtg-deckbuilder/shared'
 import { createMockStorage, makeDeck, makeDeckCard, mockScryfallCard, pushMainboard } from '../__test__/helpers.js'
 import { loadCardData, type CardFetcher } from './card-data.js'
 import { deckList, deckCurve, deckPullList } from './deck-tools.js'
@@ -85,6 +90,28 @@ describe('unresolvable cards', () => {
     expect(list).toContain('Warning')
     expect(list).toContain('oracle text, mana value and mana pips are missing')
     expect(list).toMatch(/4x Lightning Bolt.*\[no Scryfall data\]/)
+  })
+
+  describe('through the shared Scryfall client (default fetcher)', () => {
+    afterEach(() => setScryfallTransport())
+
+    const transportFailures: [string, ScryfallTransport][] = [
+      ['an exhausted rate limit', async () => { throw new ScryfallRateLimitError(30) }],
+      ['a persistent 5xx', async () => new Response('{}', { status: 503 })],
+    ]
+
+    it.each(transportFailures)('deck_list warns instead of failing on %s', async (_label, transport) => {
+      const fakeTransport = vi.fn(transport)
+      setScryfallTransport(fakeTransport)
+      const deck = seedDeck()
+
+      const list = await deckList(mock.storage, { deck_id: deck.id })
+
+      expect(fakeTransport).toHaveBeenCalledOnce()
+      expect(list).toContain('Warning')
+      expect(list).toMatch(/4x Lightning Bolt.*\[no Scryfall data\]/)
+      expect(mock.storage.cacheCardsWithIndex).not.toHaveBeenCalled()
+    })
   })
 
   it('deck_pull_list warns about unresolved cards', async () => {
