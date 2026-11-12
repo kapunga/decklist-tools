@@ -8,6 +8,8 @@ import {
   isLandEntry,
   getCardManaValue,
   getCardManaCost,
+  findUncachedEntries,
+  getUncachedScryfallIds,
 } from './classification.js'
 import { getPrimaryType } from '../constants/index.js'
 import type { CardEntry, ScryfallCard } from '../types/index.js'
@@ -248,5 +250,34 @@ describe('getCardManaCost', () => {
 
   it('returns undefined when there is no card', () => {
     expect(getCardManaCost(undefined)).toBeUndefined()
+  })
+})
+
+describe('findUncachedEntries', () => {
+  const cache = cacheOf(makeCard('Sol Ring'))
+
+  it('returns only entries with no cached Scryfall card', () => {
+    const entries = [makeEntry('Sol Ring'), makeEntry('Opt')]
+    expect(findUncachedEntries(entries, cache).map(e => e.card.name)).toEqual(['Opt'])
+  })
+
+  it('treats an entry without a scryfallId as uncached', () => {
+    const entry = makeEntry('No Id', { card: { name: 'No Id', setCode: 'tst', collectorNumber: '1' } })
+    expect(findUncachedEntries([entry], cache)).toEqual([entry])
+  })
+
+  it('returns nothing for a fully cached list', () => {
+    expect(findUncachedEntries([makeEntry('Sol Ring')], cache)).toEqual([])
+  })
+})
+
+describe('getUncachedScryfallIds', () => {
+  it('returns the distinct fetchable ids, skipping entries without one', () => {
+    const entries = [
+      makeEntry('Opt'),
+      makeEntry('Opt', { id: 'second-opt' }),
+      makeEntry('No Id', { card: { name: 'No Id', setCode: 'tst', collectorNumber: '1' } }),
+    ]
+    expect(getUncachedScryfallIds(entries)).toEqual(['sf-Opt'])
   })
 })

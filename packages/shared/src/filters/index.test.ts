@@ -217,6 +217,12 @@ describe('double-faced and uncached classification', () => {
     expect(getCmcDistribution([uncached])[0]).toBe(0)
   })
 
+  it('does not count an uncached nonland card at mana value 0', () => {
+    const card = makeEnriched({ cmc: 0 })
+    const uncached: EnrichedDeckCard = { deckCard: { ...card.deckCard, primaryType: 'Creature' } }
+    expect(Object.values(getCmcDistribution([uncached])).every(n => n === 0)).toBe(true)
+  })
+
   it('classifies a noncreature-front card by its front face for the card-type filter', () => {
     const esper = makeEnriched({ name: 'Esper Origins', typeLine: 'Sorcery // Enchantment Creature — Saga Human' })
     expect(applyFilters([esper], [{ type: 'card-type', mode: 'include', values: ['Creature'] }])).toHaveLength(0)

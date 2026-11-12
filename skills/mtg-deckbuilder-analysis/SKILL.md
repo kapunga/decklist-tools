@@ -178,6 +178,7 @@ On `update` and `delete`, `remove_role: true` will strip the propagated role fro
 - **`deck_list` vs `get_deck`.** When in doubt: `deck_list`. `get_deck` returns JSON; humans want markdown with oracle text.
 - **`deck_curve` is not part of `deck_list`.** A prompt about mana curve needs the separate `deck_curve` tool.
 - **`deck_notes` vs `list_deck_notes`.** Same notes, different output: `deck_notes` is read-only markdown for reading strategy (no ids); `list_deck_notes` is JSON with ids, needed for `manage_deck_note` update/delete.
+- **"Warning: N cards without Scryfall data".** `deck_list`, `deck_curve` and `deck_pull_list` fetch card data that is not cached yet. If Scryfall can't be reached, the output starts with this warning and names the cards. Their oracle text, mana value and pips are missing. `deck_list` tags them `[no Scryfall data]`, and `deck_curve` leaves them out of the curve and pips and says how many it left out. Tell the user the analysis is incomplete, and don't guess these cards' mana values. Calling the tool again later usually fills the gap.
 - **`detail` means different things on `deck_list` vs `get_deck`.** `deck_list.detail` controls card-line verbosity (with or without oracle text). `get_deck.detail` controls whether audit fields are stripped from the JSON.
 
 ## Worked workflows

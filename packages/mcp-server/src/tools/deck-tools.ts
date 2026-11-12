@@ -25,6 +25,7 @@ import {
   renderNotesView,
   renderPullListView,
 } from '../views/index.js'
+import { loadCardData, fetchCardsFromScryfall, type CardData, type CardFetcher } from './card-data.js'
 import type {
   GetDeckDetail,
   ManageDeckArgs,
@@ -146,18 +147,11 @@ export function manageDeck(storage: Storage, args: ManageDeckArgs) {
   }
 }
 
-// Shared helper: load Scryfall cache for every entry in a deck. Used by
-// deck_list and deck_curve (deck_notes doesn't need it; deck_pull_list builds
-// its own fetch via the set collection).
-function loadScryfallCache(storage: Storage, deck: Deck): Map<string, ScryfallCard> {
-  const cache = new Map<string, ScryfallCard>()
-  for (const entry of getAllDeckEntries(deck)) {
-    if (entry.card.scryfallId) {
-      const cached = storage.getCachedCard(entry.card.scryfallId) as ScryfallCard | null
-      if (cached) cache.set(entry.card.scryfallId, cached)
-    }
-  }
-  return cache
+// Shared helper: card data for every entry in a deck, fetching what the
+// Scryfall cache is missing. Used by deck_list, deck_curve and deck_pull_list
+// (deck_notes doesn't need it).
+function loadDeckCardData(storage: Storage, deck: Deck, fetchCards: CardFetcher): Promise<CardData> {
+  return loadCardData(storage, getAllDeckEntries(deck), fetchCards)
 }
 
 // Shared helper: build the set of card entry IDs that match a filter list.
@@ -183,22 +177,30 @@ function getDeckOrThrow(storage: Storage, deckId: string): Deck {
   return deck
 }
 
-export function deckList(storage: Storage, args: DeckListArgs): string {
+export async function deckList(
+  storage: Storage,
+  args: DeckListArgs,
+  fetchCards: CardFetcher = fetchCardsFromScryfall,
+): Promise<string> {
   const deck = getDeckOrThrow(storage, args.deck_id)
   const globalRoles = storage.getGlobalRoles()
-  const scryfallCache = loadScryfallCache(storage, deck)
-  const filteredCardIds = buildFilteredCardIds(storage, deck, scryfallCache, args.filters)
+  const { cache, unresolved } = await loadDeckCardData(storage, deck, fetchCards)
+  const filteredCardIds = buildFilteredCardIds(storage, deck, cache, args.filters)
   // Default to `compact` — the whole point of the split is that oracle text
   // is the first-look content an LLM wants for deck analysis.
   const detail = args.detail ?? 'compact'
-  return renderFullView(deck, globalRoles, args.sort_by, args.group_by, filteredCardIds, scryfallCache, detail)
+  return renderFullView(deck, globalRoles, args.sort_by, args.group_by, filteredCardIds, cache, detail, unresolved)
 }
 
-export function deckCurve(storage: Storage, args: DeckCurveArgs): string {
+export async function deckCurve(
+  storage: Storage,
+  args: DeckCurveArgs,
+  fetchCards: CardFetcher = fetchCardsFromScryfall,
+): Promise<string> {
   const deck = getDeckOrThrow(storage, args.deck_id)
-  const scryfallCache = loadScryfallCache(storage, deck)
-  const filteredCardIds = buildFilteredCardIds(storage, deck, scryfallCache, args.filters)
-  return renderCurveView(deck, scryfallCache, filteredCardIds)
+  const { cache, unresolved } = await loadDeckCardData(storage, deck, fetchCards)
+  const filteredCardIds = buildFilteredCardIds(storage, deck, cache, args.filters)
+  return renderCurveView(deck, cache, filteredCardIds, unresolved)
 }
 
 export function deckNotes(storage: Storage, args: DeckNotesArgs): string {
@@ -232,11 +234,15 @@ export function deckExport(storage: Storage, args: DeckExportArgs) {
   }
 }
 
-export function deckPullList(storage: Storage, args: DeckPullListArgs): string {
+export async function deckPullList(
+  storage: Storage,
+  args: DeckPullListArgs,
+  fetchCards: CardFetcher = fetchCardsFromScryfall,
+): Promise<string> {
   const deck = getDeckOrThrow(storage, args.deck_id)
-  const scryfallCache = loadScryfallCache(storage, deck)
+  const { cache, unresolved } = await loadDeckCardData(storage, deck, fetchCards)
   const setCollection = storage.getSetCollection() ?? { version: 1, updatedAt: '', sets: [] }
-  return renderPullListView(deck, setCollection, scryfallCache, { showPulled: true })
+  return renderPullListView(deck, setCollection, cache, { showPulled: true, unresolved })
 }
 
 export function searchDecksForCard(storage: Storage, cardName: string) {

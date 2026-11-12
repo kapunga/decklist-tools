@@ -40,6 +40,17 @@ export function getCachedCard(entry: CardEntry, cache: Map<string, ScryfallCard>
   return entry.card.scryfallId ? cache.get(entry.card.scryfallId) : undefined
 }
 
+/** Entries whose Scryfall card is not in the cache (including entries with no `scryfallId`). */
+export function findUncachedEntries(entries: CardEntry[], cache: Map<string, ScryfallCard>): CardEntry[] {
+  return entries.filter(entry => !getCachedCard(entry, cache))
+}
+
+/** The distinct Scryfall ids of `entries` that can be fetched by id. */
+export function getUncachedScryfallIds(entries: CardEntry[]): string[] {
+  const ids = entries.flatMap(entry => (entry.card.scryfallId ? [entry.card.scryfallId] : []))
+  return [...new Set(ids)]
+}
+
 /**
  * Get the type line for an entry by consulting the Scryfall cache. Returns
  * `undefined` when the cache has no entry for this card, or when the card has

@@ -108,7 +108,10 @@ export function getCmcDistribution(cards: EnrichedDeckCard[]): Record<number, nu
 
   for (const card of cards) {
     if (isLand(card)) continue
-    const bucket = getCmcBucket(getCardCmc(card))
+    // A card with no Scryfall data has an unknown mana value — never count it at 0.
+    const manaValue = getCardManaValue(card.scryfallCard)
+    if (manaValue === undefined) continue
+    const bucket = getCmcBucket(manaValue)
     dist[bucket] = (dist[bucket] || 0) + card.deckCard.quantity
   }
 

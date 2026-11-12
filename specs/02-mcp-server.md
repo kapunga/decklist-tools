@@ -164,6 +164,21 @@ Mana curve analysis: CMC distribution, color pip counts, type breakdown, and car
 - Two-image layouts (transform, modal DFC, reversible) have no top-level cost, so the **front face's** cost is used: Vincent Valentine // Galian Beast shows `{2}{B}{B}` and contributes two black pips.
 - One-image multi-part layouts (split, adventure, flip) keep their top-level cost as Scryfall prints it, e.g. Fire // Ice shows `{1}{R} // {1}{U}` and its pips count both halves.
 
+**Missing Scryfall data — "fetch, then warn" (shared by `deck_list`, `deck_curve` and `deck_pull_list`).** Card data comes from the Scryfall cache, but these views never silently treat a missing card as mana value 0 or type `Other`:
+1. The tool handler (`loadCardData` in `packages/mcp-server/src/tools/card-data.ts`) reads the cache for every deck entry and finds the entries it lacks (`findUncachedEntries` in `@mtg-deckbuilder/shared`).
+2. It fetches the missing cards by Scryfall id through the rate-limited batch `/cards/collection` lookup (`getCardsByIds`) and writes them to the cache (`cacheCardsWithIndex`), so later calls are fully cached. The fetch is bounded: at most 150 cards per call (two collection requests) and a 10-second timeout. A fetch that fails, throws or times out counts as "nothing resolved"; it never fails the tool call. A fully cached deck makes no network call. Entries without a `scryfallId` can't be fetched.
+3. The pure view receives the cache plus the list of entries that are still unresolved. Each view warns only about the entries it renders. Unresolved cards keep their stored `primaryType`, so type groupings and land counts stay correct.
+
+The warning is a blockquote placed directly below the view's heading block:
+
+```
+> **Warning:** 4 cards without Scryfall data (not cached and could not be fetched); their oracle text, mana value and mana pips are missing: Lightning Bolt, Opt.
+```
+
+The count is in copies. Up to 25 distinct names are listed, followed by `, and N more` when there are more. In addition:
+- `deck_list` tags each unresolved card line with `[no Scryfall data]`.
+- `deck_curve` leaves unresolved nonland cards out of the mana curve rows and pip counts (`getCmcDistribution` skips any nonland card without a mana value). It adds `_Of the cards without Scryfall data, N are nonland cards and are excluded from the curve and pips._` (singular: `1 is a nonland card and is excluded`) under the `## Mana Curve` rows. N counts only the nonland copies, so it can be smaller than the warning's count, which includes lands.
+
 ### `deck_notes`
 
 Returns the deck's strategy notes — combos, synergies, themes, and game-plan commentary — as read-only markdown with role names resolved. Use when a user asks *how* a deck is meant to play. The output has no note ids or timestamps; use `list_deck_notes` when you need an id for `manage_deck_note`. This view does not require Scryfall data and skips the per-card cache load.
