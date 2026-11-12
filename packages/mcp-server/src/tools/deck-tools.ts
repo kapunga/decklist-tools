@@ -208,6 +208,11 @@ export function deckNotes(storage: Storage, args: DeckNotesArgs): string {
   return renderNotesView(deck, globalRoles)
 }
 
+/** Number of lines in exported text; empty content has none (''.split('\n') would report 1). */
+function countLines(content: string): number {
+  return content === '' ? 0 : content.split('\n').length
+}
+
 export function deckExport(storage: Storage, args: DeckExportArgs) {
   const deck = getDeckOrThrow(storage, args.deck_id)
   const format = getFormat(args.format)
@@ -223,7 +228,7 @@ export function deckExport(storage: Storage, args: DeckExportArgs) {
     format: format.id,
     formatName: format.name,
     content,
-    lineCount: content.split('\n').length,
+    lineCount: countLines(content),
   }
 }
 

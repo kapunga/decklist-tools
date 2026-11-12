@@ -161,6 +161,17 @@ Returns the deck's strategy notes — combos, synergies, themes, and game-plan c
 **Input:**
 - `deck_id` *(string, required)*.
 
+### `deck_export`
+
+Exports a deck as text in one of the supported decklist formats (`moxfield`, `archidekt`, `simple`), suitable for pasting into the matching site. Returns `deckId`, `deckName`, `format`, `formatName`, `content`, and `lineCount` (0 when `content` is empty, e.g. an empty section).
+
+**Input:**
+- `deck_id` *(string, required)*.
+- `format` *(string, required)* — target export format.
+- `include_sideboard` *(boolean, default true)*.
+- `include_maybeboard` *(boolean, default true)* — include the maybeboard section. `maybeboard` is the export name for the `alternates` set; `cut` is never exported.
+- `section` *(`mainboard` | `sideboard` | `maybeboard`, optional)* — emit only the named section. Useful for Moxfield-style imports where each section pastes into a separate UI box. Omit to emit the full deck. `maybeboard` is the export name for the `alternates` set; `cut` is never exported.
+
 ### `deck_pull_list`
 
 Cards grouped by set for physical collection pulling, with pulled-status checkboxes. Use when preparing to physically assemble a deck.

@@ -821,6 +821,23 @@ describe('Views', () => {
       expect(result.content).toContain('4 Lightning Bolt')
     })
 
+    it('reports lineCount 0 for an empty section', async () => {
+      const deck = makeDeck()
+      pushMainboard(deck, makeDeckCard('Lightning Bolt', { quantity: 1 }))
+      mock._decks.set(deck.id, deck)
+      const result = await call('deck_export', { deck_id: deck.id, format: 'moxfield', section: 'maybeboard' }) as { content: string; lineCount: number }
+      expect(result.content).toBe('')
+      expect(result.lineCount).toBe(0)
+    })
+
+    it('reports lineCount 1 for a single-line export', async () => {
+      const deck = makeDeck()
+      pushMainboard(deck, makeDeckCard('Lightning Bolt', { quantity: 1 }))
+      mock._decks.set(deck.id, deck)
+      const result = await call('deck_export', { deck_id: deck.id, format: 'simple' }) as { lineCount: number }
+      expect(result.lineCount).toBe(1)
+    })
+
     it('throws on unknown format', async () => {
       const deck = makeDeck()
       mock._decks.set(deck.id, deck)
