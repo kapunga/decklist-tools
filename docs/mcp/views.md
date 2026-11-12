@@ -49,7 +49,7 @@ When no cached Scryfall data is available, all levels fall back to card name onl
 
 ## `deck_curve`
 
-Mana curve analysis for a deck: CMC distribution, color pip counts, and type breakdown.
+Mana curve analysis for a deck: CMC distribution, color pip counts (generic mana on its own line, never as Colorless), type breakdown, and card counts that add up to the total (commanders listed separately; filtered output is labelled as such).
 
 | Param | Type | Required | Description |
 |-------|------|----------|-------------|

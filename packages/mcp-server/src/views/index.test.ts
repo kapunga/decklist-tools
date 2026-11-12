@@ -209,6 +209,59 @@ describe('curve view', () => {
     expect(result).toContain('Nonlands:')
   })
 
+  function commanderDeck() {
+    const deck = makeDeck()
+    deck.commanders.push({ name: 'Kenrith', setCode: 'eld', collectorNumber: '303' })
+    pushMainboard(deck, makeDeckCard('Forest', { quantity: 2 }), makeDeckCard('Sol Ring'))
+    const cache = makeMockCache({ Forest: 'Basic Land — Forest', 'Sol Ring': 'Artifact' })
+    return { deck, cache }
+  }
+
+  it('reconciles lands + nonlands + commander with the total', () => {
+    const { deck, cache } = commanderDeck()
+    const result = renderDeckView(deck, 'curve', globalRoles, undefined, undefined, undefined, cache)
+    expect(result).toContain('## Card Counts\n- Lands: 2\n- Nonlands: 1\n- Commander: 1\n- Total: 4/100')
+  })
+
+  it('counts only the filtered subset under filters and says so', () => {
+    const { deck, cache } = commanderDeck()
+    const filters: CardFilter[] = [{ type: 'card-type', mode: 'include', values: ['Land'] }]
+    const result = renderDeckView(deck, 'curve', globalRoles, undefined, undefined, filters, cache)
+    expect(result).toContain('## Card Counts (filtered)')
+    expect(result).toContain('- Lands: 2\n- Nonlands: 0\n- Matching: 2 of 3 mainboard cards')
+    expect(result).toContain('Deck total: 4/100')
+  })
+})
+
+describe('curve view mana pips', () => {
+  function pipDeck(manaCosts: Record<string, string>) {
+    const deck = makeDeck()
+    const cache = new Map<string, ScryfallCard>()
+    for (const [name, manaCost] of Object.entries(manaCosts)) {
+      const entry = makeDeckCard(name)
+      pushMainboard(deck, entry)
+      cache.set(entry.card.scryfallId!, mockScryfallCard(name, { id: entry.card.scryfallId!, mana_cost: manaCost, type_line: 'Artifact' }))
+    }
+    return renderCurveView(deck, cache)
+  }
+
+  it('shows generic mana on its own line, not as Colorless', () => {
+    const result = pipDeck({ Elf: '{3}{G}' })
+    expect(result).toContain('- Green: 1')
+    expect(result).toContain('- Generic: 3')
+    expect(result).not.toContain('Colorless')
+  })
+
+  it('counts real {C} pips as Colorless', () => {
+    expect(pipDeck({ Eldrazi: '{C}{C}' })).toContain('- Colorless: 2')
+  })
+
+  it('does not print a Colorless count for a generic-only deck', () => {
+    const result = pipDeck({ 'Sol Ring': '{1}', Signet: '{2}' })
+    expect(result).not.toContain('Colorless')
+    expect(result).toContain('- Generic: 3')
+  })
+
   it('shows mana curve with scryfall data', () => {
     const deck = makeDeck()
     const card1 = makeDeckCard('Sol Ring')

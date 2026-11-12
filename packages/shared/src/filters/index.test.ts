@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { applyFilters, countManaPips, getCmcDistribution, enrichCards } from './index.js'
+import { applyFilters, countManaPips, tallyManaCosts, getCmcDistribution, enrichCards } from './index.js'
 import type { EnrichedDeckCard, CardFilter } from './index.js'
 import type { CardEntry, ScryfallCard } from '../types/index.js'
 
@@ -132,11 +132,40 @@ describe('countManaPips', () => {
     expect(pips.W + pips.U + pips.B + pips.R + pips.G + pips.C).toBe(0)
   })
 
-  it('counts generic mana as C', () => {
-    const cards = [makeEnriched({ manaCost: '{3}{U}', typeLine: 'Creature' })]
+  it('does not count generic mana as colorless', () => {
+    const cards = [makeEnriched({ manaCost: '{3}{G}', typeLine: 'Creature' })]
     const pips = countManaPips(cards)
-    expect(pips.C).toBe(3)
-    expect(pips.U).toBe(1)
+    expect(pips.C).toBe(0)
+    expect(pips.G).toBe(1)
+  })
+
+  it('counts real {C} symbols as colorless', () => {
+    const cards = [makeEnriched({ manaCost: '{C}{C}', quantity: 2, typeLine: 'Artifact' })]
+    expect(countManaPips(cards).C).toBe(4)
+  })
+
+  it('counts hybrid toward each option, twobrid and Phyrexian toward their colour, and ignores X', () => {
+    const cards = [makeEnriched({ manaCost: '{X}{W/U}{2/B}{G/P}', typeLine: 'Sorcery' })]
+    expect(countManaPips(cards)).toEqual({ W: 1, U: 1, B: 1, R: 0, G: 1, C: 0 })
+  })
+
+  it('skips cards without Scryfall data instead of counting them as zero-cost', () => {
+    const unresolved: EnrichedDeckCard = { ...makeEnriched({ manaCost: '{G}' }), scryfallCard: undefined }
+    expect(countManaPips([unresolved])).toEqual({ W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 })
+  })
+})
+
+describe('tallyManaCosts', () => {
+  it('reports generic mana separately from pips, times quantity', () => {
+    const cards = [
+      makeEnriched({ manaCost: '{3}{G}', quantity: 2, typeLine: 'Creature' }),
+      makeEnriched({ manaCost: '{2}', typeLine: 'Artifact' }),
+      makeEnriched({ manaCost: '{5}', typeLine: 'Land' }),
+    ]
+    const tally = tallyManaCosts(cards)
+    expect(tally.generic).toBe(8)
+    expect(tally.pips.G).toBe(2)
+    expect(tally.pips.C).toBe(0)
   })
 
   it('counts the front-face cost of a transform card', () => {

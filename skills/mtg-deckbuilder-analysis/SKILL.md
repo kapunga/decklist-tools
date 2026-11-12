@@ -98,8 +98,9 @@ by the main agent via `manage_deck_note`.
 
 Returns:
 - **CMC distribution**: counts per mana value (0 through 7+).
-- **Color pip counts**: how many of each WUBRG pip appears across all costs in the deck (informs mana base balance).
+- **Color pip counts**: how many of each WUBRG pip, and real `{C}` (Colorless) pip, appears across nonland costs (informs mana base balance). Generic `{N}` mana is a separate `Generic` line, not a pip. Hybrid symbols count toward each of their colours; twobrid `{2/W}` and Phyrexian `{G/P}` count toward their colour; `{X}` and snow `{S}` are not counted.
 - **Type breakdown**: counts of creatures, instants, sorceries, etc.
+- **Card counts**: Lands + Nonlands + Commander(s) = Total. With filters the section is headed `(filtered)` and Lands + Nonlands = `Matching` (filtered mainboard cards only); the whole-deck size is shown as `Deck total`.
 
 Accepts the same `filters` parameter as `deck_list`, so you can ask things like "curve of just the creatures" or "curve excluding lands".
 

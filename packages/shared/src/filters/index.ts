@@ -1,8 +1,10 @@
 import type { CardEntry, PrimaryType, ScryfallCard } from '../types/index.js'
 import { getCardManaCost, getCardManaValue, isLandPrimaryType, resolvePrimaryType } from '../domain/classification.js'
-import type { EnrichedDeckCard, CardFilter, ManaPipCounts } from './types.js'
+import { addTallies, emptyManaCostTally, parseManaCost, scaleTally, tallyManaCost } from '../domain/mana-symbols.js'
+import type { ManaCostTally, ManaPipCounts } from '../domain/mana-symbols.js'
+import type { EnrichedDeckCard, CardFilter } from './types.js'
 
-export type { EnrichedDeckCard, FilterMode, CmcFilter, ColorFilter, CardTypeFilter, RoleFilter, OwnershipFilter, CardFilter, FilterGroup, ManaPipCounts } from './types.js'
+export type { EnrichedDeckCard, FilterMode, CmcFilter, ColorFilter, CardTypeFilter, RoleFilter, OwnershipFilter, CardFilter, FilterGroup } from './types.js'
 export { FILTER_GROUP_TYPES } from './types.js'
 export { normalizeFilters, resolveRoleFilters, FilterError } from './normalize.js'
 
@@ -70,35 +72,22 @@ export function applyFilters(cards: EnrichedDeckCard[], filters: CardFilter[]): 
   return cards.filter(card => filters.every(f => matchesFilter(card, f)))
 }
 
-// Count mana pips from mana costs of non-land cards
+// Pips and generic mana for one nonland card, times its quantity. Lands and
+// cards without Scryfall data (no known cost) contribute nothing.
+function cardManaTally(card: EnrichedDeckCard): ManaCostTally {
+  const manaCost = getCardManaCost(card.scryfallCard)
+  if (isLand(card) || manaCost === undefined) return emptyManaCostTally
+  return scaleTally(tallyManaCost(parseManaCost(manaCost)), card.deckCard.quantity)
+}
+
+// Pip counts and generic mana across non-land cards
+export function tallyManaCosts(cards: EnrichedDeckCard[]): ManaCostTally {
+  return cards.map(cardManaTally).reduce(addTallies, emptyManaCostTally)
+}
+
+// Count mana pips (W/U/B/R/G and real {C}) from mana costs of non-land cards
 export function countManaPips(cards: EnrichedDeckCard[]): ManaPipCounts {
-  const counts: ManaPipCounts = { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 }
-
-  for (const card of cards) {
-    if (isLand(card)) continue
-    const manaCost = getCardManaCost(card.scryfallCard) ?? ''
-    const qty = card.deckCard.quantity
-
-    // Count colored pips
-    for (const ch of manaCost) {
-      if (ch === 'W') counts.W += qty
-      else if (ch === 'U') counts.U += qty
-      else if (ch === 'B') counts.B += qty
-      else if (ch === 'R') counts.R += qty
-      else if (ch === 'G') counts.G += qty
-    }
-
-    // Count generic/colorless mana as C pips
-    const genericMatch = manaCost.match(/\{(\d+)\}/g)
-    if (genericMatch) {
-      for (const m of genericMatch) {
-        const num = parseInt(m.slice(1, -1), 10)
-        counts.C += num * qty
-      }
-    }
-  }
-
-  return counts
+  return tallyManaCosts(cards).pips
 }
 
 // CMC distribution for bar chart (excludes lands, buckets 7+)
