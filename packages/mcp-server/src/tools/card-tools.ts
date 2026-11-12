@@ -17,7 +17,7 @@ import {
   createCardIdentifier,
 } from '@mtg-deckbuilder/shared'
 import { getDeckOrThrow, fetchScryfallCard, getCachedScryfallClient, parseCardString } from './helpers.js'
-import type { ManageCardArgs, SearchCardsArgs } from './types.js'
+import type { ManageCardArgs, NamesLookupArgs, QuerySearchArgs, SearchCardsArgs } from './types.js'
 
 // Structural markers of Scryfall search syntax: parens, a `word:` / `word<=` style
 // operator, a `-` negation prefix on a token, an exact-name `!"…"`, or a query that is
@@ -284,8 +284,54 @@ function buildSearchResponse(
   }
 }
 
-// Name, id and set/collector lookups go through the card cache; repeats never hit Scryfall.
+/** First spelling of each name, compared case-insensitively, in input order. */
+export function distinctNames(names: readonly string[]): string[] {
+  const seen = new Set<string>()
+  return names.filter(name => {
+    const key = name.toLowerCase()
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
+interface NamesLookupOutcome {
+  found: ScryfallCard[]
+  notFound: string[]
+}
+
+function splitByFound(names: readonly string[], cards: readonly (ScryfallCard | null)[]): NamesLookupOutcome {
+  return {
+    found: cards.filter((card): card is ScryfallCard => card !== null),
+    notFound: names.filter((_, i) => !cards[i]),
+  }
+}
+
+function namesLookupCompact({ found, notFound }: NamesLookupOutcome, requested: number): string {
+  const header = `Found ${found.length} of ${requested} cards:`
+  const missing = notFound.length > 0 ? [`Not found: ${notFound.join(', ')}`] : []
+  return [header, ...found.map(formatCardCompact), ...missing].join('\n\n')
+}
+
+function namesLookupJson({ found, notFound }: NamesLookupOutcome) {
+  return { cards: found.map(formatCardResponse), notFound }
+}
+
+// Exact-name batch lookup: cached names cost nothing, the rest share POST /cards/collection
+// requests (75 names each). Misses are listed rather than raised.
+async function lookupNames(storage: Storage, args: NamesLookupArgs) {
+  const names = distinctNames(args.names)
+  const cards = await getCachedScryfallClient(storage).getCardsByNames(names)
+  const outcome = splitByFound(names, cards)
+  return args.format === 'json' ? namesLookupJson(outcome) : namesLookupCompact(outcome, names.length)
+}
+
 export async function searchCardsHandler(storage: Storage, args: SearchCardsArgs) {
+  return 'names' in args ? lookupNames(storage, args) : searchByQuery(storage, args)
+}
+
+// Name, id and set/collector lookups go through the card cache; repeats never hit Scryfall.
+async function searchByQuery(storage: Storage, args: QuerySearchArgs) {
   const useCompact = args.format !== 'json'
   const formatCard = useCompact ? formatCardCompact : formatCardResponse
   const limit = args.limit ?? 10

@@ -328,7 +328,7 @@ function LegalityPanel({ entries }: LegalityPanelProps) {
         return
       }
 
-      const fetched = await getCardsByIds(missingIds)
+      const fetched = await lookupOrNull(() => getCardsByIds(missingIds), 'list legality backfill') ?? []
       if (cancelled) return
       if (fetched.length > 0) {
         window.electronAPI.saveCachedCards(fetched).catch((err: unknown) =>

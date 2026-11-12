@@ -1,6 +1,6 @@
 import type { Tool } from '@modelcontextprotocol/sdk/types.js'
 import { PRIMARY_TYPES } from '@mtg-deckbuilder/shared'
-import { DECK_EXPORT_FORMATS } from './types.js'
+import { DECK_EXPORT_FORMATS, SEARCH_CARDS_MAX_NAMES } from './types.js'
 
 // Reused by deck_list and deck_curve — a CardFilter JSON shape for trimming
 // the card list shown in a rendered view.
@@ -151,18 +151,23 @@ export function getToolDefinitions(): Tool[] {
     // Card Search
     {
       name: 'search_cards',
-      description: 'Search for cards on Scryfall. Accepts a card name (fuzzy or exact), a Scryfall UUID, or a full Scryfall search query (e.g. "c:blue t:instant cmc<=2"). The query type is auto-detected.',
+      description: `Search for cards on Scryfall. Pass either \`query\` or \`names\`, not both. \`query\` accepts a card name (fuzzy or exact), a Scryfall UUID, or a full Scryfall search query (e.g. "c:blue t:instant cmc<=2"); the query type is auto-detected. \`query\` is limited to 500 characters, so do not chain many \`!"name" or …\` clauses — to look up several known cards (e.g. for their oracle text), pass \`names\` instead: up to ${SEARCH_CARDS_MAX_NAMES} exact card names in one call, answered from the local card cache where possible and otherwise in batched Scryfall requests (75 names each). Results come back in input order, followed by an explicit "Not found:" list.`,
       inputSchema: {
         type: 'object',
         properties: {
-          query: { type: 'string', description: 'Card name, Scryfall UUID, or Scryfall search query' },
-          exact: { type: 'boolean', description: 'Use exact name matching instead of fuzzy' },
-          limit: { type: 'number', description: 'Max results for search queries (default 10)' },
-          set_code: { type: 'string', description: 'Set code for specific printing' },
-          collector_number: { type: 'string', description: 'Collector number for specific printing' },
+          query: { type: 'string', description: 'Card name, Scryfall UUID, or Scryfall search query (max 500 characters). Required unless `names` is given.' },
+          names: {
+            type: 'array',
+            items: { type: 'string' },
+            maxItems: SEARCH_CARDS_MAX_NAMES,
+            description: `Exact card names to look up in one call (1-${SEARCH_CARDS_MAX_NAMES}, each at most 200 characters; case-insensitive; duplicates are collapsed). Use instead of \`query\`. Combines with \`format\` only; \`limit\`, \`set_code\` and \`collector_number\` are rejected, and \`exact\` is implied.`,
+          },
+          exact: { type: 'boolean', description: 'Use exact name matching instead of fuzzy (query only; names are always exact)' },
+          limit: { type: 'number', description: 'Max results for search queries (default 10; query only)' },
+          set_code: { type: 'string', description: 'Set code for specific printing (query only)' },
+          collector_number: { type: 'string', description: 'Collector number for specific printing (query only)' },
           format: { type: 'string', enum: ['compact', 'json'], description: 'Output format (default: compact)' },
         },
-        required: ['query'],
       },
     },
 

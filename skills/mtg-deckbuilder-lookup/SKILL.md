@@ -2,7 +2,7 @@
 name: mtg-deckbuilder-lookup
 description: Search for Magic the Gathering cards through the mtg-deckbuilder MCP server's Scryfall integration. Use when a user wants to find cards by name, by attributes (color, type, mana cost, format legality), or by mechanical role ("find me artifact removal in red"). For query syntax, see the scryfall-search skill; for function:tag vocabulary, see the scryfall-tags skill.
 metadata:
-  version: "2026-07-14"
+  version: "2026-11-11"
 ---
 
 # MTG Deckbuilder — Card Lookup
@@ -13,10 +13,12 @@ How to use the MCP server's Scryfall integration to find cards. This skill is in
 
 | Tool | Purpose |
 |------|---------|
-| `search_cards` | Search Scryfall by name, UUID, or full search query. Returns cards with metadata. |
+| `search_cards` | Search Scryfall by name, UUID, or full search query (`query`), or look up a list of exact names in one call (`names`). Returns cards with metadata. |
 | `get_collection_filter` | Generate a Scryfall filter clause from the user's tracked collection — combine with `search_cards` for "find cards I own that…" queries. |
 
-## `search_cards` — three modes, auto-detected
+## `search_cards` — `query` or `names`
+
+Pass exactly one of `query` (a single lookup or search, below) or `names` (a batch of exact names — see "Looking up many named cards").
 
 The `query` parameter accepts:
 
@@ -30,11 +32,29 @@ Detection is automatic, but it's not always right — see the gotcha below.
 
 | Param | What it does |
 |-------|--------------|
-| `query` | The thing being searched (required) |
-| `exact` | Use exact name matching instead of fuzzy (use when fuzzy returns the wrong card) |
-| `limit` | Max results for search queries (default 10) |
-| `set_code`, `collector_number` | Pin to a specific printing |
+| `query` | The thing being searched. Max 500 characters |
+| `names` | Array of 1–100 exact card names, instead of `query` |
+| `exact` | Use exact name matching instead of fuzzy (use when fuzzy returns the wrong card; `query` only) |
+| `limit` | Max results for search queries (default 10; `query` only) |
+| `set_code`, `collector_number` | Pin to a specific printing (`query` only) |
 | `format` | `compact` (default, human-readable) or `json` (structured — use when chaining results into another tool call) |
+
+## Looking up many named cards — use `names`
+
+When you already know the card names and want their oracle text (reviewing a decklist, checking a combo, comparing candidates), send them all in **one** call:
+
+```
+search_cards  names=["Sol Ring", "Arcane Signet", "Lightning Bolt", "Lightning Blot"]
+   → Found 3 of 4 cards:
+     <each card, in the order asked>
+     Not found: Lightning Blot
+```
+
+- Up to **100 names** per call (each ≤200 characters); split longer lists across calls.
+- Names are **exact** (case-insensitive) — no fuzzy matching. Check the spelling of anything listed under `Not found:` and retry it with `query` (fuzzy) if needed. A repeated name is looked up once.
+- Cached cards cost nothing; the rest are fetched 75 per request and then cached, so asking again is free. This is far cheaper than one `search_cards` call per card, and is the way to avoid rate limits when you need many cards.
+- Combine only with `format`. `limit`, `set_code` and `collector_number` are rejected with `names`.
+- **Don't** build a `query` like `!"Sol Ring" or !"Arcane Signet" or …` — `query` is capped at 500 characters and fails with `'query' exceeds maximum length of 500 characters` after a handful of names.
 
 ## The auto-detect gotcha (critical)
 
@@ -123,6 +143,13 @@ Configured per-set in the user's collection config. `get_collection_filter` retu
 ```
 search_cards  query="Sol Ring"
    → single-card lookup via fuzzy name match
+```
+
+### "What do these 40 cards do?"
+
+```
+search_cards  names=["Sol Ring", "Command Tower", ...]   # all 40 in one call
+   → each card's oracle text in input order, then any "Not found:" names
 ```
 
 ### Single-operator query — applying the workaround

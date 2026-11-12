@@ -32,14 +32,28 @@ export interface ManageCardArgs {
   force?: boolean
 }
 
-export interface SearchCardsArgs {
+/** Most names one `search_cards` call may look up. */
+export const SEARCH_CARDS_MAX_NAMES = 100
+
+type SearchOutputFormat = 'compact' | 'json'
+
+/** `search_cards` with a single `query`: name, UUID, or Scryfall search syntax. */
+export interface QuerySearchArgs {
   query: string
   exact?: boolean
   limit?: number
   set_code?: string
   collector_number?: string
-  format?: 'compact' | 'json'
+  format?: SearchOutputFormat
 }
+
+/** `search_cards` with `names`: exact-name batch lookup. */
+export interface NamesLookupArgs {
+  names: string[]
+  format?: SearchOutputFormat
+}
+
+export type SearchCardsArgs = QuerySearchArgs | NamesLookupArgs
 
 export type DetailLevel = 'summary' | 'compact' | 'full'
 
@@ -186,15 +200,54 @@ export function validateManageCardArgs(args: Record<string, unknown>): ManageCar
   }
 }
 
-export function validateSearchCardsArgs(args: Record<string, unknown>): SearchCardsArgs {
+// Parameters that only make sense for a single `query`; `exact` is accepted with `names`
+// because every `names` lookup is already exact.
+const QUERY_ONLY_PARAMS = ['limit', 'set_code', 'collector_number'] as const
+
+function requireNameList(value: unknown): string[] {
+  if (!Array.isArray(value) || value.length === 0) {
+    throw new Error(`'names' must be a non-empty array of card names`)
+  }
+  if (value.length > SEARCH_CARDS_MAX_NAMES) {
+    throw new Error(`'names' accepts at most ${SEARCH_CARDS_MAX_NAMES} entries (got ${value.length}); split the lookup into several calls`)
+  }
+  const names = value.map(name => typeof name === 'string' ? name.trim() : '')
+  if (names.some(name => name.length === 0)) {
+    throw new Error(`Every entry in 'names' must be a non-empty string`)
+  }
+  return names
+}
+
+function validateNamesLookupArgs(args: Record<string, unknown>): NamesLookupArgs {
+  const conflicting = QUERY_ONLY_PARAMS.filter(param => args[param] !== undefined)
+  if (conflicting.length > 0) {
+    throw new Error(`${conflicting.map(p => `'${p}'`).join(', ')} cannot be combined with 'names'; they apply to 'query' only`)
+  }
+  return {
+    names: requireNameList(args.names),
+    format: args.format as SearchOutputFormat | undefined,
+  }
+}
+
+function validateQuerySearchArgs(args: Record<string, unknown>): QuerySearchArgs {
   return {
     query: requireString(args, 'query'),
     exact: args.exact as boolean | undefined,
     limit: args.limit as number | undefined,
     set_code: args.set_code as string | undefined,
     collector_number: args.collector_number as string | undefined,
-    format: args.format as 'compact' | 'json' | undefined,
+    format: args.format as SearchOutputFormat | undefined,
   }
+}
+
+export function validateSearchCardsArgs(args: Record<string, unknown>): SearchCardsArgs {
+  const hasQuery = args.query !== undefined
+  const hasNames = args.names !== undefined
+  if (hasQuery && hasNames) throw new Error(`Provide either 'query' or 'names', not both`)
+  if (!hasQuery && !hasNames) {
+    throw new Error(`Provide 'query' (a name, Scryfall UUID, or search query) or 'names' (an array of exact card names)`)
+  }
+  return hasNames ? validateNamesLookupArgs(args) : validateQuerySearchArgs(args)
 }
 
 export function validateDeckListArgs(args: Record<string, unknown>): DeckListArgs {

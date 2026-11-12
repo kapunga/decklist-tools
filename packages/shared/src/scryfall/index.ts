@@ -167,6 +167,40 @@ function identifierKey(id: ScryfallIdentifier): string {
   return `n:${id.name.toLowerCase()}`
 }
 
+/** Split `items` into consecutive slices of at most `size`. */
+function chunksOf<T>(items: readonly T[], size: number): T[][] {
+  return Array.from({ length: Math.ceil(items.length / size) }, (_, i) =>
+    items.slice(i * size, (i + 1) * size))
+}
+
+/**
+ * Line a collection response up with the identifiers that were sent. Scryfall returns
+ * found cards in request order and echoes misses in `not_found`, so each identifier
+ * not listed there consumes the next card.
+ */
+function alignCollectionResponse(
+  chunk: readonly ScryfallIdentifier[],
+  body: CollectionResponse,
+): (ScryfallCard | null)[] {
+  const notFoundKeys = new Set((body.not_found ?? []).map(identifierKey))
+  const data = body.data ?? []
+  let next = 0
+  return chunk.map(id => notFoundKeys.has(identifierKey(id)) ? null : data[next++] ?? null)
+}
+
+// One POST /cards/collection through the shared queue. HTTP failures throw ScryfallError
+// (an exhausted 429 arrives from the transport as ScryfallRateLimitError), so a failed
+// request is never mistaken for "not found".
+async function fetchCollectionChunk(chunk: readonly ScryfallIdentifier[]): Promise<(ScryfallCard | null)[]> {
+  const response = await transport(`${BASE_URL}/cards/collection`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ identifiers: chunk }),
+  })
+  if (!response.ok) throw new ScryfallError(response.status, await readErrorDetails(response))
+  return alignCollectionResponse(chunk, await response.json() as CollectionResponse)
+}
+
 /**
  * Batch-fetch cards via POST /cards/collection (≤75 identifiers per request).
  * Returns a same-length array in input order; entries Scryfall cannot resolve
@@ -175,49 +209,26 @@ function identifierKey(id: ScryfallIdentifier): string {
  * `onChunkProgress` is invoked after each completed chunk with the cumulative
  * input count processed — useful for driving an import progress UI.
  *
- * Deliberately lenient: a chunk that still fails after the transport's retries
- * (including an exhausted rate limit) is logged and left as nulls, so the
- * Electron import flow can fall back to per-card lookups instead of aborting.
+ * Rejects if any chunk fails after the transport's retries (ScryfallError, or
+ * ScryfallRateLimitError for an exhausted rate limit), so a failure is never
+ * reported as a batch of misses. Callers that want to degrade gracefully catch it.
  */
 export async function lookupCardsByIdentifiers(
   identifiers: ScryfallIdentifier[],
   onChunkProgress?: (processed: number) => void,
 ): Promise<(ScryfallCard | null)[]> {
-  if (identifiers.length === 0) return []
-  const result: (ScryfallCard | null)[] = new Array(identifiers.length).fill(null)
-  for (let i = 0; i < identifiers.length; i += SCRYFALL_COLLECTION_MAX) {
-    const chunk = identifiers.slice(i, i + SCRYFALL_COLLECTION_MAX)
-    try {
-      const response = await transport(`${BASE_URL}/cards/collection`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identifiers: chunk }),
-      })
-      if (!response.ok) {
-        console.error(`Scryfall collection error: ${response.status}`)
-        onChunkProgress?.(Math.min(i + chunk.length, identifiers.length))
-        continue
-      }
-      const body = await response.json() as CollectionResponse
-      const notFoundKeys = new Set((body.not_found ?? []).map(identifierKey))
-      const data = body.data ?? []
-      let dataIdx = 0
-      for (let j = 0; j < chunk.length; j++) {
-        if (notFoundKeys.has(identifierKey(chunk[j]))) continue
-        result[i + j] = data[dataIdx++] ?? null
-      }
-    } catch (error) {
-      console.error('Error fetching card collection:', error)
-    }
-    onChunkProgress?.(Math.min(i + chunk.length, identifiers.length))
+  const results: (ScryfallCard | null)[] = []
+  for (const chunk of chunksOf(identifiers, SCRYFALL_COLLECTION_MAX)) {
+    results.push(...await fetchCollectionChunk(chunk))
+    onChunkProgress?.(results.length)
   }
-  return result
+  return results
 }
 
 /**
  * Batch-fetch cards by Scryfall id. Cards Scryfall cannot resolve are dropped
  * from the result (use `lookupCardsByIdentifiers` directly if you need to
- * preserve input correspondence).
+ * preserve input correspondence). Rejects on a Scryfall failure.
  */
 export async function getCardsByIds(scryfallIds: string[]): Promise<ScryfallCard[]> {
   const results = await lookupCardsByIdentifiers(scryfallIds.map(id => ({ id })))

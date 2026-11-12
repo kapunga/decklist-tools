@@ -5,7 +5,7 @@ import { attemptScryfall, type ScryfallOutcome } from '@/lib/scryfallOutcome'
 import type { ResolvedCard } from './types'
 
 export interface ImportLookupDeps {
-  /** Batched lookup; one entry per identifier, null where Scryfall had no match. */
+  /** Batched lookup; one entry per identifier, null where Scryfall had no match. May reject. */
   lookupBatch: (identifiers: ScryfallIdentifier[]) => Promise<(ScryfallCard | null)[]>
   /** Per-card fuzzy fallback; may reject (e.g. rate limited). */
   lookupByName: (name: string) => Promise<ScryfallCard | null>
@@ -46,17 +46,29 @@ function toResolvedCard(parsed: ParsedCard, scryfallCard: ScryfallCard, sideboar
 const lookupFailure = (parsed: ParsedCard, outcome: ScryfallOutcome<ScryfallCard | null>): string =>
   outcome.ok ? `Card not found: ${parsed.name}` : `Could not look up ${parsed.name}: ${outcome.error}`
 
+// A failed batch (e.g. rate limited) degrades to the per-card fallback for every line,
+// whose own failures are then reported per card.
+async function batchOrAllMisses(
+  identifiers: ScryfallIdentifier[],
+  lookupBatch: ImportLookupDeps['lookupBatch'],
+): Promise<(ScryfallCard | null)[]> {
+  const outcome = await attemptScryfall(() => lookupBatch(identifiers))
+  if (outcome.ok) return outcome.value
+  console.error(`Batch card lookup failed, falling back to per-card lookups: ${outcome.error}`)
+  return identifiers.map(() => null)
+}
+
 /**
  * Resolve parsed import lines to deck entries: one batched lookup, then a per-card
  * name fallback for misses. A failed fallback (e.g. rate limited) is reported with
- * Scryfall's message rather than as "Card not found". Never rejects on a per-card failure.
+ * Scryfall's message rather than as "Card not found". Never rejects on a batch or per-card failure.
  */
 export async function resolveImportedCards(
   parsedCards: ParsedCard[],
   sideboardSize: number | undefined,
   deps: ImportLookupDeps,
 ): Promise<ImportLookupResult> {
-  const batched = await deps.lookupBatch(parsedCards.map(toIdentifier))
+  const batched = await batchOrAllMisses(parsedCards.map(toIdentifier), deps.lookupBatch)
   const outcomes = await Promise.all(batched.map((card, i) =>
     card
       ? Promise.resolve<ScryfallOutcome<ScryfallCard | null>>({ ok: true, value: card })

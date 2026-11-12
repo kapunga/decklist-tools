@@ -41,6 +41,15 @@ export function validateInputLengths(args: Record<string, unknown>): void {
       }
     }
   }
+
+  // search_cards `names` — each entry gets the same guard as a single `name`
+  const names = args.names
+  if (Array.isArray(names)) {
+    const tooLong = names.find(name => typeof name === 'string' && name.length > INPUT_LIMITS.name)
+    if (typeof tooLong === 'string') {
+      throw new Error(`Each entry in 'names' must be at most ${INPUT_LIMITS.name} characters (got ${tooLong.length})`)
+    }
+  }
 }
 
 export interface ParsedCardString {

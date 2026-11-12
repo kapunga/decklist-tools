@@ -11,6 +11,7 @@ import {
   searchCardsAll,
   searchCardByName,
   getCardById,
+  lookupCardsByIdentifiers,
   ScryfallError,
   ScryfallRateLimitError,
   setScryfallTransport,
@@ -389,5 +390,50 @@ describe('single-card lookups under rate limiting', () => {
   it('still returns null for a genuine 404', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(404, { details: 'No card found' })))
     expect(await searchCardByName('Nonexistent')).toBeNull()
+  })
+})
+
+describe('lookupCardsByIdentifiers', () => {
+  beforeEach(useInstantTransport)
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    setScryfallTransport()
+  })
+
+  it('makes no request for an empty list', async () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    expect(await lookupCardsByIdentifiers([])).toEqual([])
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('lines results up with identifiers, leaving misses as null', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, {
+      data: [{ id: 'a', name: 'Opt' }, { id: 'c', name: 'Shock' }],
+      not_found: [{ name: 'nonsense' }],
+    })))
+    const cards = await lookupCardsByIdentifiers([{ name: 'Opt' }, { name: 'Nonsense' }, { name: 'Shock' }])
+    expect(cards.map(c => c?.id ?? null)).toEqual(['a', null, 'c'])
+  })
+
+  it('reports cumulative progress per chunk', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => jsonResponse(200, { data: [] })))
+    const progress: number[] = []
+    await lookupCardsByIdentifiers(Array.from({ length: 80 }, (_, i) => ({ id: `${i}` })), n => progress.push(n))
+    expect(progress).toEqual([75, 80])
+  })
+
+  it('throws ScryfallError on a failed chunk instead of returning misses', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => jsonResponse(503, { details: 'Down for maintenance' })))
+    const error = await lookupCardsByIdentifiers([{ name: 'Opt' }]).catch(e => e)
+    expect(error).toBeInstanceOf(ScryfallError)
+    expect(error.message).toBe('Down for maintenance')
+  })
+
+  it('throws ScryfallRateLimitError when the rate limit outlasts the retries', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async () =>
+      jsonResponse(429, { details: 'Slow down' }, { 'Retry-After': '1' })))
+    const error = await lookupCardsByIdentifiers([{ name: 'Opt' }]).catch(e => e)
+    expect(error).toBeInstanceOf(ScryfallRateLimitError)
   })
 })

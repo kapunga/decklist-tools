@@ -2,7 +2,7 @@
 name: scryfall-search
 description: How to construct Scryfall search queries for Magic the Gathering. Use when you need to find cards by attributes (color, type, mana cost, power/toughness, format legality, oracle text, etc.) or when composing a multi-operator query — on scryfall.com, through the Scryfall API, or via an MTG-aware MCP tool. For looking up specific function/oracle tag names, see the scryfall-tags skill instead.
 metadata:
-  version: "2026-07-14"
+  version: "2026-11-11"
 ---
 
 # Scryfall Search Syntax
@@ -219,6 +219,7 @@ Scryfall enforces a **hard 500-character ceiling** on a single query string. Que
 
 **Mitigation:**
 - Prefer compact operators over enumerating values — `r<=u` instead of `(r:c OR r:u)`.
+- To fetch many specific cards by name, don't build an `!"name" OR !"name" …` chain at all: if your tool has a batch name lookup (the mtg-deckbuilder MCP's `search_cards` takes `names`, up to 100 exact names per call), use that instead.
 - If a filter is inherently large (a collection-scoped `OR`-chain, a long list of names), split it into multiple searches, each covering a subset of the clauses, and merge results client-side rather than building one all-encompassing query.
 - Avoid encoding a per-item filter that scales with collection/list size (one clause per set, per card). The query grows unbounded as the user's data grows. Prefer a coarser filter (rarity or format-level) plus client-side post-filtering.
 
