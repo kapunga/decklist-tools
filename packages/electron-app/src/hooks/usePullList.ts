@@ -4,8 +4,8 @@ import { useStore } from '@/hooks/useStore'
 import { getCardPrintings } from '@/lib/scryfall'
 import type { Deck, CardEntry, ScryfallCard, PullListSortKey, PullListSource } from '@/types'
 import { getTotalPulledQuantity, isBasicLand, OWNERSHIP_STATUS, CARD_SOURCE, getPulledPrintings } from '@/types'
-import { getMainboard, getSideboard, getAlternates, getPrimaryType } from '@mtg-deckbuilder/shared'
-import type { PullListItem, PullListGroup, IdentifyItem } from './types'
+import { getMainboard, getSideboard, getAlternates, getPrimaryType, buildSetNameResolver, groupPullListItems } from '@mtg-deckbuilder/shared'
+import type { PullListItem, IdentifyItem } from './types'
 
 export type { PullListItem, PullListGroup, IdentifyItem } from './types'
 
@@ -203,9 +203,7 @@ export function usePullList(deck: Deck | null) {
     const ownedSetCodes = new Set(
       setCollection.sets.map(s => s.setCode.toLowerCase())
     )
-    const setNameMap = new Map(
-      setCollection.sets.map(s => [s.setCode.toLowerCase(), s.setName])
-    )
+    const resolveSetName = buildSetNameResolver(setCollection.sets, [...printingsMap.values()].flat())
 
     const unpulled: PullListItem[] = []
     const pulled: PullListItem[] = []
@@ -230,7 +228,8 @@ export function usePullList(deck: Deck | null) {
             deckCardId: deckCard.id,
             cardName,
             setCode: originalPrinting.set,
-            setName: 'Not in collection',
+            setName: resolveSetName(originalPrinting.set),
+            notInCollection: true,
             collectorNumber: originalPrinting.collector_number,
             rarity: originalPrinting.rarity,
             typeLine: originalPrinting.type_line || '',
@@ -261,7 +260,7 @@ export function usePullList(deck: Deck | null) {
           deckCardId: deckCard.id,
           cardName,
           setCode: printing.set,
-          setName: setNameMap.get(printing.set.toLowerCase()) || printing.set.toUpperCase(),
+          setName: resolveSetName(printing.set),
           collectorNumber: printing.collector_number,
           rarity: printing.rarity,
           typeLine: printing.type_line || '',
@@ -289,58 +288,15 @@ export function usePullList(deck: Deck | null) {
   const sortColumns = pullListConfig?.sortColumns || ['rarity', 'type', 'manaCost', 'name']
   const comparator = useMemo(() => createComparator(sortColumns), [sortColumns])
 
-  const unpulledGroups = useMemo(() => {
-    const bySet = new Map<string, PullListItem[]>()
+  const unpulledGroups = useMemo(
+    () => groupPullListItems(unpulledItems, comparator),
+    [unpulledItems, comparator]
+  )
 
-    for (const item of unpulledItems) {
-      const key = item.setCode.toLowerCase()
-      if (!bySet.has(key)) {
-        bySet.set(key, [])
-      }
-      bySet.get(key)!.push(item)
-    }
-
-    const groups: PullListGroup[] = []
-    for (const [setCode, items] of bySet) {
-      items.sort(comparator)
-      groups.push({
-        setCode,
-        setName: items[0]?.setName || setCode.toUpperCase(),
-        items
-      })
-    }
-
-    // Sort groups by set name
-    groups.sort((a, b) => a.setName.localeCompare(b.setName))
-
-    return groups
-  }, [unpulledItems, comparator])
-
-  const pulledGroups = useMemo(() => {
-    const bySet = new Map<string, PullListItem[]>()
-
-    for (const item of pulledItems) {
-      const key = item.setCode.toLowerCase()
-      if (!bySet.has(key)) {
-        bySet.set(key, [])
-      }
-      bySet.get(key)!.push(item)
-    }
-
-    const groups: PullListGroup[] = []
-    for (const [setCode, items] of bySet) {
-      items.sort(comparator)
-      groups.push({
-        setCode,
-        setName: items[0]?.setName || setCode.toUpperCase(),
-        items
-      })
-    }
-
-    groups.sort((a, b) => a.setName.localeCompare(b.setName))
-
-    return groups
-  }, [pulledItems, comparator])
+  const pulledGroups = useMemo(
+    () => groupPullListItems(pulledItems, comparator),
+    [pulledItems, comparator]
+  )
 
   const identifyItems: IdentifyItem[] = useMemo(() => {
     if (!deck) return []

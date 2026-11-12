@@ -578,11 +578,19 @@ export interface PullListItem {
    * filter — the printing still appears either way.
    */
   rarityAboveCollectionLevel?: boolean
+  /**
+   * True when no printing of this card is in an owned set; the item shows its
+   * original printing (real `setCode`/`setName`) so the user knows where to
+   * look. Renderers label it rather than replacing the set name.
+   */
+  notInCollection?: boolean
 }
 
 export interface PullListGroup {
   setCode: string
   setName: string
+  /** True for groups holding items whose printing is outside the collection. */
+  notInCollection?: boolean
   items: PullListItem[]
 }
 
