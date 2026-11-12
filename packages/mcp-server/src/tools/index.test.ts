@@ -469,6 +469,46 @@ describe('Card Search', () => {
   })
 
   describe('search_cards', () => {
+    describe('query / names validation', () => {
+      it('requires query or names', async () => {
+        await expect(call('search_cards', {})).rejects.toThrow("Provide 'query'")
+      })
+
+      it('rejects query and names together', async () => {
+        await expect(call('search_cards', { query: 'Opt', names: ['Opt'] }))
+          .rejects.toThrow("Provide either 'query' or 'names', not both")
+      })
+
+      it('rejects an empty names array', async () => {
+        await expect(call('search_cards', { names: [] })).rejects.toThrow("'names' must be a non-empty array")
+      })
+
+      it('rejects more than 100 names', async () => {
+        const names = Array.from({ length: 101 }, (_, i) => `Card ${i}`)
+        await expect(call('search_cards', { names })).rejects.toThrow("'names' accepts at most 100 entries (got 101)")
+      })
+
+      it('rejects blank or non-string entries', async () => {
+        await expect(call('search_cards', { names: ['Opt', '  '] })).rejects.toThrow('non-empty string')
+        await expect(call('search_cards', { names: ['Opt', 42] })).rejects.toThrow('non-empty string')
+      })
+
+      it('applies the name length guard to each entry', async () => {
+        await expect(call('search_cards', { names: ['Opt', 'x'.repeat(201)] }))
+          .rejects.toThrow("Each entry in 'names' must be at most 200 characters (got 201)")
+      })
+
+      it('rejects query-only parameters alongside names', async () => {
+        await expect(call('search_cards', { names: ['Opt'], limit: 5, set_code: 'lea' }))
+          .rejects.toThrow("'limit', 'set_code' cannot be combined with 'names'")
+      })
+
+      it('keeps the 500-character query limit', async () => {
+        await expect(call('search_cards', { query: 'x'.repeat(501) }))
+          .rejects.toThrow("'query' exceeds maximum length of 500 characters")
+      })
+    })
+
     it('fuzzy name lookup by default', async () => {
       mockSearchCardByName.mockResolvedValue(bolCard)
       const result = await call('search_cards', { query: 'Lightning Bolt' }) as any

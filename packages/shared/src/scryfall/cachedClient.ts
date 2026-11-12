@@ -7,7 +7,8 @@ import {
   searchCardByNameExact,
   getCardBySetAndNumber,
   getCardById,
-  getCardFaceImageUrl
+  getCardFaceImageUrl,
+  lookupCardsByIdentifiers,
 } from './index.js'
 
 const sameName = (a: ScryfallCard, b: ScryfallCard): boolean =>
@@ -15,6 +16,17 @@ const sameName = (a: ScryfallCard, b: ScryfallCard): boolean =>
 
 const firstPerName = (cards: ScryfallCard[]): ScryfallCard[] =>
   cards.filter((card, i) => cards.findIndex(other => sameName(other, card)) === i)
+
+const isCard = (card: ScryfallCard | null): card is ScryfallCard => card !== null
+
+/** Fill the gaps (nulls) in `cached`, in order, from `fetched`. */
+const fillMisses = (
+  cached: readonly (ScryfallCard | null)[],
+  fetched: readonly (ScryfallCard | null)[],
+): (ScryfallCard | null)[] => {
+  let next = 0
+  return cached.map(card => card ?? fetched[next++] ?? null)
+}
 
 export class CachedScryfallClient {
   constructor(private storage: Storage) {}
@@ -39,6 +51,21 @@ export class CachedScryfallClient {
     }
 
     return card
+  }
+
+  /**
+   * Exact-name batch lookup. Names already in the card cache are served from it; only
+   * the rest go to Scryfall, batched through POST /cards/collection (75 per request).
+   * Fetched cards are cached, so a repeat call makes no request. Returns one entry per
+   * input name, in order, with null where Scryfall has no card of that exact name.
+   * Rejects (ScryfallError / ScryfallRateLimitError) if a batch request fails.
+   */
+  async getCardsByNames(names: readonly string[]): Promise<(ScryfallCard | null)[]> {
+    const cached = names.map(name => this.storage.getCachedCardByName(name))
+    const missing = names.filter((_, i) => !cached[i])
+    const fetched = await lookupCardsByIdentifiers(missing.map(name => ({ name })))
+    this.rememberCards(fetched.filter(isCard))
+    return fillMisses(cached, fetched)
   }
 
   /**

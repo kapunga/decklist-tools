@@ -100,14 +100,17 @@ Find which decks contain a specific card.
 
 ### `search_cards`
 
-Search for cards on Scryfall. Accepts a card name (fuzzy or exact), a Scryfall UUID, or a full Scryfall search query (e.g. `"c:blue t:instant cmc<=2"`). The query type is auto-detected.
+Search for cards on Scryfall. Takes either `query` (a card name, fuzzy or exact; a Scryfall UUID; or a full Scryfall search query such as `"c:blue t:instant cmc<=2"`, auto-detected) or `names` (exact-name batch lookup). Exactly one of the two is required; passing neither or both is an error.
 
 **Input:**
-- `query` *(string, required)* — card name, Scryfall UUID, or Scryfall search query.
-- `exact` *(boolean)* — use exact name matching instead of fuzzy.
-- `limit` *(number)* — max results for search queries (default 10).
-- `set_code`, `collector_number` *(string)* — narrow to a specific printing.
-- `format` *(string)* — `compact` (default, human-readable) | `json`.
+- `query` *(string)* — card name, Scryfall UUID, or Scryfall search query. At most 500 characters (the server's generic `query` input guard, `INPUT_LIMITS.query`); longer input fails with `'query' exceeds maximum length of 500 characters`. To look up many known cards, use `names` rather than an `!"…" or !"…"` chain.
+- `names` *(string[])* — exact card names to look up in one call. 1–100 entries; each entry is trimmed, must be non-empty, and is subject to the 200-character `name` guard. Matching is case-insensitive, and repeated names (ignoring case) are collapsed to the first spelling.
+- `exact` *(boolean)* — use exact name matching instead of fuzzy. `query` only; accepted but redundant with `names`, which is always exact.
+- `limit` *(number)* — max results for search queries (default 10). `query` only; rejected with `names`.
+- `set_code`, `collector_number` *(string)* — narrow to a specific printing. `query` only; rejected with `names`.
+- `format` *(string)* — `compact` (default, human-readable) | `json`. Applies to both modes.
+
+**`names` lookup:** each name is first resolved from the local card cache's name index; only the misses go to Scryfall, as `POST /cards/collection` requests of up to 75 names each, through the same request queue and 429/5xx retry as every other call (60 uncached names cost one request, 100 cost two). Cards fetched this way are cached with the name index, so a repeat call makes no request for them; names Scryfall had no card for are not remembered, so a repeat call asks again for those alone. Compact output is `Found N of M cards:` (M = distinct names), then each found card in input order in the usual compact card format, then `Not found: a, b` listing every name Scryfall has no card for; json output is `{ cards: [...], notFound: [...] }`. A miss never raises an error. A failed batch request does: it surfaces as the Scryfall error (e.g. `Rate limited by Scryfall; retry in Ns`), never as a list of misses, and nothing from that call is cached. Known limitation: the cache indexes a card by its full name, so a name that matches only one face of a multi-face card is looked up again on each call.
 
 **Query detection:** a query is treated as Scryfall search syntax when it contains parentheses, any `word:` / `word<=` style operator (known or not), a `-` negation prefix on a token, `!"…"`, or is entirely one quoted phrase. Everything else is a card name. Malformed or unknown operators therefore reach Scryfall and return its own error rather than "Card not found".
 

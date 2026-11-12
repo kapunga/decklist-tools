@@ -104,20 +104,43 @@ Add, remove, update, or move cards in a deck. Supports batch operations via the 
 
 ## `search_cards`
 
-Search for cards on Scryfall. Accepts a card name (fuzzy or exact), a Scryfall UUID, or a full Scryfall search query. The query type is auto-detected:
+Search for cards on Scryfall. Pass either `query` or `names`, not both.
+
+`query` accepts a card name (fuzzy or exact), a Scryfall UUID, or a full Scryfall search query. The query type is auto-detected:
 
 - **UUID** (e.g. `12345678-1234-...`) → fetch by Scryfall ID
 - **Scryfall operators** (e.g. `t:instant c:red`) → full search
 - **Plain text** → fuzzy name lookup (or exact if `exact: true`)
 
+`names` looks up a list of exact card names in one call (see [Looking up many cards](#looking-up-many-cards)).
+
 | Param | Type | Required | Description |
 |-------|------|----------|-------------|
-| `query` | string | yes | Card name, Scryfall UUID, or search query |
-| `exact` | boolean | no | Use exact name matching instead of fuzzy |
-| `limit` | number | no | Max results for search queries (default 10) |
-| `set_code` | string | no | Set code for specific printing |
-| `collector_number` | string | no | Collector number for specific printing |
+| `query` | string | one of `query` / `names` | Card name, Scryfall UUID, or search query. Max 500 characters |
+| `names` | string[] | one of `query` / `names` | 1–100 exact card names (each max 200 characters) |
+| `exact` | boolean | no | Use exact name matching instead of fuzzy (`query` only; `names` is always exact) |
+| `limit` | number | no | Max results for search queries (default 10; `query` only) |
+| `set_code` | string | no | Set code for specific printing (`query` only) |
+| `collector_number` | string | no | Collector number for specific printing (`query` only) |
 | `format` | string | no | `compact` (default) or `json` |
+
+### Looking up many cards
+
+Use `names` instead of chaining `!"…" or !"…"` clauses into one `query`, which soon runs into the 500-character limit. Names are matched exactly (case-insensitive), and a repeated name is looked up once. Names already in the local card cache cost no request; the rest are fetched in batches of 75, and everything fetched is cached, so asking again is instant. Cards come back in the order you asked for them, followed by the names Scryfall does not know:
+
+```
+Found 2 of 3 cards:
+
+Sol Ring • C21#263 • uncommon • {1} Artifact
+{T}: Add {C}{C}.
+
+Lightning Bolt • LEA#161 • common • {R} Instant
+Lightning Bolt deals 3 damage to any target.
+
+Not found: Lightning Blot
+```
+
+With `format: "json"` the response is `{ "cards": [ ... ], "notFound": [ ... ] }`. If Scryfall itself fails (for example a lasting rate limit), the call returns that error rather than reporting the cards as not found.
 
 ### Compact format (default)
 

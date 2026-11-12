@@ -5,7 +5,7 @@ import {
   setScryfallTransport,
   type Clock,
 } from '@mtg-deckbuilder/shared'
-import { looksLikeSearchSyntax, searchCardsHandler } from './card-tools.js'
+import { distinctNames, looksLikeSearchSyntax, searchCardsHandler } from './card-tools.js'
 import { resetCachedScryfallClient } from './helpers.js'
 import { createMockStorage, mockScryfallCard } from '../__test__/helpers.js'
 
@@ -141,6 +141,116 @@ describe('searchCardsHandler network behaviour', () => {
     const { storage } = createMockStorage()
     const pending = searchCardsHandler(storage, { query: 'Lightning Bolt' }).catch(e => e)
     await expect(settle(pending).then(e => { throw e }))
+      .rejects.toThrow(/Rate limited by Scryfall; retry in \d+s/)
+  })
+})
+
+describe('distinctNames', () => {
+  it('keeps the first spelling of each name, case-insensitively, in order', () => {
+    expect(distinctNames(['Opt', 'Shock', 'opt', 'OPT', 'Sol Ring', 'shock']))
+      .toEqual(['Opt', 'Shock', 'Sol Ring'])
+  })
+})
+
+describe('searchCardsHandler names lookup', () => {
+  const instantClock: Clock = { now: () => 0, sleep: async () => {} }
+  const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status })
+  type Identifier = { name: string }
+  const requestedNames = (init?: { body?: string }): string[] =>
+    (JSON.parse(init?.body ?? '{}').identifiers as Identifier[]).map(id => id.name)
+
+  let fetchMock: ReturnType<typeof vi.fn<(url: string, init?: { body?: string }) => Promise<Response>>>
+
+  /** Answer POST /cards/collection with a card per requested name, except names in `missing`. */
+  const answerCollection = (missing: string[] = []) => async (_url: string, init?: { body?: string }) => {
+    const ids = JSON.parse(init?.body ?? '{}').identifiers as Identifier[]
+    const isMissing = (id: Identifier) => missing.includes(id.name)
+    return json(200, {
+      object: 'list',
+      data: ids.filter(id => !isMissing(id)).map(id => mockScryfallCard(id.name)),
+      not_found: ids.filter(isMissing),
+    })
+  }
+
+  beforeEach(() => {
+    resetCachedScryfallClient()
+    fetchMock = vi.fn(answerCollection())
+    setScryfallTransport(createScryfallTransport({
+      fetch: fetchMock,
+      clock: instantClock,
+      limiter: createRateLimiter(100, instantClock),
+      retry: { maxAttempts: 3, baseDelayMs: 1000, maxDelayMs: 10_000 },
+    }))
+  })
+
+  afterEach(() => {
+    setScryfallTransport()
+    resetCachedScryfallClient()
+  })
+
+  const sixty = Array.from({ length: 60 }, (_, i) => `Card ${i}`)
+
+  it('looks up 60 names in one request, and a repeat call makes none', async () => {
+    const { storage } = createMockStorage()
+    const first = await searchCardsHandler(storage, { names: sixty }) as string
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock.mock.calls[0][0]).toContain('/cards/collection')
+    expect(first.startsWith('Found 60 of 60 cards:')).toBe(true)
+    expect(first).toContain('Test card')
+
+    const again = await searchCardsHandler(storage, { names: sixty })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(again).toBe(first)
+  })
+
+  it('lists misses explicitly and returns hits in input order', async () => {
+    fetchMock.mockImplementation(answerCollection(['Nonsense Card']))
+    const { storage } = createMockStorage()
+    storage.cacheCardsWithIndex([mockScryfallCard('Sol Ring')])
+
+    const result = await searchCardsHandler(storage, { names: ['Opt', 'Nonsense Card', 'Sol Ring', 'Shock'] }) as string
+    expect(requestedNames(fetchMock.mock.calls[0][1])).toEqual(['Opt', 'Nonsense Card', 'Shock'])
+    expect(result.split('\n\n')[0]).toBe('Found 3 of 4 cards:')
+    const order = ['Opt •', 'Sol Ring •', 'Shock •'].map(name => result.indexOf(name))
+    expect(order).toEqual([...order].sort((a, b) => a - b))
+    expect(result.endsWith('Not found: Nonsense Card')).toBe(true)
+  })
+
+  it('returns cards and notFound as JSON when asked', async () => {
+    fetchMock.mockImplementation(answerCollection(['Nonsense Card']))
+    const { storage } = createMockStorage()
+    const result = await searchCardsHandler(storage, { names: ['Opt', 'Nonsense Card'], format: 'json' }) as {
+      cards: { name: string }[]; notFound: string[]
+    }
+    expect(result.cards.map(c => c.name)).toEqual(['Opt'])
+    expect(result.notFound).toEqual(['Nonsense Card'])
+  })
+
+  it('collapses repeated names before looking them up', async () => {
+    const { storage } = createMockStorage()
+    const result = await searchCardsHandler(storage, { names: ['Opt', 'opt', 'Shock', 'OPT'] }) as string
+    expect(requestedNames(fetchMock.mock.calls[0][1])).toEqual(['Opt', 'Shock'])
+    expect(result.startsWith('Found 2 of 2 cards:')).toBe(true)
+  })
+
+  it('splits more than 75 uncached names into 75-name requests', async () => {
+    const names = Array.from({ length: 100 }, (_, i) => `Card ${i}`)
+    const result = await searchCardsHandler(createMockStorage().storage, { names }) as string
+    expect(fetchMock.mock.calls.map(([, init]) => requestedNames(init).length)).toEqual([75, 25])
+    expect(result.startsWith('Found 100 of 100 cards:')).toBe(true)
+  })
+
+  it('surfaces a failed batch request as a Scryfall error, not as misses', async () => {
+    fetchMock.mockImplementation(async () => json(503, { details: 'Down for maintenance' }))
+    const error = await searchCardsHandler(createMockStorage().storage, { names: ['Opt'] }).catch(e => e)
+    expect(error).toBeInstanceOf(Error)
+    expect(error.message).toBe('Down for maintenance')
+  })
+
+  it('surfaces an exhausted rate limit with the retry hint', async () => {
+    fetchMock.mockImplementation(async () =>
+      new Response('{}', { status: 429, headers: { 'Retry-After': '1' } }))
+    await expect(searchCardsHandler(createMockStorage().storage, { names: ['Opt'] }))
       .rejects.toThrow(/Rate limited by Scryfall; retry in \d+s/)
   })
 })

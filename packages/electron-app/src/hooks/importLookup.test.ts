@@ -54,6 +54,14 @@ describe('resolveImportedCards', () => {
     expect(result.resolvedCards.map(r => r.card.card.name)).toEqual(['Shock'])
   })
 
+  it('falls back to per-card lookups when the batch request itself fails', async () => {
+    const d = deps({ lookupBatch: async () => { throw new Error('Scryfall API error: 503') } })
+    const result = await resolveImportedCards([parsed('Opt'), parsed('Shock')], undefined, d)
+    expect(d.lookupByName).toHaveBeenCalledTimes(2)
+    expect(result.errors).toEqual([])
+    expect(result.resolvedCards.map(r => r.card.card.name)).toEqual(['Opt', 'Shock'])
+  })
+
   it('routes sideboard cards to alternates when the format has no sideboard', async () => {
     const result = await resolveImportedCards([parsed('Shock', { isSideboard: true })], 0, deps())
     expect(result.resolvedCards[0].listType).toBe('alternates')
