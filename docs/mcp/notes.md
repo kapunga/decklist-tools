@@ -4,7 +4,7 @@ Tools for managing deck notes (combos, synergies, strategy, etc.).
 
 ## `list_deck_notes`
 
-List all notes for a deck.
+List all notes for a deck as JSON, including note `id`, `roleId`, full `content`, and timestamps. This is the only tool that returns note ids, which `manage_deck_note` update/delete require. To just read the strategy as markdown, use [`deck_notes`](views.md#deck-notes).
 
 | Param | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -17,6 +17,7 @@ List all notes for a deck.
     "id": "n1o2p3q4-...",
     "title": "Blink Combo",
     "noteType": "combo",
+    "roleId": "ramp",
     "cardRefs": [{ "cardName": "Eternal Witness", "ordinal": 1 }],
     "content": "Flicker Eternal Witness to loop spells.",
     "createdAt": "2025-01-15T10:30:00Z",
@@ -33,7 +34,7 @@ Add, update, or delete a deck note.
 |-------|------|----------|-------------|
 | `action` | string | yes | `add`, `update`, or `delete` |
 | `deck_id` | string | yes | Deck UUID |
-| `note_id` | string | update/delete | Note UUID |
+| `note_id` | string | update/delete | Note UUID, from `list_deck_notes` |
 | `title` | string | add | Note title |
 | `content` | string | add | Markdown content |
 | `note_type` | string | add | `combo`, `synergy`, `theme`, `strategy`, or `general` |

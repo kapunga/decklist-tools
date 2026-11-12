@@ -156,7 +156,7 @@ Mana curve analysis: CMC distribution, color pip counts, type breakdown, and car
 
 ### `deck_notes`
 
-Returns the deck's strategy notes — combos, synergies, themes, and game-plan commentary. Use when a user asks *how* a deck is meant to play. This view does not require Scryfall data and skips the per-card cache load.
+Returns the deck's strategy notes — combos, synergies, themes, and game-plan commentary — as read-only markdown with role names resolved. Use when a user asks *how* a deck is meant to play. The output has no note ids or timestamps; use `list_deck_notes` when you need an id for `manage_deck_note`. This view does not require Scryfall data and skips the per-card cache load.
 
 **Input:**
 - `deck_id` *(string, required)*.
@@ -271,7 +271,7 @@ The well-known interest-list id cannot be deleted; that action errors.
 
 ### `list_deck_notes`
 
-List all notes attached to a deck.
+Returns a JSON array of every note attached to a deck: `id`, `title`, `noteType`, `cardRefs`, `roleId`, full `content`, `createdAt`, `updatedAt`. This is the only tool that returns note ids, which `manage_deck_note` `update`/`delete` require. It is not a titles-only index; for reading the strategy, `deck_notes` (markdown) is easier.
 
 **Input:**
 - `deck_id` *(string, required)*.
@@ -283,7 +283,7 @@ Add, update, or delete a deck note. Notes can optionally be associated with one 
 **Input:**
 - `action` *(string, required)* — `add` | `update` | `delete`.
 - `deck_id` *(string, required)*.
-- `note_id` *(string)* — required for `update` and `delete`.
+- `note_id` *(string)* — required for `update` and `delete`. Obtain it from `list_deck_notes`; `deck_notes` does not return ids.
 - `title` *(string)*.
 - `content` *(string)* — Markdown body.
 - `note_type` *(string)* — `combo` | `synergy` | `theme` | `strategy` | `general`.

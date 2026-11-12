@@ -210,7 +210,7 @@ function baseToolDefinitions(): Tool[] {
     },
     {
       name: 'deck_notes',
-      description: 'Deck strategy notes: combos, synergies, themes, and game-plan commentary attached to a deck. Use when a user asks how a deck is *meant* to play.',
+      description: 'Read-only markdown of a deck\'s strategy notes (combos, synergies, themes, game plan) with role names resolved. For reading how a deck is *meant* to play. No note ids; use list_deck_notes when you need ids to edit or delete.',
       inputSchema: {
         type: 'object',
         properties: {
@@ -379,7 +379,7 @@ function baseToolDefinitions(): Tool[] {
     // Notes
     {
       name: 'list_deck_notes',
-      description: 'List all notes for a deck',
+      description: 'JSON array of a deck\'s notes with id, roleId, cardRefs, full content, and timestamps. Use it to get the note_id that manage_deck_note update/delete requires. To just read the strategy, use deck_notes (markdown).',
       inputSchema: {
         type: 'object',
         properties: {
@@ -390,7 +390,7 @@ function baseToolDefinitions(): Tool[] {
     },
     {
       name: 'manage_deck_note',
-      description: 'Add, update, or delete a deck note.',
+      description: 'Add, update, or delete a deck note. update/delete need a note_id from list_deck_notes.',
       inputSchema: {
         type: 'object',
         properties: {
@@ -399,7 +399,7 @@ function baseToolDefinitions(): Tool[] {
             enum: ['add', 'update', 'delete'],
           },
           deck_id: { type: 'string' },
-          note_id: { type: 'string', description: 'Required for update/delete' },
+          note_id: { type: 'string', description: 'Required for update/delete. Get it from list_deck_notes (deck_notes does not return ids)' },
           title: { type: 'string' },
           content: { type: 'string', description: 'Markdown description' },
           note_type: {
