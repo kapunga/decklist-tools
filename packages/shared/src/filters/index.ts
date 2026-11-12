@@ -8,11 +8,6 @@ export type { EnrichedDeckCard, FilterMode, CmcFilter, ColorFilter, CardTypeFilt
 export { FILTER_GROUP_TYPES } from './types.js'
 export { normalizeFilters, resolveRoleFilters, FilterError } from './normalize.js'
 
-// Get CMC for a card, using Scryfall data if available
-function getCardCmc(enriched: EnrichedDeckCard): number {
-  return getCardManaValue(enriched.scryfallCard) ?? 0
-}
-
 // Primary type via the shared classification (stored primaryType, else front face)
 function getEnrichedPrimaryType(enriched: EnrichedDeckCard): PrimaryType {
   return resolvePrimaryType(enriched.deckCard, enriched.scryfallCard)
@@ -41,8 +36,9 @@ function isLand(enriched: EnrichedDeckCard): boolean {
 function matchesFilter(card: EnrichedDeckCard, filter: CardFilter): boolean {
   switch (filter.type) {
     case 'cmc': {
-      const bucket = getCmcBucket(getCardCmc(card))
-      const matches = filter.values.includes(bucket)
+      // Unknown mana value (no Scryfall data) is in no bucket — never treated as 0.
+      const manaValue = getCardManaValue(card.scryfallCard)
+      const matches = manaValue !== undefined && filter.values.includes(getCmcBucket(manaValue))
       return filter.mode === 'include' ? matches : !matches
     }
     case 'color': {

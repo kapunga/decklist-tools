@@ -17,7 +17,6 @@ import {
   enrichCards,
   applyFilters,
   resolveRoleFilters,
-  getMainboard,
   getFormat,
 } from '@mtg-deckbuilder/shared'
 import {
@@ -155,9 +154,11 @@ function loadDeckCardData(storage: Storage, deck: Deck, fetchCards: CardFetcher)
   return loadCardData(storage, [...getCommanderEntries(deck), ...getAllDeckEntries(deck)], fetchCards)
 }
 
-// Shared helper: build the set of card entry IDs that match a filter list.
-// Returns undefined when no filters are supplied — the render functions treat
-// undefined as "no filter" rather than "empty set".
+// Shared helper: build the set of card entry IDs, across every card set, that
+// match a filter list. deck_list narrows every section with it; deck_curve
+// intersects it with the mainboard. Returns undefined when no filters are
+// supplied — the render functions treat undefined as "no filter" rather than
+// "empty set".
 function buildFilteredCardIds(
   storage: Storage,
   deck: Deck,
@@ -167,7 +168,7 @@ function buildFilteredCardIds(
   if (!filters || filters.length === 0) return undefined
   const knownRoleIds = [...storage.getGlobalRoles(), ...deck.customRoles].map(r => r.id)
   const resolved = resolveRoleFilters(filters, knownRoleIds) ?? []
-  const enriched = enrichCards(getMainboard(deck), scryfallCache)
+  const enriched = enrichCards(getAllDeckEntries(deck), scryfallCache)
   const filtered = applyFilters(enriched, resolved)
   return new Set(filtered.map(e => e.deckCard.id))
 }

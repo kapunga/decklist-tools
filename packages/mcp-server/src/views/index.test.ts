@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { renderFullView, renderCurveView, renderNotesView, renderPullListView } from './index.js'
 import { makeDeck, makeDeckCard, makeMockCache, mockScryfallCard, pushMainboard, pushSideboard, pushAlternates } from '../__test__/helpers.js'
 import type { Deck, RoleDefinition, ScryfallCard, CardFilter, SetCollectionFile } from '@mtg-deckbuilder/shared'
-import { enrichCards, applyFilters, getMainboard, getCommanderEntries } from '@mtg-deckbuilder/shared'
+import { enrichCards, applyFilters, getAllDeckEntries, getAlternates, getCommanderEntries } from '@mtg-deckbuilder/shared'
 
 const globalRoles: RoleDefinition[] = [
   { id: 'ramp', name: 'Ramp', description: 'Accelerates mana production', color: '#22c55e' },
@@ -28,7 +28,7 @@ function renderDeckView(
   let filteredCardIds: Set<string> | undefined
   if (filters && filters.length > 0) {
     const cache = scryfallCache ?? new Map<string, ScryfallCard>()
-    const enriched = enrichCards(getMainboard(deck), cache)
+    const enriched = enrichCards(getAllDeckEntries(deck), cache)
     filteredCardIds = new Set(applyFilters(enriched, filters).map(e => e.deckCard.id))
   }
   switch (viewType) {
@@ -130,7 +130,7 @@ describe('full view with group_by=role', () => {
     const deck = makeDeck()
     pushAlternates(deck,makeDeckCard('Sol Ring', { roles: ['ramp'] }))
     const result = renderDeckView(deck, 'full', globalRoles, undefined, 'role')
-    expect(result).toContain('## Alternates\n### Ramp (1)')
+    expect(result).toContain('## Alternates (1)\n### Ramp (1)')
     expect(result).toContain('Sol Ring')
   })
 })
@@ -700,17 +700,17 @@ describe('deck_list grouped output uses the full card-line formatter', () => {
 
   it('group_by type nests counted type headings under each section', () => {
     const result = renderFullView(sectionedDeck(), globalRoles, undefined, 'type', undefined, sectionCache(), 'compact')
-    expect(result).toContain('## Main Deck\n### Creature (1)')
+    expect(result).toContain('## Main Deck (5)\n### Creature (1)')
     expect(result).toContain('### Instant (4)')
-    expect(result).toContain('## Alternates\n### Artifact (1)')
-    expect(result).toContain('## Sideboard\n### Instant (1)')
+    expect(result).toContain('## Alternates (1)\n### Artifact (1)')
+    expect(result).toContain('## Sideboard (1)\n### Instant (1)')
   })
 
   it('group_by role nests counted role headings under each section', () => {
     const result = renderFullView(sectionedDeck(), globalRoles, undefined, 'role', undefined, sectionCache(), 'compact')
     expect(result).toContain('### Ramp (1)\n*Accelerates mana production*')
     expect(result).toContain('### Removal (4)')
-    expect(result).toContain('## Sideboard\n### Unassigned (1)')
+    expect(result).toContain('## Sideboard (1)\n### Unassigned (1)')
   })
 
   it('group_by type agrees with the entry primary type for double-faced cards', () => {
@@ -777,7 +777,7 @@ describe('deck_list commander section (#244)', () => {
   it.each([undefined, 'type', 'role'])('shows mana cost, type line and oracle text at compact (group_by %s)', (groupBy) => {
     const { deck, cache } = commanderDeck(kenrith)
     const result = renderFullView(deck, globalRoles, undefined, groupBy, undefined, cache, 'compact')
-    expect(result).toContain('## Commander(s)\n- 1x Kenrith, the Returned King • {4}{W} Legendary Creature — Human Noble 5/5')
+    expect(result).toContain('## Commander(s) (1)\n- 1x Kenrith, the Returned King • {4}{W} Legendary Creature — Human Noble 5/5')
     expect(result).toContain('  {R}: All creatures gain trample and haste until end of turn.')
   })
 
@@ -820,5 +820,112 @@ describe('deck_list commander section (#244)', () => {
     const result = renderFullView(deck, globalRoles, undefined, undefined, undefined, new Map(), 'compact', getCommanderEntries(deck))
     expect(result).toContain('Warning')
     expect(result).toMatch(/1x Kenrith, the Returned King.*\[no Scryfall data\]/)
+  })
+})
+
+// --- deck_list filters, sort and heading counts (#305, #306, #307) ---
+
+describe('deck_list filters, sort and heading counts', () => {
+  const cache = makeMockCache({
+    'Zebra Elf': 'Creature — Elf', 'Alpha Bear': 'Creature — Bear', 'Mid Bolt': 'Instant',
+    'Yeti': 'Creature — Yeti', 'Bolt Alt': 'Instant', 'Aardvark': 'Creature — Aardvark',
+    'Side Zap': 'Instant', 'Side Ape': 'Creature — Ape', 'Side Bat': 'Creature — Bat',
+  })
+
+  // Entries pushed out of alphabetical order, as storage order would leave them.
+  function unsortedDeck(): Deck {
+    const deck = makeDeck()
+    pushMainboard(deck,
+      makeDeckCard('Zebra Elf', { roles: ['ramp'] }),
+      makeDeckCard('Mid Bolt', { quantity: 2, roles: ['ramp'] }),
+      makeDeckCard('Alpha Bear', { roles: ['ramp'] }))
+    pushAlternates(deck, makeDeckCard('Yeti'), makeDeckCard('Bolt Alt'), makeDeckCard('Aardvark'))
+    pushSideboard(deck, makeDeckCard('Side Zap'), makeDeckCard('Side Bat'), makeDeckCard('Side Ape'))
+    return deck
+  }
+
+  // Mirrors deck_list: the filter id set covers every card set, not only the mainboard.
+  function matchingIds(deck: Deck, filters: CardFilter[]): Set<string> {
+    return new Set(applyFilters(enrichCards(getAllDeckEntries(deck), cache), filters).map(e => e.deckCard.id))
+  }
+
+  const creaturesOnly: CardFilter[] = [{ type: 'card-type', mode: 'include', values: ['Creature'] }]
+  const section = (text: string, title: string) => {
+    const rest = text.slice(text.indexOf(`## ${title}`) + 3)
+    const next = rest.search(/\n## /)
+    return next === -1 ? rest : rest.slice(0, next)
+  }
+  const positions = (text: string, names: string[]) => names.map(n => text.indexOf(n))
+  const ascending = (xs: number[]) => xs.every((x, i) => x >= 0 && (i === 0 || xs[i - 1] < x))
+
+  it('a type filter narrows Alternates and Sideboard as well as the Main Deck', () => {
+    const deck = unsortedDeck()
+    const result = renderFullView(deck, globalRoles, undefined, undefined, matchingIds(deck, creaturesOnly), cache, 'summary')
+    expect(result).not.toMatch(/Mid Bolt|Bolt Alt|Side Zap/)
+    expect(result).toContain('Yeti')
+    expect(result).toContain('Side Bat')
+  })
+
+  it('omits a section with no matching cards and notes that filters apply to every section', () => {
+    const deck = unsortedDeck()
+    const altIds = new Set(getAlternates(deck).map(e => e.id))
+    const instantsOnly: CardFilter[] = [{ type: 'card-type', mode: 'include', values: ['Instant'] }]
+    const ids = new Set([...matchingIds(deck, instantsOnly)].filter(id => !altIds.has(id)))
+    const result = renderFullView(deck, globalRoles, undefined, undefined, ids, cache, 'summary')
+    expect(result).not.toContain('## Alternates')
+    expect(result).toContain('Filters applied to every section')
+  })
+
+  it('does not print the filter note when no filter is given', () => {
+    const result = renderFullView(unsortedDeck(), globalRoles, undefined, undefined, undefined, cache, 'summary')
+    expect(result).not.toContain('Filters applied')
+  })
+
+  it.each([undefined, 'name'])('flat list sorts every section by name (sort_by %s)', (sortBy) => {
+    const result = renderFullView(unsortedDeck(), globalRoles, sortBy, undefined, undefined, cache, 'summary')
+    expect(ascending(positions(section(result, 'Main Deck'), ['Alpha Bear', 'Mid Bolt', 'Zebra Elf']))).toBe(true)
+    expect(ascending(positions(section(result, 'Alternates'), ['Aardvark', 'Bolt Alt', 'Yeti']))).toBe(true)
+    expect(ascending(positions(section(result, 'Sideboard'), ['Side Ape', 'Side Bat', 'Side Zap']))).toBe(true)
+  })
+
+  it.each(['type', 'role'])('group_by %s sorts by name within every group of every section', (groupBy) => {
+    const result = renderFullView(unsortedDeck(), globalRoles, 'name', groupBy, undefined, cache, 'summary')
+    expect(ascending(positions(section(result, 'Main Deck'), ['Alpha Bear', 'Zebra Elf']))).toBe(true)
+    expect(ascending(positions(section(result, 'Alternates'), ['Aardvark', 'Yeti']))).toBe(true)
+    expect(ascending(positions(section(result, 'Sideboard'), ['Side Ape', 'Side Bat']))).toBe(true)
+  })
+
+  it('group_by role with sort_by set orders each group by set and collector number', () => {
+    const deck = makeDeck()
+    pushMainboard(deck,
+      makeDeckCard('Card A', { roles: ['ramp'], card: { name: 'Card A', setCode: 'bbb', collectorNumber: '1' } }),
+      makeDeckCard('Card B', { roles: ['ramp'], card: { name: 'Card B', setCode: 'aaa', collectorNumber: '10' } }),
+      makeDeckCard('Card C', { roles: ['ramp'], card: { name: 'Card C', setCode: 'aaa', collectorNumber: '9' } }))
+    const result = renderFullView(deck, globalRoles, 'set', 'role', undefined, new Map(), 'summary')
+    expect(ascending(positions(result, ['Card C', 'Card B', 'Card A']))).toBe(true)
+  })
+
+  it('every section heading shows its card-copy count', () => {
+    const deck = unsortedDeck()
+    deck.commanders.push({ name: 'Kenrith', setCode: 'eld', collectorNumber: '303' })
+    const result = renderFullView(deck, globalRoles, undefined, undefined, undefined, cache, 'summary')
+    expect(result).toContain('## Commander(s) (1)')
+    expect(result).toContain('## Main Deck (4)')
+    expect(result).toContain('## Alternates (3)')
+    expect(result).toContain('## Sideboard (3)')
+  })
+
+  it('under a filter each heading shows the matching count of the section total', () => {
+    const deck = unsortedDeck()
+    const result = renderFullView(deck, globalRoles, undefined, undefined, matchingIds(deck, creaturesOnly), cache, 'summary')
+    expect(result).toContain('## Main Deck (2 of 4)')
+    expect(result).toContain('## Alternates (2 of 3)')
+    expect(result).toContain('## Sideboard (2 of 3)')
+  })
+
+  it('grouped sections show the same heading counts', () => {
+    const deck = unsortedDeck()
+    const result = renderFullView(deck, globalRoles, undefined, 'type', matchingIds(deck, creaturesOnly), cache, 'summary')
+    expect(result).toContain('## Main Deck (2 of 4)\n### Creature (2)')
   })
 })

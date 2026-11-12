@@ -64,6 +64,12 @@ describe('applyFilters', () => {
     expect(result).toHaveLength(3)
   })
 
+  it('a card with unknown mana value (no Scryfall data) is not treated as 0 by a cmc filter', () => {
+    const unknown: EnrichedDeckCard = { ...makeEnriched({ name: 'Unknown' }), scryfallCard: undefined }
+    expect(applyFilters([unknown], [{ type: 'cmc', mode: 'include', values: [0] }])).toHaveLength(0)
+    expect(applyFilters([unknown], [{ type: 'cmc', mode: 'exclude', values: [0] }])).toHaveLength(1)
+  })
+
   it('filters by color include', () => {
     const filter: CardFilter = { type: 'color', mode: 'include', values: ['R'] }
     const result = applyFilters(cards, [filter])

@@ -741,6 +741,32 @@ describe('Views', () => {
       expect(result).toContain('Lightning Bolt')
     })
 
+    it('applies a filter to the Alternates and Sideboard sections too (#305)', async () => {
+      const deck = makeDeck({ name: 'Filter All Sections' })
+      pushMainboard(deck, makeDeckCard('Main Elf'), makeDeckCard('Main Bolt'))
+      pushAlternates(deck, makeDeckCard('Alt Elf'), makeDeckCard('Alt Bolt'))
+      pushSideboard(deck, makeDeckCard('Side Bolt'))
+      mock._decks.set(deck.id, deck)
+      const typeLines: [string, string][] = [
+        ['Main Elf', 'Creature — Elf'], ['Alt Elf', 'Creature — Elf'],
+        ['Main Bolt', 'Instant'], ['Alt Bolt', 'Instant'], ['Side Bolt', 'Instant'],
+      ]
+      for (const [name, typeLine] of typeLines) {
+        const card = mockScryfallCard(name, { type_line: typeLine })
+        mock._cachedCards.set(card.id, card)
+      }
+
+      const result = await call('deck_list', {
+        deck_id: deck.id,
+        filters: [{ type: 'card-type', mode: 'include', values: ['Creature'] }],
+      }) as string
+      expect(result).toContain('Main Elf')
+      expect(result).toContain('## Alternates (1 of 2)')
+      expect(result).toContain('Alt Elf')
+      expect(result).not.toMatch(/Main Bolt|Alt Bolt|Side Bolt/)
+      expect(result).not.toContain('## Sideboard')
+    })
+
     it('rejects an invalid detail value', async () => {
       const deck = makeDeck()
       mock._decks.set(deck.id, deck)

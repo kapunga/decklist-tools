@@ -134,7 +134,9 @@ Deck rendering is split across four per-view tools rather than one multiplexed `
 
 ### `deck_list`
 
-**Primary deck-analysis view.** Returns the deck's card list as markdown, with oracle text on every card by default. Renders separate sections for `## Commander(s)`, `## Main Deck`, `## Alternates`, and `## Sideboard`; empty sections are omitted.
+**Primary deck-analysis view.** Returns the deck's card list as markdown, with oracle text on every card by default. Renders separate sections for `## Commander(s)`, `## Main Deck`, `## Alternates`, and `## Sideboard`; empty sections are omitted. Every section heading carries its card-copy count (quantities summed, as `deck_curve` counts), e.g. `## Main Deck (99)`.
+
+**Pipeline.** Each section goes through the same steps (`views/full-view.ts`): filter → sort → group → render. Sorting is a pure, stable comparator chosen by `sort_by` and applied to a copy of the section before grouping; groupings keep their input order, so the order holds within every group.
 
 **One card-line format everywhere.** Every card in every section, commanders included, is rendered by the same formatter (`formatCardLine`), in every grouping mode: quantity, name, mana cost, type line, P/T, role names, and the `[NEED TO BUY]` / `[PULLED]` flag at the chosen `detail`. Grouping only partitions a section's entries (`views/groupings.ts`) and never changes how a card line looks. Commander cards that are not cached are fetched like any other card, and named in the missing-data warning if they cannot be resolved.
 
@@ -143,10 +145,11 @@ Deck rendering is split across four per-view tools rather than one multiplexed `
 **Input:**
 - `deck_id` *(string, required)*.
 - `detail` *(string)* — `summary` | `compact` | `full`. **Defaults to `compact`** (includes oracle text — the first-look content for deck analysis). `summary` drops oracle text for a terser one-line-per-card form. `full` adds set code and rarity on top of compact. Honoured in every `group_by` / `sort_by` mode.
-- `sort_by` *(string)* — sort key within each section. Supported values: `name`, `set`. `set` groups each section by set code (`### SET (N)`), ordered by collector number.
+- `sort_by` *(string)* — card order within every section and every group. Supported values: `name` (**default**; alphabetical by card name), `set` (set code, then collector number, then name). Without `group_by`, `set` also groups each section by set code (`### SET (N)`). Storage order is never used.
 - `group_by` *(string)* — group the cards of each section. Supported values: `none` (default), `role`, `type`. Groups render as `### Heading (N)` sub-headings under each `##` section (N = copies in the group). `type` uses the shared card classification below, so it matches `deck_curve`. `role` lists a card under each of its roles, then `### Unassigned (N)`. `group_by` takes precedence over `sort_by: set`.
-- `filters` *(array)* — optional card filters. Each filter has `type`, `mode`, and `values`.
+- `filters` *(array)* — optional card filters. Each filter has `type`, `mode`, and `values`. Filters apply to every card-set section (Main Deck, Alternates, Sideboard; commanders are always shown). A section with no matching cards is omitted, and a one-line note under the deck header says filters were applied to every section. Filtered section headings show the matching count of the section total, e.g. `## Alternates (12 of 80)`. Filters do not change grouping; pass `group_by: type` for type headings.
   - `type`: `cmc` | `color` | `card-type` | `role` | `ownership`.
+  - A card without Scryfall data has an unknown mana value: it is in no `cmc` bucket, so it never matches a `cmc` include filter and is never removed by a `cmc` exclude filter (it stays named in the missing-data warning).
   - `mode`: `include` | `exclude`.
   - `values`: array of permitted values (depends on `type`). Matching is case-insensitive: `card-type` is one of `Creature`, `Planeswalker`, `Battle`, `Artifact`, `Enchantment`, `Land`, `Instant`, `Sorcery`, `Other`; `color` is `W`/`U`/`B`/`R`/`G`/`C`; `ownership` is `unknown`/`owned`/`need_to_buy`; `cmc` is an integer 0-7 (7 means 7+; numeric strings are accepted); `role` is a role id. An unrecognised value is an error listing the valid values, never a silent empty result.
 
