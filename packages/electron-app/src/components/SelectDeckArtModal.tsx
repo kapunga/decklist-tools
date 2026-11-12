@@ -16,6 +16,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { useStore } from '@/hooks/useStore'
 import { buildArtCropUrlFromId, getCardPrintings, getCardById } from '@/lib/scryfall'
+import { lookupOrNull } from '@/lib/scryfallOutcome'
 import {
   getMainboard,
   getSideboard,
@@ -293,7 +294,7 @@ export function SelectDeckArtModal({ isOpen, onClose, deck }: SelectDeckArtModal
 
     if (!seedId) return
 
-    getCardById(seedId).then(card => {
+    lookupOrNull(() => getCardById(seedId), 'deck art seed card').then(card => {
       if (cancelled || !card) return
       const option = buildOptionFromPrinting(card, seedFace)
       setPendingOption(option)
@@ -365,7 +366,7 @@ export function SelectDeckArtModal({ isOpen, onClose, deck }: SelectDeckArtModal
 
     let cancelled = false
     setLoadingCard(expanded)
-    getCardPrintings(expanded).then(result => {
+    lookupOrNull(() => getCardPrintings(expanded), 'card printings').then(result => {
       if (cancelled) return
       const printings: ScryfallCard[] = result?.data ?? []
       const options = dedupByIllustration(printings)

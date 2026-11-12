@@ -15,6 +15,7 @@ import { ColorPips } from '@/components/ColorPips'
 import type { ScryfallCard, CardEntry } from '@/types'
 import { getCardDisplayName } from '@/types'
 import { searchCardByName, searchCards } from '@/lib/scryfall'
+import { lookupOrNull } from '@/lib/scryfallOutcome'
 import { AUTOCOMPLETE } from '@/lib/constants'
 
 interface SelectCommanderModalProps {
@@ -123,7 +124,7 @@ export function SelectCommanderModal({
     setSearchQuery(name)
 
     try {
-      const card = await searchCardByName(name)
+      const card = await lookupOrNull(() => searchCardByName(name), 'commander suggestion')
       if (card) {
         setSelectedCard(card)
       }
@@ -135,7 +136,7 @@ export function SelectCommanderModal({
   const handleSelectExisting = useCallback(async (deckCard: CardEntry) => {
     setIsLoading(true)
     try {
-      const card = await searchCardByName(deckCard.card.name)
+      const card = await lookupOrNull(() => searchCardByName(deckCard.card.name), 'commander from deck')
       if (card) {
         setSelectedCard(card)
       }

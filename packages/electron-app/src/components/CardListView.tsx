@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useStore } from '@/hooks/useStore'
 import { autocomplete, searchCardByName, getCardsByIds, getCardImageUrl, listLegalities } from '@/lib/scryfall'
+import { lookupOrNull } from '@/lib/scryfallOutcome'
 import { AUTOCOMPLETE } from '@/lib/constants'
 import type { CardEntry, CardList, ScryfallCard, FormatType } from '@/types'
 import {
@@ -97,7 +98,7 @@ export function CardListView() {
     if (item.card.scryfallId) {
       setActiveImageUrl(`https://api.scryfall.com/cards/${item.card.scryfallId}?format=image&version=normal`)
     } else {
-      searchCardByName(item.card.name).then(card => {
+      lookupOrNull(() => searchCardByName(item.card.name), 'list card preview').then(card => {
         if (card) setActiveImageUrl(getCardImageUrl(card))
       })
     }
@@ -109,7 +110,7 @@ export function CardListView() {
     setShowSuggestions(false)
     setSearchQuery('')
     try {
-      const card = await searchCardByName(name)
+      const card = await lookupOrNull(() => searchCardByName(name), 'add card to list')
       if (card) {
         await addCardToList(list.id, createCardIdentifier(card), undefined, 'user')
         // Persist into the local cache so format-legality and previews can resolve it.

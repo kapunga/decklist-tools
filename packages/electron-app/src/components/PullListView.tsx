@@ -7,6 +7,7 @@ import { CardImage } from '@/components/CardImage'
 import { CollapsibleSection } from '@/components/CollapsibleSection'
 import { usePullList, type PullListGroup, type PullListItem } from '@/hooks/usePullList'
 import { getCardById } from '@/lib/scryfall'
+import { lookupOrNull } from '@/lib/scryfallOutcome'
 import {
   captionLabelStyle,
   editorialTextStyle,
@@ -104,7 +105,7 @@ export function PullListView({ deck }: PullListViewProps) {
     const fetchCard = async () => {
       setLoadingCard(true)
       try {
-        const scryfallCard = await getCardById(focusedScryfallId)
+        const scryfallCard = await lookupOrNull(() => getCardById(focusedScryfallId), 'focused card')
         if (!cancelled) {
           setFocusedScryfallCard(scryfallCard)
         }

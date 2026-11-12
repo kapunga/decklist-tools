@@ -19,6 +19,7 @@ import { RolePill } from '@/components/RolePill'
 import { RoleAutocomplete } from '@/components/RoleAutocomplete'
 import { useStore, useGlobalRoles, useDeckById } from '@/hooks/useStore'
 import { getCardPrintings } from '@/lib/scryfall'
+import { lookupOrNull } from '@/lib/scryfallOutcome'
 import type { CardEntry, ScryfallCard, OwnershipStatus, CardSetName } from '@/types'
 import { getCardLimit, getCardDisplayName, OWNERSHIP_STATUS, createCardIdentifier } from '@/types'
 
@@ -76,7 +77,7 @@ export function CardEditModal({
     const loadPrintings = async () => {
       setLoadingPrintings(true)
       try {
-        const result = await getCardPrintings(card.card.name)
+        const result = await lookupOrNull(() => getCardPrintings(card.card.name), 'card printings')
         if (!cancelled && result) {
           setPrintings(result.data)
           // Find current printing to mark as selected

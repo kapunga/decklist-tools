@@ -3,6 +3,7 @@ import { Loader2 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { useStore } from '@/hooks/useStore'
 import { autocomplete, searchCardByName } from '@/lib/scryfall'
+import { lookupOrNull } from '@/lib/scryfallOutcome'
 import { AUTOCOMPLETE } from '@/lib/constants'
 import { CardAddModal } from '@/components/CardAddModal'
 import type { ScryfallCard, DeckFormat, RoleDefinition, CardSetName } from '@/types'
@@ -88,7 +89,7 @@ export function QuickAdd({ deckId, format, colorIdentity, customRoles, activeTab
     setDropdown(initialDropdownState)
 
     try {
-      const scryfallCard = await searchCardByName(name)
+      const scryfallCard = await lookupOrNull(() => searchCardByName(name), 'quick add')
       if (!scryfallCard) {
         console.error('Card not found:', name)
         return

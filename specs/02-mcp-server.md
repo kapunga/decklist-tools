@@ -113,6 +113,8 @@ Search for cards on Scryfall. Accepts a card name (fuzzy or exact), a Scryfall U
 
 **Errors and notes:** Scryfall answers both "nothing matched" and "malformed query" with the same 404, so a zero-result search stays a normal result but includes Scryfall's explanation (`Scryfall: …` in compact output, `notes` in json). Other Scryfall failures (400, 429, 5xx) are raised as tool errors carrying Scryfall's `details`. Warnings Scryfall attaches to a successful search (e.g. an ignored expression) are appended as `Warning: …` / `notes`.
 
+**Rate limiting and caching:** all Scryfall requests in the process share one serialising queue spaced `SCRYFALL.MIN_REQUEST_INTERVAL_MS` (100 ms, ≤10 req/s) apart, so parallel calls are queued rather than burst. A 429 or transient 5xx (500/502/503/504) is retried with backoff (honouring `Retry-After`, up to 4 attempts, at most 10 s per wait); while a retry waits, the whole queue is held. If Scryfall is still rate limiting, or asks for a longer wait, the tool fails with `Rate limited by Scryfall; retry in Ns` — never `Card not found`. Other non-404 failures on name/id/set-collector lookups likewise surface as Scryfall errors. Name, id, and set+collector lookups go through the local card cache (`cache/scryfall/`), so a repeat lookup makes no network call. Cards shown from a syntax search (up to `limit`) are added to the cache, except that a name already cached keeps its existing printing.
+
 ### `get_collection_filter`
 
 Generate a Scryfall filter string based on the user's set collection. The filter narrows search results to cards the user likely owns, including appropriate rarity filters per set's configured collection level. Combine with `search_cards` to constrain a search to the user's collection.

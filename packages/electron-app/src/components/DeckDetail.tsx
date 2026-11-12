@@ -12,6 +12,7 @@ import {
 import { useStore, useSelectedDeck } from '@/hooks/useStore'
 import { useScryfallCache } from '@/hooks/useScryfallCache'
 import { getCardById } from '@/lib/scryfall'
+import { lookupOrNull } from '@/lib/scryfallOutcome'
 import { DeckListView } from '@/components/DeckListView'
 import { QuickAdd } from '@/components/QuickAdd'
 import { ImportDialog } from '@/components/ImportDialog'
@@ -165,7 +166,7 @@ export function DeckDetail() {
       return
     }
     let cancelled = false
-    getCardById(soloCommanderId).then(card => {
+    lookupOrNull(() => getCardById(soloCommanderId), 'commander partner check').then(card => {
       if (!cancelled) setCommanderHasPartner(!!card?.keywords?.includes('Partner'))
     })
     return () => { cancelled = true }

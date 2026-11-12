@@ -27,11 +27,14 @@ vi.mock('@mtg-deckbuilder/shared', async (importOriginal) => {
     ...actual,
     ..._mockFns,
     CachedScryfallClient: class MockCachedScryfallClient {
-      async getCardByName(name: string) { return _mockFns.searchCardByName(name) }
+      async getCardByName(name: string, exact?: boolean) {
+        return exact ? _mockFns.searchCardByNameExact(name) : _mockFns.searchCardByName(name)
+      }
       async getCardBySetCollector(setCode: string, collectorNumber: string) {
         return _mockFns.getCardBySetAndNumber(setCode, collectorNumber)
       }
       async getCardById(id: string) { return _mockFns.getCardById(id) }
+      rememberCards() {}
     },
   }
 })

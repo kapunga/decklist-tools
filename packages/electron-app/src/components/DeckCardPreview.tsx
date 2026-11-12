@@ -22,6 +22,7 @@ import {
   type ArtCardFace,
 } from '@mtg-deckbuilder/shared'
 import { getCardById, resolveArtCropUrl } from '@/lib/scryfall'
+import { lookupOrNull } from '@/lib/scryfallOutcome'
 import { useStore } from '@/hooks/useStore'
 
 interface DeckCardPreviewProps {
@@ -76,7 +77,7 @@ async function pickHeroFromMainboard(deck: Deck): Promise<string | null> {
   const cards = await Promise.all(
     entries.map(async e => ({
       id: e.card.scryfallId!,
-      card: await getCardById(e.card.scryfallId!),
+      card: await lookupOrNull(() => getCardById(e.card.scryfallId!), 'deck hero candidate'),
     })),
   )
   const nonLands = cards.filter(
@@ -257,7 +258,7 @@ export function DeckCardPreview({ deck, onClick, onDelete }: DeckCardPreviewProp
       return
     }
     let cancelled = false
-    getCardById(heroCardId).then(card => {
+    lookupOrNull(() => getCardById(heroCardId), 'hero card layout').then(card => {
       if (!cancelled) setHeroLayout(card?.layout ?? null)
     })
     return () => {

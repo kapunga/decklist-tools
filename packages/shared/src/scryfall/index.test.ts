@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from 'vitest'
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
 import {
   sortColorsWUBRG,
   getCardImageUrl,
@@ -9,9 +9,14 @@ import {
   listLegalities,
   searchCards,
   searchCardsAll,
+  searchCardByName,
+  getCardById,
   ScryfallError,
+  ScryfallRateLimitError,
+  setScryfallTransport,
   WUBRG_ORDER,
 } from './index.js'
+import { createRateLimiter, createScryfallTransport, type Clock } from './transport.js'
 import type { ScryfallCard } from '../types/index.js'
 
 describe('WUBRG_ORDER', () => {
@@ -282,11 +287,25 @@ describe('listLegalities', () => {
   })
 })
 
-describe('searchCards error handling', () => {
-  const jsonResponse = (status: number, body: unknown) =>
-    new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
+// Same retry/limit behaviour as production, but sleeps return immediately and fetch is
+// read from globalThis at call time so `vi.stubGlobal('fetch', ...)` reaches it.
+const instantClock: Clock = { now: () => 0, sleep: async () => {} }
+const useInstantTransport = () => setScryfallTransport(createScryfallTransport({
+  fetch: (url, init) => fetch(url, init),
+  clock: instantClock,
+  limiter: createRateLimiter(100, instantClock),
+  retry: { maxAttempts: 3, baseDelayMs: 1000, maxDelayMs: 10_000 },
+}))
 
-  afterEach(() => vi.unstubAllGlobals())
+const jsonResponse = (status: number, body: unknown, headers: Record<string, string> = {}) =>
+  new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json', ...headers } })
+
+describe('searchCards error handling', () => {
+  beforeEach(useInstantTransport)
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    setScryfallTransport()
+  })
 
   it('keeps Scryfall details on a 404 so a bad query is distinguishable from silence', async () => {
     const details = "Your query didn't match any cards."
@@ -327,9 +346,48 @@ describe('searchCards error handling', () => {
     const page1 = { object: 'list', total_cards: 2, has_more: true, next_page: 'https://api.scryfall.com/next', data: [{ id: 'a' }] }
     vi.stubGlobal('fetch', vi.fn()
       .mockResolvedValueOnce(jsonResponse(200, page1))
-      .mockResolvedValueOnce(jsonResponse(500, { object: 'error', status: 500, details: 'boom' })))
+      .mockImplementation(async () => jsonResponse(500, { object: 'error', status: 500, details: 'boom' })))
     const error = await searchCardsAll('anything').catch(e => e)
     expect(error).toBeInstanceOf(ScryfallError)
     expect(error.message).toBe('boom')
+  })
+})
+
+describe('single-card lookups under rate limiting', () => {
+  beforeEach(useInstantTransport)
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    setScryfallTransport()
+  })
+
+  const rateLimited = () => jsonResponse(429, { object: 'error', status: 429, details: 'Slow down' }, { 'Retry-After': '1' })
+
+  it('retries a 429 and returns the card', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(rateLimited())
+      .mockResolvedValueOnce(jsonResponse(200, { id: 'abc', name: 'Lightning Bolt' }))
+    vi.stubGlobal('fetch', fetchMock)
+    const card = await searchCardByName('Lightning Bolt')
+    expect(card?.name).toBe('Lightning Bolt')
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('surfaces an exhausted rate limit instead of reporting the card as missing', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => rateLimited()))
+    const error = await searchCardByName('Lightning Bolt').catch(e => e)
+    expect(error).toBeInstanceOf(ScryfallRateLimitError)
+    expect(error.message).toMatch(/Rate limited by Scryfall; retry in \d+s/)
+  })
+
+  it('surfaces a persistent 5xx as a ScryfallError rather than null', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => jsonResponse(503, { details: 'Down for maintenance' })))
+    const error = await getCardById('00000000-0000-0000-0000-000000000000').catch(e => e)
+    expect(error).toBeInstanceOf(ScryfallError)
+    expect(error.message).toBe('Down for maintenance')
+  })
+
+  it('still returns null for a genuine 404', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(404, { details: 'No card found' })))
+    expect(await searchCardByName('Nonexistent')).toBeNull()
   })
 })

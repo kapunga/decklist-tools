@@ -12,6 +12,7 @@ import { CardFilterBar } from '@/components/CardFilterBar'
 import { useStore, useGlobalRoles } from '@/hooks/useStore'
 import { useScryfallCache } from '@/hooks/useScryfallCache'
 import { getCardById } from '@/lib/scryfall'
+import { lookupOrNull } from '@/lib/scryfallOutcome'
 import { captionLabelStyle, editorialTextStyle } from '@/lib/mastheadStyles'
 import type { CardEntry, ScryfallCard, Deck, CardSetName } from '@/types'
 import { getCardLimit, isCardFullyPulled, getCardDisplayName, getCanonicalSuffix, OWNERSHIP_STATUS, CARD_SOURCE, CARD_SET } from '@/types'
@@ -146,7 +147,7 @@ export function DeckListView({ deck, listType }: DeckListViewProps) {
     const fetchCard = async () => {
       setLoadingCard(true)
       try {
-        const scryfallCard = await getCardById(focusedScryfallId)
+        const scryfallCard = await lookupOrNull(() => getCardById(focusedScryfallId), 'focused card')
         if (!cancelled) {
           setFocusedScryfallCard(scryfallCard)
         }
