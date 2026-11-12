@@ -252,7 +252,8 @@ Create, rename, or delete a list, or add/remove cards within one.
 - `name` *(string)* — for `create`/`rename`: list name. For `add`: card name.
 - `description` *(string, optional)*.
 - `kind` *(string, optional)* — `interest` | `collection` | `scan` | `wishlist` | `custom`. Used on `create`. Defaults to `custom`.
-- `card_name` *(string)* — required for `remove`.
+- `card_name` *(string)* — for `remove`, when `entry_id` is not given. Fails (removing nothing) if the name matches more than one entry; the error lists each candidate's id, printing, and whether it has notes or potential decks.
+- `entry_id` *(string)* — for `remove`: the entry id (from `get_card_list`). Preferred over `card_name` when both are given. `set_code` + `collector_number` also narrow a `card_name` on `remove`.
 - `set_code`, `collector_number` *(string, optional)* — narrow to a specific printing on `add`.
 - `quantity` *(number, optional)* — quantity on `add`.
 - `notes` *(string, optional)* — free-text notes on the entry.
@@ -261,6 +262,8 @@ Create, rename, or delete a list, or add/remove cards within one.
 - `force` *(boolean, optional)* — same name/set+collector mismatch override as `manage_card`.
 
 The well-known interest-list id cannot be deleted; that action errors.
+
+`remove` returns `{ success, removed }`, where `removed` is the deleted entry.
 
 ---
 

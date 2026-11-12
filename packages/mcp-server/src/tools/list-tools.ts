@@ -12,6 +12,7 @@ import {
   getCardListKind,
   getCardListEntries,
   withCardListEntries,
+  removeEntryFromList,
 } from '@mtg-deckbuilder/shared'
 import type {
   CardList,
@@ -122,16 +123,18 @@ export async function manageCardList(storage: Storage, args: ManageCardListArgs)
     }
     case 'remove': {
       if (!args.id) throw new Error('id is required for remove')
-      if (!args.card_name) throw new Error('card_name is required for remove')
+      if (!args.entry_id && !args.card_name) {
+        throw new Error('entry_id or card_name is required for remove')
+      }
       const list = getListOrThrow(storage, args.id)
-      const entries = getCardListEntries(list)
-      const idx = entries.findIndex(
-        e => e.card.name.toLowerCase() === args.card_name!.toLowerCase(),
-      )
-      if (idx === -1) throw new Error(`Card not found in list: ${args.card_name}`)
-      const next = entries.filter((_, i) => i !== idx)
-      storage.saveCardList(withCardListEntries(list, next))
-      return { success: true }
+      const { list: next, removed } = removeEntryFromList(list, {
+        entryId: args.entry_id,
+        cardName: args.card_name,
+        setCode: args.set_code,
+        collectorNumber: args.collector_number,
+      })
+      storage.saveCardList(next)
+      return { success: true, removed }
     }
     default:
       throw new Error(`Unknown action: ${(args as { action: string }).action}`)

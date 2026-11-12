@@ -1316,6 +1316,54 @@ describe('Card Lists', () => {
       await expect(call('manage_card_list', { action: 'remove', id: INTEREST_LIST_ID, card_name: 'Nope' }))
         .rejects.toThrow('Card not found in list')
     })
+
+    const seedDuplicates = () => {
+      const entry = (id: string, notes?: string) => ({
+        id,
+        card: { name: 'Together as One', setCode: 'sos', collectorNumber: '4' },
+        addedAt: '',
+        source: 'user' as const,
+        quantity: 1,
+        ownership: 'unknown' as const,
+        roles: [],
+        notes,
+      })
+      mock._cardLists.set(INTEREST_LIST_ID, {
+        id: INTEREST_LIST_ID,
+        name: 'Interest List',
+        kind: 'interest',
+        version: 1,
+        createdAt: '',
+        updatedAt: '',
+        cardSets: [{ name: 'mainboard', entries: [entry('bare'), entry('noted', 'keep')] }],
+      })
+    }
+    const remainingIds = () =>
+      (mock._cardLists.get(INTEREST_LIST_ID) as any).cardSets[0].entries.map((e: any) => e.id)
+
+    it('removes exactly the entry given by entry_id and returns it', async () => {
+      seedDuplicates()
+      const result = await call('manage_card_list', {
+        action: 'remove', id: INTEREST_LIST_ID, entry_id: 'noted',
+      }) as any
+      expect(result.success).toBe(true)
+      expect(result.removed.id).toBe('noted')
+      expect(remainingIds()).toEqual(['bare'])
+    })
+
+    it('refuses an ambiguous card_name, removes nothing, and lists candidates', async () => {
+      seedDuplicates()
+      await expect(call('manage_card_list', {
+        action: 'remove', id: INTEREST_LIST_ID, card_name: 'Together as One',
+      })).rejects.toThrow(/matches 2 entries.*id=bare.*id=noted/)
+      expect(remainingIds()).toEqual(['bare', 'noted'])
+    })
+
+    it('requires entry_id or card_name', async () => {
+      seedDuplicates()
+      await expect(call('manage_card_list', { action: 'remove', id: INTEREST_LIST_ID }))
+        .rejects.toThrow('entry_id or card_name is required')
+    })
   })
 })
 

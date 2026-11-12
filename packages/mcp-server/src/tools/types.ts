@@ -127,8 +127,9 @@ export interface ManageCardListArgs {
   source?: string
   quantity?: number
   force?: boolean
-  // remove
+  // remove (also uses set_code / collector_number to narrow a name)
   card_name?: string
+  entry_id?: string
 }
 
 export interface ManageDeckNoteArgs {
@@ -343,6 +344,7 @@ export function validateManageCardListArgs(args: Record<string, unknown>): Manag
     quantity: args.quantity as number | undefined,
     force: args.force as boolean | undefined,
     card_name: args.card_name as string | undefined,
+    entry_id: args.entry_id as string | undefined,
   }
 }
 
