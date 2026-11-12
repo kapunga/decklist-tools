@@ -1,8 +1,9 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import {
   createRateLimiter,
   createScryfallTransport,
   parseRetryAfter,
+  systemClock,
   type Clock,
   type RetryPolicy,
 } from './transport.js'
@@ -164,14 +165,50 @@ describe('createScryfallTransport retries', () => {
 
   it('holds back concurrent callers while a 429 is being waited out', async () => {
     let first = true
-    const { transport, callTimes, runAll } = setup(async () => {
+    const { transport, fetch, callTimes, runAll } = setup(async () => {
       if (first) { first = false; return statusResponse(429, '2') }
       return okResponse()
     })
     const all = Promise.all([transport('a'), transport('b')])
     await runAll()
     await all
-    // 'b' already held slot 100ms; the retry of 'a' waits out the 2s hold.
-    expect(callTimes.slice(-1)[0]).toBeGreaterThanOrEqual(2000)
+    // 'b' was already queued, yet waits out the 2s hold too, behind the retry of 'a'.
+    expect(fetch.mock.calls.map(([url]) => url)).toEqual(['a', 'a', 'b'])
+    expect(Math.min(...callTimes.slice(1))).toBeGreaterThanOrEqual(2000)
+  })
+})
+
+describe('429 hold under fake timers', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(0)
+  })
+  afterEach(() => vi.useRealTimers())
+
+  it('pauses requests that were already queued until Retry-After has passed, keeping order', async () => {
+    const sent: { url: string; at: number }[] = []
+    const fetch = vi.fn(async (url: string) => {
+      sent.push({ url, at: Date.now() })
+      return sent.length === 3 ? statusResponse(429, '1') : okResponse()
+    })
+    const transport = createScryfallTransport({
+      fetch,
+      clock: systemClock,
+      limiter: createRateLimiter(100, systemClock),
+      retry: POLICY,
+    })
+    const urls = ['r1', 'r2', 'r3', 'r4', 'r5', 'r6']
+    const resolved: string[] = []
+    const all = Promise.all(urls.map(url => transport(url).then(() => { resolved.push(url) })))
+    await vi.runAllTimersAsync()
+    await all
+
+    const limitedAt = sent[2].at
+    expect(sent.filter(s => s.at > limitedAt && s.at < limitedAt + 1000)).toEqual([])
+    expect(sent.map(s => s.url)).toEqual(['r1', 'r2', 'r3', 'r3', 'r4', 'r5', 'r6'])
+    expect(resolved).toEqual(urls)
+    const afterHold = sent.slice(3).map(s => s.at)
+    expect(afterHold[0]).toBeGreaterThanOrEqual(limitedAt + 1000)
+    expect(Math.min(...afterHold.slice(1).map((t, i) => t - afterHold[i]))).toBeGreaterThanOrEqual(100)
   })
 })

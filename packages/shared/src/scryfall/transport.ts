@@ -13,37 +13,61 @@ export const systemClock: Clock = {
   sleep: ms => new Promise(resolve => setTimeout(resolve, ms)),
 }
 
+export interface ScheduleOptions {
+  /** Go ahead of everything already waiting (a retry keeps its place in line). */
+  first?: boolean
+}
+
 /**
- * Serialising request queue. Each call reserves its start slot synchronously, so
- * concurrent callers are spaced `intervalMs` apart instead of all waking together.
+ * Serialising FIFO request queue. Tasks start one at a time, at least `intervalMs` apart.
+ * The start time is decided when a task reaches the head of the queue, not when it is
+ * enqueued, so a hold placed while tasks are waiting applies to all of them.
  */
 export interface RateLimiter {
-  schedule<T>(task: () => Promise<T>): Promise<T>
-  /** Push every not-yet-reserved slot to at least `time` (e.g. while a 429 is waited out). */
+  schedule<T>(task: () => Promise<T>, options?: ScheduleOptions): Promise<T>
+  /** Start nothing before `time` (e.g. while a 429 is waited out), including tasks already queued. */
   holdUntil(time: number): void
 }
 
 export function createRateLimiter(intervalMs: number, clock: Clock): RateLimiter {
-  let nextSlot = Number.NEGATIVE_INFINITY
+  let earliestStart = Number.NEGATIVE_INFINITY
+  const waiting: (() => void)[] = []
+  let draining = false
 
-  const reserveSlot = (): number => {
-    const slot = Math.max(clock.now(), nextSlot)
-    nextSlot = slot + intervalMs
-    return slot
+  // Sleeps again only if a hold moved the target while we slept.
+  const awaitEarliestStart = async (): Promise<void> => {
+    let target = Number.NEGATIVE_INFINITY
+    while (earliestStart > target) {
+      target = earliestStart
+      const delay = target - clock.now()
+      if (delay > 0) await clock.sleep(delay)
+    }
   }
 
-  const waitFor = (slot: number): Promise<void> => {
-    const delay = slot - clock.now()
-    return delay > 0 ? clock.sleep(delay) : Promise.resolve()
+  const drain = async (): Promise<void> => {
+    if (draining) return
+    draining = true
+    while (waiting.length > 0) {
+      await awaitEarliestStart()
+      earliestStart = clock.now() + intervalMs
+      waiting.shift()!()
+    }
+    draining = false
   }
+
+  const turn = (first: boolean): Promise<void> => new Promise(release => {
+    if (first) waiting.unshift(release)
+    else waiting.push(release)
+    void drain()
+  })
 
   return {
-    async schedule(task) {
-      await waitFor(reserveSlot())
+    async schedule(task, options) {
+      await turn(options?.first ?? false)
       return task()
     },
     holdUntil(time) {
-      nextSlot = Math.max(nextSlot, time)
+      earliestStart = Math.max(earliestStart, time)
     },
   }
 }
@@ -119,7 +143,7 @@ function giveUp(response: Response, delayMs: number): Response {
  */
 export function createScryfallTransport(deps: ScryfallTransportDeps): ScryfallTransport {
   const attempt = async (url: string, init: ScryfallRequestInit, n: number): Promise<Response> => {
-    const response = await deps.limiter.schedule(() => deps.fetch(url, init))
+    const response = await deps.limiter.schedule(() => deps.fetch(url, init), { first: n > 0 })
     if (!RETRYABLE_STATUSES.has(response.status)) return response
 
     const delay = retryDelay(response, n, deps)
