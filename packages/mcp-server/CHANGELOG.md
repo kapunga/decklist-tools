@@ -1,5 +1,42 @@
 # @mtg-deckbuilder/mcp-server
 
+## 0.13.0
+
+### Minor Changes
+
+- 766945e: `search_cards` takes `names` (up to 100 exact card names) for a cache-first batch lookup through POST /cards/collection, listing misses explicitly; batch lookup failures now surface as Scryfall errors instead of looking like "not found".
+
+### Patch Changes
+
+- 2acf08e: Clarify the difference between `deck_notes` (markdown, no ids) and `list_deck_notes` (JSON with note ids) in tool descriptions, spec, docs, and the analysis skill
+- 9fde940: Fix `deck_curve` mana pips and card counts: generic mana is reported on its own `Generic` line instead of as Colorless, real `{C}` symbols are counted, hybrid/twobrid/Phyrexian symbols are handled, and the card counts now add up (commanders listed separately; filtered output counts only the matching cards and says so). The Electron curve's colorless pip bar now shows only real `{C}` pips.
+- 387400b: `deck_export` now reports `lineCount: 0` for empty content, and its `section` parameter documents that `maybeboard` means the `alternates` card set
+- 1152020: deck_list: filters now apply to Alternates and Sideboard (empty sections omitted, with a note); `sort_by` is applied to every section and group, defaulting to name; section headings show card counts (`N of M` when filtered). A card with unknown mana value no longer matches a `cmc` filter as if it were 0.
+- f353ea9: `deck_list` renders every card through one formatter in every mode: `group_by: type|role` and `sort_by: set` now honour `detail`, show roles and `[NEED TO BUY]` / `[PULLED]` flags on each copy, and keep the Alternates and Sideboard sections. Commander lines show mana cost, type line and oracle text, and uncached commanders are fetched (or named in the missing-data warning).
+- 6a76e07: Show the front-face mana cost of double-faced cards (transform, modal DFC) in `deck_list`, `deck_pull_list` and `search_cards`, and count their pips in `deck_curve`, via a shared `getCardManaCost` accessor
+- 95b7ffb: `get_deck` validation now also checks color identity and format legality (matching the desktop app), returns `issueDetails` with category and code, and lists uncached cards under `notChecked`
+- d24e445: Fix pull list section headings: cards outside the collection are now grouped under their real set name with a "not in collection" label instead of several identical "Not in collection" headings, and set names for sets outside the collection resolve from cached card data instead of showing raw set codes.
+- 353563e: Scryfall requests now go through a real serialising rate-limit queue, retry 429/transient 5xx with backoff honouring `Retry-After`, and report an exhausted rate limit as "Rate limited by Scryfall; retry in Ns" instead of "Card not found". `search_cards` name/id/set lookups are served from the local card cache.
+- ba93306: Classify cards by one shared rule (stored primaryType first, double-faced cards by front face) so deck_list, deck_curve and the pull list agree on card types and land counts
+- 802f7e6: Tool descriptions now name the matching bundled skill, so subagents (which never see server instructions) know to load it when available
+- 0b710d2: `manage_card_list` remove can now target an entry by `entry_id`, refuses ambiguous card names (listing the candidates) instead of removing the first match, and returns the removed entry
+- 0294367: `deck_list`, `deck_curve` and `deck_pull_list` now fetch cards missing from the Scryfall cache before rendering and write them to the cache. If a card still can't be resolved, the view names it in a warning. It is no longer reported at mana value 0, and `deck_curve` leaves it out of the curve and pips and says how many cards it left out.
+- Updated dependencies [2acf08e]
+- Updated dependencies [9fde940]
+- Updated dependencies [387400b]
+- Updated dependencies [1152020]
+- Updated dependencies [f353ea9]
+- Updated dependencies [6a76e07]
+- Updated dependencies [95b7ffb]
+- Updated dependencies [d24e445]
+- Updated dependencies [353563e]
+- Updated dependencies [766945e]
+- Updated dependencies [ba93306]
+- Updated dependencies [802f7e6]
+- Updated dependencies [0b710d2]
+- Updated dependencies [0294367]
+  - @mtg-deckbuilder/shared@0.13.0
+
 ## 0.12.7
 
 ### Patch Changes
