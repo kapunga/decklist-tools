@@ -44,7 +44,10 @@ This is the single most important pattern in this skill. When a user says any of
 ### `deck_list` grouping and sorting
 
 - `group_by`: `none` (default), `role`, `type`. Use `role` to see whether the deck has enough removal/ramp/draw; use `type` for an at-a-glance creature/spell/land breakdown.
-- `sort_by`: `name`, `set`. Defaults to name within sections.
+- `sort_by`: `name`, `set`. Defaults to name within sections. `set` groups each section by set code.
+- Grouping never changes what a card line shows: `detail`, roles and flags apply the same in every mode, and the Commander(s), Main Deck, Alternates and Sideboard sections are always listed. Groups appear as counted `### Heading (N)` sub-headings inside each section.
+- Commander lines use the same format as every other card (mana cost, type line and oracle text at `compact`).
+- A card may sit in both Main Deck and Alternates. Each copy shows its own `[NEED TO BUY]` / `[PULLED]` flag, so the two lines can differ.
 
 ### `deck_list` filtering
 

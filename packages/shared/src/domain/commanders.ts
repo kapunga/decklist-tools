@@ -1,5 +1,5 @@
-import type { Deck, CardIdentifier } from '../types/index.js'
-import { isCommanderLikeFormat } from '../types/index.js'
+import type { Deck, CardEntry, CardIdentifier } from '../types/index.js'
+import { isCommanderLikeFormat, OWNERSHIP_STATUS, CARD_SOURCE } from '../types/index.js'
 import { getMainboard, getSideboard } from './card-sets.js'
 import type { OpResult, CommanderMeta } from './types.js'
 
@@ -125,6 +125,27 @@ export function getDeckColorIdentity(deck: Deck): string[] {
   }
   const allCards = [...getMainboard(deck), ...getSideboard(deck)].map(dc => dc.card)
   return deriveColorIdentity(allCards)
+}
+
+/**
+ * A deck's commanders as one-copy card entries, so views and the Scryfall
+ * fetch step can treat them like any other card. Ids are derived from the
+ * card name, so they are stable across calls.
+ */
+export function getCommanderEntries(deck: Deck): CardEntry[] {
+  return deck.commanders.map(commander => commanderEntry(commander, deck.createdAt))
+}
+
+function commanderEntry(commander: CardIdentifier, addedAt: string): CardEntry {
+  return {
+    id: `commander-${commander.name}`,
+    card: commander,
+    quantity: 1,
+    ownership: OWNERSHIP_STATUS.UNKNOWN,
+    roles: [],
+    addedAt,
+    source: CARD_SOURCE.USER,
+  }
 }
 
 /** Colorless is only a meaningful identity for commander-like formats (Commander, Brawl). */

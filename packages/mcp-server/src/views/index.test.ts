@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { renderFullView, renderCurveView, renderNotesView, renderPullListView } from './index.js'
 import { makeDeck, makeDeckCard, makeMockCache, mockScryfallCard, pushMainboard, pushSideboard, pushAlternates } from '../__test__/helpers.js'
 import type { Deck, RoleDefinition, ScryfallCard, CardFilter, SetCollectionFile } from '@mtg-deckbuilder/shared'
-import { enrichCards, applyFilters, getMainboard } from '@mtg-deckbuilder/shared'
+import { enrichCards, applyFilters, getMainboard, getCommanderEntries } from '@mtg-deckbuilder/shared'
 
 const globalRoles: RoleDefinition[] = [
   { id: 'ramp', name: 'Ramp', description: 'Accelerates mana production', color: '#22c55e' },
@@ -126,11 +126,12 @@ describe('full view with group_by=role', () => {
     expect(result).toContain('## Unassigned')
   })
 
-  it('does not include alternates when grouping by role', () => {
+  it('groups alternates by role under their own section', () => {
     const deck = makeDeck()
     pushAlternates(deck,makeDeckCard('Sol Ring', { roles: ['ramp'] }))
     const result = renderDeckView(deck, 'full', globalRoles, undefined, 'role')
-    expect(result).not.toContain('Sol Ring')
+    expect(result).toContain('## Alternates\n### Ramp (1)')
+    expect(result).toContain('Sol Ring')
   })
 })
 
@@ -174,7 +175,7 @@ describe('full view with sort_by=set', () => {
     expect(cardAIdx).toBeLessThan(cardBIdx)
   })
 
-  it('shows checkbox status', () => {
+  it('shows pulled and need-to-buy flags', () => {
     const deck = makeDeck()
     pushMainboard(deck,makeDeckCard('Owned Card', {
       quantity: 1,
@@ -182,8 +183,8 @@ describe('full view with sort_by=set', () => {
     }))
     pushMainboard(deck,makeDeckCard('Need Card', { ownership: 'need_to_buy' }))
     const result = renderDeckView(deck, 'full', globalRoles, 'set')
-    expect(result).toContain('[x]')
-    expect(result).toContain('[ ]')
+    expect(result).toMatch(/Owned Card.*\[PULLED\]/)
+    expect(result).toMatch(/Need Card.*\[NEED TO BUY\]/)
   })
 })
 
@@ -627,5 +628,197 @@ describe('missing Scryfall data warning', () => {
     expect(renderCurveView(deck, cache, undefined, [sideboardOnly])).not.toContain('Warning')
     expect(renderFullView(deck, globalRoles, undefined, undefined, undefined, cache, 'compact', [sideboardOnly]))
       .toContain('Warning')
+  })
+})
+
+// --- deck_list: one card-line formatter for every grouping (#304, #244, #308) ---
+
+const listModes: [string, string | undefined, string | undefined][] = [
+  ['flat', undefined, undefined],
+  ['group_by type', undefined, 'type'],
+  ['group_by role', undefined, 'role'],
+  ['sort_by set', 'set', undefined],
+]
+
+describe('deck_list grouped output uses the full card-line formatter', () => {
+  function sectionCache(): Map<string, ScryfallCard> {
+    const bolt = mockScryfallCard('Lightning Bolt', {
+      cmc: 1, mana_cost: '{R}', type_line: 'Instant', oracle_text: 'Deal 3 damage to any target.',
+    })
+    const elf = mockScryfallCard('Llanowar Elves', {
+      cmc: 1, mana_cost: '{G}', type_line: 'Creature — Elf Druid', oracle_text: '{T}: Add {G}.',
+      power: '1', toughness: '1',
+    })
+    const ring = mockScryfallCard('Sol Ring', { cmc: 1, mana_cost: '{1}', type_line: 'Artifact', oracle_text: '{T}: Add {C}{C}.' })
+    const side = mockScryfallCard('Pyroblast', { cmc: 1, mana_cost: '{R}', type_line: 'Instant', oracle_text: 'Counter target spell if it is blue.' })
+    return new Map([bolt, elf, ring, side].map(c => [c.id, c]))
+  }
+
+  function sectionedDeck(): Deck {
+    const deck = makeDeck()
+    pushMainboard(deck, makeDeckCard('Lightning Bolt', { quantity: 4, roles: ['removal'] }))
+    pushMainboard(deck, makeDeckCard('Llanowar Elves', { roles: ['ramp'] }))
+    pushAlternates(deck, makeDeckCard('Sol Ring', { roles: ['ramp'] }))
+    pushSideboard(deck, makeDeckCard('Pyroblast'))
+    return deck
+  }
+
+  it.each(listModes)('%s at compact shows mana cost, type line and oracle text', (_label, sortBy, groupBy) => {
+    const result = renderFullView(sectionedDeck(), globalRoles, sortBy, groupBy, undefined, sectionCache(), 'compact')
+    expect(result).toContain('- 4x Lightning Bolt • {R} Instant')
+    expect(result).toContain('  Deal 3 damage to any target.')
+    expect(result).toContain('- 1x Llanowar Elves • {G} Creature — Elf Druid 1/1')
+  })
+
+  it.each(listModes)('%s at full shows set and rarity', (_label, sortBy, groupBy) => {
+    const result = renderFullView(sectionedDeck(), globalRoles, sortBy, groupBy, undefined, sectionCache(), 'full')
+    expect(result).toContain('- 4x Lightning Bolt • TEST#1 • rare • {R} Instant')
+    expect(result).toContain('  Deal 3 damage to any target.')
+  })
+
+  it.each(listModes)('%s at summary omits oracle text', (_label, sortBy, groupBy) => {
+    const result = renderFullView(sectionedDeck(), globalRoles, sortBy, groupBy, undefined, sectionCache(), 'summary')
+    expect(result).toContain('- 4x Lightning Bolt • {R} [Instant]')
+    expect(result).not.toContain('Deal 3 damage')
+  })
+
+  it.each(listModes)('%s includes the Alternates and Sideboard sections', (_label, sortBy, groupBy) => {
+    const result = renderFullView(sectionedDeck(), globalRoles, sortBy, groupBy, undefined, sectionCache(), 'compact')
+    expect(result).toContain('## Main Deck')
+    expect(result).toContain('## Alternates')
+    expect(result).toContain('- 1x Sol Ring • {1} Artifact')
+    expect(result).toContain('## Sideboard')
+    expect(result).toContain('  Counter target spell if it is blue.')
+    expect(result.indexOf('## Main Deck')).toBeLessThan(result.indexOf('## Alternates'))
+    expect(result.indexOf('## Alternates')).toBeLessThan(result.indexOf('## Sideboard'))
+  })
+
+  it.each(listModes)('%s shows role names on each line', (_label, sortBy, groupBy) => {
+    const result = renderFullView(sectionedDeck(), globalRoles, sortBy, groupBy, undefined, sectionCache(), 'summary')
+    expect(result).toMatch(/4x Lightning Bolt.*\(Removal\)/)
+  })
+
+  it('group_by type nests counted type headings under each section', () => {
+    const result = renderFullView(sectionedDeck(), globalRoles, undefined, 'type', undefined, sectionCache(), 'compact')
+    expect(result).toContain('## Main Deck\n### Creature (1)')
+    expect(result).toContain('### Instant (4)')
+    expect(result).toContain('## Alternates\n### Artifact (1)')
+    expect(result).toContain('## Sideboard\n### Instant (1)')
+  })
+
+  it('group_by role nests counted role headings under each section', () => {
+    const result = renderFullView(sectionedDeck(), globalRoles, undefined, 'role', undefined, sectionCache(), 'compact')
+    expect(result).toContain('### Ramp (1)\n*Accelerates mana production*')
+    expect(result).toContain('### Removal (4)')
+    expect(result).toContain('## Sideboard\n### Unassigned (1)')
+  })
+
+  it('group_by type agrees with the entry primary type for double-faced cards', () => {
+    const deck = makeDeck()
+    pushMainboard(deck, makeDeckCard('Shatterskull Smashing'))
+    const mdfc = mockScryfallCard('Shatterskull Smashing', {
+      type_line: 'Sorcery // Land', mana_cost: undefined,
+      card_faces: [
+        { name: 'Shatterskull Smashing', mana_cost: '{X}{R}{R}', type_line: 'Sorcery', colors: ['R'] },
+        { name: 'Shatterskull, the Hammer Pass', mana_cost: '', type_line: 'Land', colors: [] },
+      ],
+    })
+    const result = renderFullView(deck, globalRoles, undefined, 'type', undefined, new Map([[mdfc.id, mdfc]]), 'compact')
+    expect(result).toContain('### Sorcery (1)')
+    expect(result).not.toContain('### Land')
+  })
+})
+
+describe('deck_list flags on a card in both mainboard and alternates (#308)', () => {
+  function duplicatedDeck(mainOwnership: 'owned' | 'need_to_buy', altOwnership: 'owned' | 'need_to_buy'): Deck {
+    const deck = makeDeck()
+    pushMainboard(deck, makeDeckCard('Sol Ring', { roles: ['ramp'], ownership: mainOwnership }))
+    pushAlternates(deck, makeDeckCard('Sol Ring', { roles: ['ramp'], ownership: altOwnership }))
+    return deck
+  }
+
+  const cache = makeMockCache({ 'Sol Ring': 'Artifact' })
+  const solRingLines = (text: string) => text.split('\n').filter(l => l.includes('Sol Ring'))
+
+  it.each(listModes)('%s flags every copy that needs buying', (_label, sortBy, groupBy) => {
+    const result = renderFullView(duplicatedDeck('need_to_buy', 'need_to_buy'), globalRoles, sortBy, groupBy, undefined, cache, 'compact')
+    const lines = solRingLines(result)
+    expect(lines).toHaveLength(2)
+    expect(lines.every(l => l.includes('[NEED TO BUY]'))).toBe(true)
+  })
+
+  it.each(listModes)('%s flags each copy from its own entry', (_label, sortBy, groupBy) => {
+    const result = renderFullView(duplicatedDeck('owned', 'need_to_buy'), globalRoles, sortBy, groupBy, undefined, cache, 'compact')
+    const mainPart = result.slice(result.indexOf('## Main Deck'), result.indexOf('## Alternates'))
+    const altPart = result.slice(result.indexOf('## Alternates'))
+    expect(solRingLines(mainPart)).toHaveLength(1)
+    expect(solRingLines(mainPart)[0]).not.toContain('[NEED TO BUY]')
+    expect(solRingLines(altPart)).toHaveLength(1)
+    expect(solRingLines(altPart)[0]).toContain('[NEED TO BUY]')
+  })
+})
+
+describe('deck_list commander section (#244)', () => {
+  const kenrith = mockScryfallCard('Kenrith, the Returned King', {
+    mana_cost: '{4}{W}', type_line: 'Legendary Creature — Human Noble', power: '5', toughness: '5',
+    oracle_text: '{R}: All creatures gain trample and haste until end of turn.',
+  })
+  const tymna = mockScryfallCard('Tymna the Weaver', {
+    mana_cost: '{1}{W}{B}', type_line: 'Legendary Creature — Human Cleric', power: '2', toughness: '2',
+    oracle_text: 'Lifelink. Partner',
+  })
+
+  function commanderDeck(...cards: ScryfallCard[]): { deck: Deck; cache: Map<string, ScryfallCard> } {
+    const deck = makeDeck()
+    deck.commanders.push(...cards.map(c => ({ scryfallId: c.id, name: c.name, setCode: 'test', collectorNumber: '1' })))
+    return { deck, cache: new Map(cards.map(c => [c.id, c])) }
+  }
+
+  it.each([undefined, 'type', 'role'])('shows mana cost, type line and oracle text at compact (group_by %s)', (groupBy) => {
+    const { deck, cache } = commanderDeck(kenrith)
+    const result = renderFullView(deck, globalRoles, undefined, groupBy, undefined, cache, 'compact')
+    expect(result).toContain('## Commander(s)\n- 1x Kenrith, the Returned King • {4}{W} Legendary Creature — Human Noble 5/5')
+    expect(result).toContain('  {R}: All creatures gain trample and haste until end of turn.')
+  })
+
+  it('shows set and rarity at full', () => {
+    const { deck, cache } = commanderDeck(kenrith)
+    const result = renderFullView(deck, globalRoles, undefined, undefined, undefined, cache, 'full')
+    expect(result).toContain('- 1x Kenrith, the Returned King • TEST#1 • rare • {4}{W}')
+    expect(result).toContain('trample and haste')
+  })
+
+  it('omits oracle text at summary', () => {
+    const { deck, cache } = commanderDeck(kenrith)
+    const result = renderFullView(deck, globalRoles, undefined, undefined, undefined, cache, 'summary')
+    expect(result).toContain('- 1x Kenrith, the Returned King • {4}{W}')
+    expect(result).not.toContain('trample and haste')
+  })
+
+  it('renders partner commanders', () => {
+    const { deck, cache } = commanderDeck(kenrith, tymna)
+    const result = renderFullView(deck, globalRoles, undefined, undefined, undefined, cache, 'compact')
+    expect(result).toContain('{1}{W}{B} Legendary Creature — Human Cleric 2/2')
+    expect(result).toContain('  Lifelink. Partner')
+  })
+
+  it('shows the front-face cost of a double-faced commander', () => {
+    const esika = mockScryfallCard('Esika, God of the Tree', {
+      layout: 'modal_dfc', mana_cost: undefined, type_line: 'Legendary Creature — God // Legendary Artifact',
+      card_faces: [
+        { name: 'Esika, God of the Tree', mana_cost: '{1}{G}{G}', type_line: 'Legendary Creature — God', colors: ['G'] },
+        { name: 'The Prismatic Bridge', mana_cost: '{W}{U}{B}{R}{G}', type_line: 'Legendary Artifact', colors: [] },
+      ],
+    })
+    const { deck, cache } = commanderDeck(esika)
+    const result = renderFullView(deck, globalRoles, undefined, undefined, undefined, cache, 'compact')
+    expect(result).toMatch(/Esika, God of the Tree • \{1\}\{G\}\{G\}/)
+  })
+
+  it('warns about and marks an unresolved commander', () => {
+    const { deck } = commanderDeck(kenrith)
+    const result = renderFullView(deck, globalRoles, undefined, undefined, undefined, new Map(), 'compact', getCommanderEntries(deck))
+    expect(result).toContain('Warning')
+    expect(result).toMatch(/1x Kenrith, the Returned King.*\[no Scryfall data\]/)
   })
 })
