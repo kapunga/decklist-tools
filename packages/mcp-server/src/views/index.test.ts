@@ -276,6 +276,72 @@ describe('curve view', () => {
   })
 })
 
+describe('card classification is consistent across views', () => {
+  function typeDistribution(curve: string): string {
+    return curve.split('## Type Distribution')[1]?.split('##')[0] || ''
+  }
+
+  function render(deck: Deck, cache: Map<string, ScryfallCard>) {
+    return {
+      list: renderDeckView(deck, 'full', globalRoles, undefined, 'type', undefined, cache),
+      curve: renderDeckView(deck, 'curve', globalRoles, undefined, undefined, undefined, cache),
+    }
+  }
+
+  it('uses the stored primaryType when the card is not in the Scryfall cache', () => {
+    const deck = makeDeck()
+    pushMainboard(deck, makeDeckCard('Adewale', { primaryType: 'Creature' }))
+    pushMainboard(deck, makeDeckCard('Rakish Crew', { primaryType: 'Enchantment' }))
+    const { list, curve } = render(deck, new Map())
+    expect(list).toContain('## Creature (1)')
+    expect(list).toContain('## Enchantment (1)')
+    expect(list).not.toContain('## Other')
+    expect(typeDistribution(curve)).toMatch(/Creature\s+█ 1/)
+    expect(typeDistribution(curve)).toMatch(/Enchantment\s+█ 1/)
+  })
+
+  it('classifies a land-front transform card as Land everywhere (Balamb Garden)', () => {
+    const deck = makeDeck()
+    pushMainboard(deck, makeDeckCard('Balamb Garden'))
+    const cache = makeMockCache({ 'Balamb Garden': 'Land — Town // Legendary Artifact — Vehicle' })
+    const { list, curve } = render(deck, cache)
+    expect(list).toContain('## Land (1)')
+    expect(list).not.toContain('## Artifact')
+    expect(typeDistribution(curve)).toMatch(/Land\s+█ 1/)
+    expect(curve).toContain('Lands: 1')
+  })
+
+  it('does not count an artifact-front transform card as a land (Treasure Map)', () => {
+    const deck = makeDeck()
+    pushMainboard(deck, makeDeckCard('Treasure Map'))
+    const cache = makeMockCache({ 'Treasure Map': 'Artifact // Land' })
+    const { list, curve } = render(deck, cache)
+    expect(list).toContain('## Artifact (1)')
+    expect(typeDistribution(curve)).toMatch(/Artifact\s+█ 1/)
+    expect(curve).toContain('Lands: 0')
+  })
+
+  it('does not count a noncreature-front card as a creature (Esper Origins)', () => {
+    const deck = makeDeck()
+    pushMainboard(deck, makeDeckCard('Esper Origins'))
+    const cache = makeMockCache({ 'Esper Origins': 'Sorcery // Enchantment Creature — Saga Human' })
+    const { list, curve } = render(deck, cache)
+    expect(list).toContain('## Sorcery (1)')
+    expect(list).not.toContain('## Creature')
+    expect(typeDistribution(curve)).not.toContain('Creature')
+  })
+
+  it('keeps the Lands count equal to the Land row of the type distribution (Dryad Arbor)', () => {
+    const deck = makeDeck()
+    pushMainboard(deck, makeDeckCard('Dryad Arbor'))
+    pushMainboard(deck, makeDeckCard('Forest'))
+    const cache = makeMockCache({ 'Dryad Arbor': 'Land Creature — Forest Dryad', Forest: 'Basic Land — Forest' })
+    const { curve } = render(deck, cache)
+    expect(typeDistribution(curve)).toMatch(/Land\s+█ 1/)
+    expect(curve).toContain('Lands: 1')
+  })
+})
+
 describe('notes view', () => {
   it('shows note type badges', () => {
     const deck = makeDeck()
@@ -384,5 +450,21 @@ describe('pull list view', () => {
     expect(result).toContain('Opt')
     expect(result).not.toContain('C*')
     expect(result).not.toContain('tracked collection level')
+  })
+
+  it('shows the card type rather than the first supertype', () => {
+    const deck = makeDeck()
+    pushMainboard(deck, makeDeckCard('Jackdaw', {
+      card: { scryfallId: 'scryfall-jackdaw', name: 'Jackdaw', setCode: 'acr', collectorNumber: '1' },
+    }))
+    const scryfallCache = new Map<string, ScryfallCard>()
+    scryfallCache.set('scryfall-jackdaw', mockScryfallCard('Jackdaw', {
+      id: 'scryfall-jackdaw', set: 'acr', collector_number: '1', type_line: 'Legendary Artifact — Vehicle',
+    }))
+
+    const result = renderPullListView(deck, { version: 1, updatedAt: '', sets: [] }, scryfallCache, { showPulled: true })
+
+    expect(result).toContain('| Artifact |')
+    expect(result).not.toContain('Legendary')
   })
 })

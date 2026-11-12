@@ -154,6 +154,12 @@ Mana curve analysis: CMC distribution, color pip counts, type breakdown, and car
 - `deck_id` *(string, required)*.
 - `filters` *(array, optional)* — same shape as `deck_list.filters`. Limits the curve analysis to cards that match the filter set.
 
+**Card classification (shared by `deck_list`, `deck_curve`, `deck_pull_list` and the `card-type` filter).** Every view buckets a card through the same rule (`getEntryPrimaryType` / `isLandEntry` in `@mtg-deckbuilder/shared`), so `deck_list group_by=type`, the Type Distribution, and the `Lands:` count always agree:
+- The entry's stored `primaryType` wins; otherwise the type is derived from the Scryfall cache; otherwise `Other`.
+- Multi-face cards (transform, MDFC, adventure, split, omen) are classified by their **front face**: Treasure Map (`Artifact // Land`) is an Artifact, Balamb Garden (`Land // Artifact`) is a Land, Esper Origins (`Sorcery // Enchantment Creature`) is a Sorcery, and spell-front MDFCs such as Shatterskull Smashing count as spells, not lands.
+- Within one face the priority is Creature, Planeswalker, Battle, Land, Instant, Sorcery, Artifact, Enchantment — so Dryad Arbor is a Creature and artifact/enchantment lands are Lands.
+- A card is a land exactly when its primary type is `Land`; lands are excluded from the mana curve and pip counts.
+
 ### `deck_notes`
 
 Returns the deck's strategy notes — combos, synergies, themes, and game-plan commentary — as read-only markdown with role names resolved. Use when a user asks *how* a deck is meant to play. The output has no note ids or timestamps; use `list_deck_notes` when you need an id for `manage_deck_note`. This view does not require Scryfall data and skips the per-card cache load.

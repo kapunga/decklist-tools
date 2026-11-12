@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/dialog'
 import { ManaSymbol } from '@/components/ManaCost'
 import type { CardFilter, FilterGroup, FilterMode, EnrichedDeckCard } from '@mtg-deckbuilder/shared'
-import { FILTER_GROUP_TYPES, getPrimaryType } from '@mtg-deckbuilder/shared'
+import { FILTER_GROUP_TYPES, resolvePrimaryType, isLandPrimaryType, getCardManaValue } from '@mtg-deckbuilder/shared'
 import type { Deck } from '@/types'
 import { OWNERSHIP_STATUS } from '@/types'
 import { getAllRoles } from '@/lib/constants'
@@ -58,11 +58,11 @@ function computeAvailableValues(cards: EnrichedDeckCard[]): AvailableValues {
   const ownershipSet = new Set<string>()
 
   for (const { deckCard, scryfallCard } of cards) {
-    const typeLine = scryfallCard?.type_line || ''
-    const isLand = typeLine.toLowerCase().includes('land')
+    const primaryType = resolvePrimaryType(deckCard, scryfallCard)
+    const manaValue = getCardManaValue(scryfallCard)
 
-    if (!isLand && scryfallCard) {
-      cmcSet.add(Math.min(Math.floor(scryfallCard.cmc), 7))
+    if (!isLandPrimaryType(primaryType) && manaValue !== undefined) {
+      cmcSet.add(Math.min(Math.floor(manaValue), 7))
     }
 
     if (scryfallCard) {
@@ -74,7 +74,6 @@ function computeAvailableValues(cards: EnrichedDeckCard[]): AvailableValues {
       }
     }
 
-    const primaryType = deckCard.primaryType ?? (typeLine ? getPrimaryType(typeLine) : 'Other')
     typeSet.add(primaryType)
 
     for (const r of deckCard.roles) roleSet.add(r)

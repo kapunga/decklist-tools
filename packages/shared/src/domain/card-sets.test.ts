@@ -6,11 +6,10 @@ import {
   withCardSet,
   mapCardSet,
   mapAllCardSets,
-  getTypeLine,
   getPulledPrintings,
   getPotentialDecks,
 } from './card-sets.js'
-import type { CardEntry, CardSet, ScryfallCard } from '../types/index.js'
+import type { CardEntry, CardSet } from '../types/index.js'
 import { CARD_SET } from '../types/index.js'
 
 function makeEntry(name: string, overrides: Partial<CardEntry> = {}): CardEntry {
@@ -137,29 +136,6 @@ describe('mapAllCardSets', () => {
     const sets = makeSets()
     mapAllCardSets(sets, e => ({ ...e, notes: 'mutated' }))
     expect(sets[0].entries[0].notes).toBeUndefined()
-  })
-})
-
-describe('getTypeLine', () => {
-  it('returns the cached type line when the cache has it', () => {
-    const entry = makeEntry('Sol Ring', {
-      card: { name: 'Sol Ring', setCode: 'lea', collectorNumber: '270', scryfallId: 'sf-1' },
-    })
-    const cache = new Map<string, ScryfallCard>()
-    cache.set('sf-1', { id: 'sf-1', name: 'Sol Ring', type_line: 'Artifact' } as ScryfallCard)
-    expect(getTypeLine(entry, cache)).toBe('Artifact')
-  })
-
-  it('returns undefined when the cache has no entry for the scryfallId', () => {
-    const entry = makeEntry('Sol Ring', {
-      card: { name: 'Sol Ring', setCode: 'lea', collectorNumber: '270', scryfallId: 'sf-1' },
-    })
-    expect(getTypeLine(entry, new Map())).toBeUndefined()
-  })
-
-  it('returns undefined when the card has no scryfallId', () => {
-    const entry = makeEntry('Sol Ring')
-    expect(getTypeLine(entry, new Map())).toBeUndefined()
   })
 })
 

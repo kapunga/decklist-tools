@@ -18,6 +18,8 @@ import {
   showColorlessPip,
   isArtCardFaceValid,
   TWO_FACED_LAYOUTS,
+  getPrimaryType,
+  isLandPrimaryType,
   ROTATED_LAYOUTS,
   type ArtCardFace,
 } from '@mtg-deckbuilder/shared'
@@ -81,7 +83,7 @@ async function pickHeroFromMainboard(deck: Deck): Promise<string | null> {
     })),
   )
   const nonLands = cards.filter(
-    c => c.card && !c.card.type_line.toLowerCase().includes('land'),
+    c => c.card && !isLandPrimaryType(getPrimaryType(c.card.type_line)),
   )
   if (nonLands.length === 0) return null
 

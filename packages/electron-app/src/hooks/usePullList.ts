@@ -4,7 +4,7 @@ import { useStore } from '@/hooks/useStore'
 import { getCardPrintings } from '@/lib/scryfall'
 import type { Deck, CardEntry, ScryfallCard, PullListSortKey, PullListSource } from '@/types'
 import { getTotalPulledQuantity, isBasicLand, OWNERSHIP_STATUS, CARD_SOURCE, getPulledPrintings } from '@/types'
-import { getMainboard, getSideboard, getAlternates } from '@mtg-deckbuilder/shared'
+import { getMainboard, getSideboard, getAlternates, getPrimaryType } from '@mtg-deckbuilder/shared'
 import type { PullListItem, PullListGroup, IdentifyItem } from './types'
 
 export type { PullListItem, PullListGroup, IdentifyItem } from './types'
@@ -29,13 +29,6 @@ const TYPE_ORDER: Record<string, number> = {
   'Artifact': 5,
   'Land': 6,
   'Battle': 7
-}
-
-function getPrimaryType(typeLine: string): string {
-  for (const type of Object.keys(TYPE_ORDER)) {
-    if (typeLine.includes(type)) return type
-  }
-  return 'Other'
 }
 
 // Parse mana cost for sorting - returns a sortable value

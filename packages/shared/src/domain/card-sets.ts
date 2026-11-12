@@ -1,6 +1,5 @@
-import type { CardEntry, CardSet, Deck, PrimaryType, ScryfallCard, PulledPrinting } from '../types/index.js'
+import type { CardEntry, CardSet, Deck, PulledPrinting } from '../types/index.js'
 import { CARD_SET } from '../types/index.js'
-import { getPrimaryType } from '../constants/index.js'
 
 // --- Accessors ---
 
@@ -89,31 +88,6 @@ export function getPlayableEntries(deck: Deck): CardEntry[] {
 // --- Entry Field Accessors ---
 // These wrap optional/derived fields on CardEntry so readers don't need to
 // scatter `?? defaultValue` coalescing across the codebase.
-
-/**
- * Get the type line for an entry by consulting the Scryfall cache. Returns
- * `undefined` when the cache has no entry for this card's `scryfallId`, or
- * when the card has no `scryfallId` to look up by. Reversible-layout cards
- * (e.g. Secret Lair "Mountain // Mountain") have `type_line: null` at the
- * top level; fall back to the first face's type line for those.
- */
-export function getTypeLine(entry: CardEntry, cache: Map<string, ScryfallCard>): string | undefined {
-  if (!entry.card.scryfallId) return undefined
-  const card = cache.get(entry.card.scryfallId)
-  return card?.type_line ?? card?.card_faces?.[0]?.type_line
-}
-
-/**
- * Resolve an entry's primary type bucket. Prefers the denormalized field
- * stored on the entry; falls back to the Scryfall cache; defaults to
- * `'Other'`. Use this anywhere the UI needs a card's bucket — it shields
- * callers from cache-population timing.
- */
-export function getEntryPrimaryType(entry: CardEntry, cache: Map<string, ScryfallCard>): PrimaryType {
-  if (entry.primaryType) return entry.primaryType
-  const typeLine = getTypeLine(entry, cache)
-  return typeLine ? getPrimaryType(typeLine) : 'Other'
-}
 
 /** Get the pulled printings for an entry, defaulting to an empty array. */
 export function getPulledPrintings(entry: CardEntry): PulledPrinting[] {
