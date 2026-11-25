@@ -3,6 +3,7 @@ import { create } from 'zustand'
 import type { Deck, Taxonomy, CardList, Config, RoleDefinition, SetCollectionFile, PullListConfig } from '@/types'
 import { getNonCutEntries } from '@mtg-deckbuilder/shared'
 import type { AppState } from '@/stores/types'
+import { applyLoaded, type LoadedData } from '@/stores/reconcile'
 import { createDeckSlice } from '@/stores/deckSlice'
 import { createCardSlice } from '@/stores/cardSlice'
 import { createCommanderSlice } from '@/stores/commanderSlice'
@@ -49,7 +50,7 @@ export const useStore = create<AppState>((set, get) => ({
         window.electronAPI.getSetCollection(),
         window.electronAPI.getPullListConfig()
       ])
-      set({
+      const loaded: LoadedData = {
         decks: decks as Deck[],
         taxonomy: taxonomy as Taxonomy,
         cardLists: cardLists as CardList[],
@@ -57,10 +58,10 @@ export const useStore = create<AppState>((set, get) => ({
         globalRoles: globalRoles as RoleDefinition[],
         setCollection: setCollection as SetCollectionFile,
         pullListConfig: pullListConfig as PullListConfig,
-        isLoading: false,
-        hasInitialized: true,
-        error: null
-      })
+      }
+      // Reconcile rather than replace: a reload triggered by the app's own save (the
+      // file watcher can't tell whose write it saw) then changes nothing at all.
+      set(state => applyLoaded(state, loaded))
     } catch (error) {
       set({ error: (error as Error).message, isLoading: false, hasInitialized: true })
     }

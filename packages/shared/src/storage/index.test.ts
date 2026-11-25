@@ -225,6 +225,14 @@ describe('Storage', () => {
       expect(storage.getCardList(list.id)).toBeNull()
     })
 
+    it('saveCardList returns the list as persisted, so callers can keep version and updatedAt in step with disk', () => {
+      const saved = storage.saveCardList(makeCardList({ version: 0 }))
+
+      expect(saved.version).toBe(1)
+      expect(saved.updatedAt).not.toBe('2024-01-01T00:00:00.000Z')
+      expect(storage.getCardList(saved.id)).toEqual(saved)
+    })
+
     it('saveCardList bumps version on each save', () => {
       const list = makeCardList({ version: 0 })
       storage.saveCardList(list)

@@ -9,14 +9,12 @@ import {
 } from '@/types'
 import type { CardListsSlice, SliceCreator } from './types'
 
-function bumpVersion(list: CardList): CardList {
-  return { ...list, version: list.version + 1 }
-}
-
 export const createCardListsSlice: SliceCreator<CardListsSlice> = (set, get) => {
+  // Main stamps `version` and `updatedAt` when it writes. Take both from its reply so
+  // the store's copy matches disk exactly and the reload that follows is a no-op.
   async function persist(list: CardList): Promise<void> {
-    await window.electronAPI.saveCardList(list)
-    const local = bumpVersion(list)
+    const saved = await window.electronAPI.saveCardList(list)
+    const local: CardList = { ...list, version: saved.version, updatedAt: saved.updatedAt }
     const state = get()
     set({
       cardLists: state.cardLists.some(l => l.id === local.id)
