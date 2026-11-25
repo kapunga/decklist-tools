@@ -3,7 +3,7 @@ import { FORMAT_TYPE } from '../types/index.js'
 import { SCRYFALL } from '../constants/index.js'
 
 import { ScryfallError } from './errors.js'
-import { createDefaultScryfallTransport, type ScryfallTransport } from './transport.js'
+import { createDefaultScryfallTransport, SCRYFALL_USER_AGENT, type ScryfallTransport } from './transport.js'
 
 // Export cached client
 export { CachedScryfallClient } from './cachedClient.js'
@@ -31,6 +31,19 @@ let transport: ScryfallTransport = defaultTransport()
 export function setScryfallTransport(next?: ScryfallTransport): void {
   transport = next ?? defaultTransport()
 }
+
+/**
+ * The process transport, for Scryfall API calls made outside this module (e.g. the
+ * Electron main process). Rate-limited, retried, and identified like every other call.
+ */
+export const scryfallApiFetch: ScryfallTransport = (url, init) => transport(url, init)
+
+/**
+ * Fetch from Scryfall's image CDN (cards.scryfall.io). Identifies the app, but stays off
+ * the API queue: the CDN has no rate limit, and images would otherwise starve API calls.
+ */
+export const scryfallImageFetch = (url: string): Promise<Response> =>
+  fetch(url, { headers: { 'User-Agent': SCRYFALL_USER_AGENT } })
 
 // Scryfall Set type
 export interface ScryfallSet {
