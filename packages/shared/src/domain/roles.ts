@@ -1,4 +1,5 @@
-import type { RoleDefinition } from '../types/index.js'
+import type { RoleDefinition, Deck, DeckNote, CardEntry } from '../types/index.js'
+import { getAllDeckEntries, mapAllDeckEntries } from './card-sets.js'
 
 /**
  * Add a role to a list. Returns a new array.
@@ -44,4 +45,23 @@ export function deleteRoleFromList(roles: RoleDefinition[], roleId: string): Rol
   const index = roles.findIndex(r => r.id === roleId)
   if (index === -1) throw new Error(`Role not found: ${roleId}`)
   return roles.filter((_, i) => i !== index)
+}
+
+/**
+ * Give a note's role to every card the note references. Pure: referenced entries that
+ * lack the role are replaced by copies that have it, every other entry keeps its
+ * identity, and the deck itself is returned when there is nothing to add.
+ */
+export function withNoteRole(deck: Deck, note: DeckNote): Deck {
+  const roleId = note.roleId
+  if (!roleId) return deck
+
+  const referenced = new Set(note.cardRefs.map(ref => ref.cardName.toLowerCase()))
+  const lacksRole = (entry: CardEntry): boolean =>
+    referenced.has(entry.card.name.toLowerCase()) && !(entry.roles ?? []).includes(roleId)
+
+  if (!getAllDeckEntries(deck).some(lacksRole)) return deck
+  return mapAllDeckEntries(deck, entry =>
+    lacksRole(entry) ? { ...entry, roles: [...(entry.roles ?? []), roleId] } : entry
+  )
 }
