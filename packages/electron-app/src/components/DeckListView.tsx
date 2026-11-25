@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Plus, Minus, Loader2 } from 'lucide-react'
+import { Plus, Minus } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { CardImage } from '@/components/CardImage'
 import { ManaCost } from '@/components/ManaCost'
@@ -11,9 +11,8 @@ import { CardEditModal } from '@/components/CardEditModal'
 import { CardFilterBar } from '@/components/CardFilterBar'
 import { useStore, useGlobalRoles } from '@/hooks/useStore'
 import { useScryfallCache } from '@/hooks/useScryfallCache'
-import { cardCache } from '@/lib/cardCacheInstance'
-import { captionLabelStyle, editorialTextStyle } from '@/lib/mastheadStyles'
-import type { CardEntry, ScryfallCard, Deck, CardSetName } from '@/types'
+import { captionLabelStyle, editorialTextStyle, previewPlaceholderStyle } from '@/lib/mastheadStyles'
+import type { CardEntry, Deck, CardSetName } from '@/types'
 import { getCardLimit, isCardFullyPulled, getCardDisplayName, getCanonicalSuffix, OWNERSHIP_STATUS, CARD_SOURCE, CARD_SET } from '@/types'
 import { CARD_TYPE_SORT_ORDER, getAllRoles } from '@/lib/constants'
 import type { CardFilter } from '@mtg-deckbuilder/shared'
@@ -36,10 +35,6 @@ export function DeckListView({ deck, listType }: DeckListViewProps) {
   const addRoleToCard = useStore(state => state.addRoleToCard)
   const removeRoleFromCard = useStore(state => state.removeRoleFromCard)
   const globalRoles = useGlobalRoles()
-
-  const [focusedScryfallCard, setFocusedScryfallCard] = useState<ScryfallCard | null>(null)
-  const focusedManaCost = getCardManaCost(focusedScryfallCard ?? undefined)
-  const [loadingCard, setLoadingCard] = useState(false)
 
   // Convert commanders to virtual CardEntry entries for display
   const commanderCards = useMemo((): CardEntry[] => {
@@ -128,42 +123,11 @@ export function DeckListView({ deck, listType }: DeckListViewProps) {
     return cards.find(c => c.id === focusedCardId) || null
   }, [focusedCardId, cards])
 
-  const focusedScryfallId = focusedCardEntry?.card.scryfallId || null
-
-  // Fetch focused card data
-  useEffect(() => {
-    if (!focusedScryfallId) {
-      setFocusedScryfallCard(null)
-      return
-    }
-
-    // Don't refetch if we already have this card
-    if (focusedScryfallCard?.id === focusedScryfallId) {
-      return
-    }
-
-    let cancelled = false
-
-    const fetchCard = async () => {
-      setLoadingCard(true)
-      try {
-        const scryfallCard = await cardCache.getCard(focusedScryfallId)
-        if (!cancelled) {
-          setFocusedScryfallCard(scryfallCard)
-        }
-      } finally {
-        if (!cancelled) {
-          setLoadingCard(false)
-        }
-      }
-    }
-
-    fetchCard()
-
-    return () => {
-      cancelled = true
-    }
-  }, [focusedScryfallId])
+  // The deck's card data is already in hand, so the focused card is a lookup, not a
+  // fetch: it is there in the same render as the click.
+  const focusedScryfallId = focusedCardEntry?.card.scryfallId
+  const focusedScryfallCard = focusedScryfallId ? scryfallCache.get(focusedScryfallId) ?? null : null
+  const focusedManaCost = getCardManaCost(focusedScryfallCard ?? undefined)
 
   // Handle quantity change
   const handleQuantityChange = useCallback(async (cardName: string, delta: number) => {
@@ -231,11 +195,7 @@ export function DeckListView({ deck, listType }: DeckListViewProps) {
       <div className="w-80 shrink-0 flex flex-col gap-4 p-6" style={{ borderRight: '1px solid var(--border)' }}>
         <span style={captionLabelStyle}>Currently viewing</span>
 
-        {loadingCard ? (
-          <div className="flex items-center justify-center" style={{ height: '380px' }}>
-            <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--muted-foreground)' }} />
-          </div>
-        ) : focusedScryfallCard ? (
+        {focusedScryfallCard ? (
           <div className="flex flex-col gap-4">
             <CardImage card={focusedScryfallCard} size="large" />
             <div className="flex flex-col gap-1">
@@ -277,17 +237,10 @@ export function DeckListView({ deck, listType }: DeckListViewProps) {
             </div>
           </div>
         ) : (
-          <div
-            className="flex items-center justify-center"
-            style={{
-              height: '380px',
-              fontFamily: 'var(--font-tagline)',
-              fontStyle: 'italic',
-              fontSize: '14px',
-              color: 'var(--muted-foreground)',
-            }}
-          >
-            click a card to preview
+          <div className="flex items-center justify-center text-center" style={previewPlaceholderStyle}>
+            {/* A focused card whose data has not arrived yet holds the space under its
+                own name rather than inviting a click that has already happened. */}
+            {focusedCardEntry ? focusedCardEntry.card.name : 'click a card to preview'}
           </div>
         )}
       </div>

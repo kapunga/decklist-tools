@@ -5,12 +5,32 @@ import { Button } from '@/components/ui/button'
 import type { ScryfallCard } from '@/types'
 import { isDoubleFacedCard } from '@/types'
 import { getCardImageUrl, getCardFaceImageUrl } from '@/lib/scryfall'
+import { imageSource, sourceAfterError } from '@/lib/cardImageSource'
+
+type ImageSize = 'small' | 'normal' | 'large'
 
 interface CardImageProps {
   card: ScryfallCard
-  size?: 'small' | 'normal' | 'large'
+  size?: ImageSize
   className?: string
   showFlipButton?: boolean
+}
+
+// Scryfall's pixel widths per size. Every card image is 488:680, so the frame can
+// reserve its space before any image has loaded.
+const NATURAL_WIDTH: Record<ImageSize, number> = { small: 146, normal: 488, large: 672 }
+const CARD_ASPECT_RATIO = '488 / 680'
+
+/** The face a viewer chose, and the card they chose it for. */
+interface FaceChoice {
+  cardId: string
+  face: 0 | 1
+}
+
+/** An image handed to the <img>, and which card face it belongs to. */
+interface ShownImage {
+  key: string
+  url: string
 }
 
 export function CardImage({
@@ -19,10 +39,13 @@ export function CardImage({
   className,
   showFlipButton = true
 }: CardImageProps) {
-  const [currentFace, setCurrentFace] = useState<0 | 1>(0)
-  const [isLoading, setIsLoading] = useState(true)
-  const [hasError, setHasError] = useState(false)
-  const [cachedPath, setCachedPath] = useState<string | null>(null)
+  // A chosen face belongs to one card: a different card starts on its front.
+  const [faceChoice, setFaceChoice] = useState<FaceChoice>({ cardId: card.id, face: 0 })
+  const currentFace = faceChoice.cardId === card.id ? faceChoice.face : 0
+
+  const [shown, setShown] = useState<ShownImage | null>(null)
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false)
+  const [failedKey, setFailedKey] = useState<string | null>(null)
 
   const isDFC = isDoubleFacedCard(card)
   // Flip-layout cards (CHK-style) have one image_uris but render the alternate
@@ -30,56 +53,50 @@ export function CardImage({
   const isFlipLayout = card.layout === 'flip'
   const isRotated = isFlipLayout && currentFace === 1
 
-  // Check for cached image
-  useEffect(() => {
-    const checkCache = async () => {
-      try {
-        const face = isDFC ? (currentFace === 0 ? 'front' : 'back') : undefined
-        const path = await window.electronAPI.getCachedImagePath(card.id, face)
-        setCachedPath(path)
-      } catch {
-        setCachedPath(null)
-      }
-    }
-    checkCache()
-  }, [card.id, currentFace, isDFC])
-
-  // Get the appropriate image URL (use cached if available).
   // Flip-layout cards have only one URL — rotation is render-side.
   const scryfallUrl = isDFC
     ? getCardFaceImageUrl(card, currentFace, size)
     : getCardImageUrl(card, size)
+  const cachedFace = isDFC ? (currentFace === 0 ? 'front' : 'back') : undefined
+  const imageKey = `${card.id}:${cachedFace ?? 'single'}`
 
-  // Use custom protocol for cached images to avoid file:// security restrictions
-  const getCachedImageUrl = (filePath: string): string => {
-    // Extract filename from the path (e.g., "{scryfallId}.jpg" or "{scryfallId}_front.jpg")
-    const filename = filePath.split('/').pop() || filePath.split('\\').pop() || ''
-    // Format: cached-image://cache/filename.jpg - the "cache" host gives us a proper URL structure
-    return `cached-image://cache/${encodeURIComponent(filename)}`
-  }
-
-  const imageUrl = cachedPath ? getCachedImageUrl(cachedPath) : scryfallUrl
+  // Ask whether this face is in the disk cache, and only then hand the <img> a source:
+  // the cached file if there is one, the CDN otherwise. Until the answer arrives the
+  // <img> keeps what it was showing, so moving between cards swaps one image for the
+  // next with no blank frame and never requests the CDN copy of a cached image. The
+  // cancel flag drops an answer that arrives after the card or face has changed.
+  useEffect(() => {
+    let cancelled = false
+    const show = (cachedPath: string | null) => {
+      if (cancelled) return
+      const url = imageSource(cachedPath, scryfallUrl)
+      if (url) setShown({ key: imageKey, url })
+      else setFailedKey(imageKey)
+    }
+    window.electronAPI.getCachedImagePath(card.id, cachedFace).then(show, () => show(null))
+    return () => { cancelled = true }
+  }, [card.id, cachedFace, imageKey, scryfallUrl])
 
   const handleFlip = useCallback(() => {
-    setCurrentFace(prev => (prev === 0 ? 1 : 0))
-    // For flip-layout cards the URL doesn't change — same <img>, same src,
-    // just a CSS rotation — so onLoad never fires again. Skipping the
-    // loading reset here keeps the spinner from sticking on forever.
-    if (!isFlipLayout) {
-      setIsLoading(true)
-      setCachedPath(null)
-    }
-  }, [isFlipLayout])
+    setFaceChoice({ cardId: card.id, face: currentFace === 0 ? 1 : 0 })
+  }, [card.id, currentFace])
 
   const handleLoad = useCallback(() => {
-    setIsLoading(false)
-    setHasError(false)
+    setHasLoadedOnce(true)
+    setFailedKey(null)
   }, [])
 
   const handleError = useCallback(() => {
-    setIsLoading(false)
-    setHasError(true)
-  }, [])
+    // An error for an image this component has already moved on from says nothing
+    // about the current one.
+    if (!shown || shown.key !== imageKey) return
+    const retryUrl = sourceAfterError(shown.url, scryfallUrl)
+    if (retryUrl) setShown({ key: shown.key, url: retryUrl })
+    else setFailedKey(shown.key)
+  }, [shown, imageKey, scryfallUrl])
+
+  const hasError = failedKey === imageKey
+  const isLoading = !hasLoadedOnce && !hasError
 
   // Get face name for accessibility. Flip-layout cards have card_faces names
   // (e.g. "Akki Lavarunner" / "Tok-Tok, Volcano Born") even though the image
@@ -89,8 +106,11 @@ export function CardImage({
     : card.name
 
   return (
-    <div className={cn('relative inline-block', className)}>
-      {/* Loading state */}
+    <div
+      className={cn('relative block w-full', className)}
+      style={{ maxWidth: NATURAL_WIDTH[size], aspectRatio: CARD_ASPECT_RATIO }}
+    >
+      {/* Loading state — only before the first image; later swaps keep the old one up */}
       {isLoading && (
         <div className="absolute inset-0 flex items-center justify-center bg-muted rounded-lg">
           <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
@@ -99,7 +119,7 @@ export function CardImage({
 
       {/* Error state */}
       {hasError && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted rounded-lg text-muted-foreground">
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-muted rounded-lg text-muted-foreground">
           <span className="text-sm">Failed to load image</span>
           <span className="text-xs mt-1">{card.name}</span>
         </div>
@@ -107,17 +127,16 @@ export function CardImage({
 
       {/* Card image */}
       <img
-        src={imageUrl || ''}
+        src={shown?.url}
         alt={faceName}
         className={cn(
-          'rounded-lg transition-opacity duration-200',
-          isLoading && 'opacity-0',
-          !isLoading && !hasError && 'opacity-100'
+          'block w-full h-full rounded-lg transition-opacity duration-200',
+          hasLoadedOnce ? 'opacity-100' : 'opacity-0'
         )}
         style={{ transform: isRotated ? 'rotate(180deg)' : undefined }}
         onLoad={handleLoad}
         onError={handleError}
-        loading="lazy"
+        decoding="async"
       />
 
       {/* Flip button for DFCs and flip-layout cards */}
@@ -127,7 +146,7 @@ export function CardImage({
           size="icon"
           onClick={handleFlip}
           className={cn(
-            'absolute bottom-2 right-2 h-8 w-8',
+            'absolute bottom-2 right-2 z-20 h-8 w-8',
             'opacity-30 hover:opacity-100 transition-opacity',
             'bg-background/80 hover:bg-background'
           )}
@@ -140,52 +159,6 @@ export function CardImage({
           <RefreshCw className="w-4 h-4" />
         </Button>
       )}
-    </div>
-  )
-}
-
-// Simplified card image for lists (no flip support, smaller footprint)
-interface SimpleCardImageProps {
-  imageUrl: string
-  name: string
-  size?: 'small' | 'normal' | 'large'
-  className?: string
-}
-
-export function SimpleCardImage({
-  imageUrl,
-  name,
-  className
-}: SimpleCardImageProps) {
-  const [isLoading, setIsLoading] = useState(true)
-  const [hasError, setHasError] = useState(false)
-
-  return (
-    <div className={cn('relative inline-block', className)}>
-      {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-muted rounded-lg">
-          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-        </div>
-      )}
-
-      {hasError && (
-        <div className="absolute inset-0 flex items-center justify-center bg-muted rounded-lg text-muted-foreground text-xs">
-          No image
-        </div>
-      )}
-
-      <img
-        src={imageUrl}
-        alt={name}
-        className={cn(
-          'rounded-lg transition-opacity duration-200',
-          isLoading && 'opacity-0',
-          !isLoading && !hasError && 'opacity-100'
-        )}
-        onLoad={() => { setIsLoading(false); setHasError(false) }}
-        onError={() => { setIsLoading(false); setHasError(true) }}
-        loading="lazy"
-      />
     </div>
   )
 }

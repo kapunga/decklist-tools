@@ -64,6 +64,17 @@ export const editorialTextStyle: CSSProperties = {
   letterSpacing: '-0.005em',
 }
 
+// The focused-card panel when it has no card image to show: the invitation to click,
+// or the name of a card whose data is not available. Fixed height so the panel does not
+// jump when an image takes its place.
+export const previewPlaceholderStyle: CSSProperties = {
+  height: '380px',
+  fontFamily: 'var(--font-tagline)',
+  fontStyle: 'italic',
+  fontSize: '14px',
+  color: 'var(--muted-foreground)',
+}
+
 // Section heading — the italic display register used for the headings inside
 // the deck-detail tool panels (Stats, Notes, Pull List). Smaller than the
 // masthead title but the same editorial voice, so panel sections read as
