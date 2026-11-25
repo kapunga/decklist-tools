@@ -102,7 +102,7 @@ export interface ElectronAPI {
   saveTaxonomy: (taxonomy: unknown) => Promise<void>
   listCardLists: () => Promise<unknown[]>
   getCardList: (id: string) => Promise<unknown | null>
-  saveCardList: (list: unknown) => Promise<void>
+  saveCardList: (list: unknown) => Promise<CardList>
   deleteCardList: (id: string) => Promise<boolean>
   getConfig: () => Promise<unknown>
   saveConfig: (config: unknown) => Promise<void>

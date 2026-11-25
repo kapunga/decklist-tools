@@ -313,7 +313,12 @@ export class Storage {
     return this.readJson<CardList>(this.cardListPath(id))
   }
 
-  saveCardList(list: CardList): void {
+  /**
+   * Persist a card list. Stamps `version` and `updatedAt` onto `list` in place and
+   * returns it, so a caller on the far side of a process boundary (where the in-place
+   * stamp is lost) can still learn what was written.
+   */
+  saveCardList(list: CardList): CardList {
     validateUUID(list.id, 'card list ID')
     // Optimistic locking: verify no concurrent modification
     const filePath = this.cardListPath(list.id)
@@ -329,6 +334,7 @@ export class Storage {
     list.version = (list.version || 0) + 1
     list.updatedAt = new Date().toISOString()
     this.writeJson(filePath, list)
+    return list
   }
 
   deleteCardList(id: string): boolean {
