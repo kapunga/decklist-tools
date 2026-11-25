@@ -18,13 +18,13 @@ import {
   showColorlessPip,
   isArtCardFaceValid,
   TWO_FACED_LAYOUTS,
-  getPrimaryType,
-  isLandPrimaryType,
   ROTATED_LAYOUTS,
   type ArtCardFace,
 } from '@mtg-deckbuilder/shared'
-import { getCardById, resolveArtCropUrl } from '@/lib/scryfall'
-import { lookupOrNull } from '@/lib/scryfallOutcome'
+import { resolveArtCropUrl } from '@/lib/scryfall'
+import { cardCache } from '@/lib/cardCacheInstance'
+import { pickHeroId } from '@/lib/deckHero'
+import { cardsToScryfallIdsKey } from '@/hooks/useScryfallCache'
 import { useStore } from '@/hooks/useStore'
 
 interface DeckCardPreviewProps {
@@ -68,34 +68,13 @@ const GRADIENT_POSITIONS = [
 // (flip layout — same URL, rendered rotated 180°) are imported from the
 // shared package so the validator and these renderers agree on the rules.
 
-// Pick a hero card from the mainboard for non-Commander decks: the highest-CMC
-// non-land card, with ties broken deterministically by deck id so the same deck
-// always shows the same art across renders. Returns null for empty/all-land
-// mainboards so the caller can fall back to the gradient.
-async function pickHeroFromMainboard(deck: Deck): Promise<string | null> {
-  const entries = getMainboard(deck).filter(e => e.card.scryfallId)
-  if (entries.length === 0) return null
-
-  const cards = await Promise.all(
-    entries.map(async e => ({
-      id: e.card.scryfallId!,
-      card: await lookupOrNull(() => getCardById(e.card.scryfallId!), 'deck hero candidate'),
-    })),
-  )
-  const nonLands = cards.filter(
-    c => c.card && !isLandPrimaryType(getPrimaryType(c.card.type_line)),
-  )
-  if (nonLands.length === 0) return null
-
-  const maxCmc = Math.max(...nonLands.map(c => c.card!.cmc ?? 0))
-  const candidates = nonLands.filter(c => (c.card!.cmc ?? 0) === maxCmc)
-  candidates.sort((a, b) => a.id.localeCompare(b.id))
-
-  const hash = Array.from(deck.id).reduce(
-    (h, ch) => (h * 31 + ch.charCodeAt(0)) | 0,
-    0,
-  )
-  return candidates[Math.abs(hash) % candidates.length].id
+// Pick a hero card from the mainboard for non-Commander decks (see `pickHeroId`).
+// Takes the mainboard as its ids key so the lookup is one cache call for the whole
+// deck — memory first, one disk read, one batched Scryfall request for the rest.
+async function pickHeroFromMainboard(deckId: string, mainboardIdsKey: string): Promise<string | null> {
+  if (mainboardIdsKey === '') return null
+  const cards = await cardCache.getCards(mainboardIdsKey.split(','))
+  return pickHeroId(deckId, [...cards.values()])
 }
 
 // Build a layered radial-gradient hero from a deck's color identity, using
@@ -212,26 +191,26 @@ export function DeckCardPreview({ deck, onClick, onDelete }: DeckCardPreviewProp
 
   // Resolution chain: explicit override → commander default → highest-CMC heuristic.
   // Sets just the id; URL and layout are resolved in dependent effects below.
+  // Keyed on values, not on the deck's arrays: an edit that leaves the art choice, the
+  // commander and the set of mainboard cards alone does not re-run it.
+  const chosenHeroId = deck.artCardScryfallId ?? deck.commanders[0]?.scryfallId ?? null
+  const mainboardIdsKey = useMemo(
+    () => (chosenHeroId ? '' : cardsToScryfallIdsKey(getMainboard(deck))),
+    [chosenHeroId, deck],
+  )
   useEffect(() => {
-    let cancelled = false
-    const resolve = async () => {
-      if (deck.artCardScryfallId) {
-        if (!cancelled) setHeroCardId(deck.artCardScryfallId)
-        return
-      }
-      const commanderId = deck.commanders[0]?.scryfallId
-      if (commanderId) {
-        if (!cancelled) setHeroCardId(commanderId)
-        return
-      }
-      const heuristicId = await pickHeroFromMainboard(deck)
-      if (!cancelled) setHeroCardId(heuristicId)
+    if (chosenHeroId) {
+      setHeroCardId(chosenHeroId)
+      return
     }
-    resolve()
+    let cancelled = false
+    pickHeroFromMainboard(deck.id, mainboardIdsKey).then(heuristicId => {
+      if (!cancelled) setHeroCardId(heuristicId)
+    })
     return () => {
       cancelled = true
     }
-  }, [deck.id, deck.artCardScryfallId, deck.commanders, deck.cardSets])
+  }, [deck.id, chosenHeroId, mainboardIdsKey])
 
   // Resolve the art URL through the disk cache (or fall back to direct CDN).
   // 'flipped' shares the front URL — rotation happens render-side via CSS — so
@@ -252,15 +231,15 @@ export function DeckCardPreview({ deck, onClick, onDelete }: DeckCardPreviewProp
     }
   }, [heroCardId, urlFace])
 
-  // Fetch the hero card's layout to gate the flip button. Single fetch per
-  // resolved id; getCardById is locally cached so this is essentially free.
+  // Look up the hero card's layout to gate the flip button. Goes through the card
+  // cache, so it only reaches Scryfall for a card that is cached nowhere.
   useEffect(() => {
     if (!heroCardId) {
       setHeroLayout(null)
       return
     }
     let cancelled = false
-    lookupOrNull(() => getCardById(heroCardId), 'hero card layout').then(card => {
+    cardCache.getCard(heroCardId).then(card => {
       if (!cancelled) setHeroLayout(card?.layout ?? null)
     })
     return () => {

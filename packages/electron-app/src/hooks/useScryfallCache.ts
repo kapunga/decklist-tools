@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { CardEntry, ScryfallCard } from '@/types'
+import { cardCache } from '@/lib/cardCacheInstance'
 
 /**
  * Build a STABLE PRIMITIVE signature of the scryfall ids present in a card list:
@@ -19,17 +20,47 @@ export function cardsToScryfallIdsKey(cards: CardEntry[]): string {
   return [...ids].sort().join(',')
 }
 
+type CardMap = Map<string, ScryfallCard>
+
+/** Whether two maps hold the very same card objects under the same ids. */
+export function sameCards(a: ReadonlyMap<string, ScryfallCard>, b: ReadonlyMap<string, ScryfallCard>): boolean {
+  if (a.size !== b.size) return false
+  for (const [id, card] of a) {
+    if (b.get(id) !== card) return false
+  }
+  return true
+}
+
+const idsOf = (idsKey: string): string[] => (idsKey === '' ? [] : idsKey.split(','))
+
+const inMemory = (ids: readonly string[]): CardMap =>
+  new Map(ids.flatMap(id => {
+    const card = cardCache.peek(id)
+    return card ? [[id, card] as const] : []
+  }))
+
+// Hand back the map already held when nothing in it changed, so memos keyed on the map
+// (stats, validation, grouping) are not invalidated by a lookup that found nothing new.
+const keepIfSame = (next: ReadonlyMap<string, ScryfallCard>) => (prev: CardMap): CardMap =>
+  sameCards(prev, next) ? prev : new Map(next)
+
+/**
+ * Scryfall data for a list of entries, by scryfall id. Whatever is already in memory is
+ * there on the first render; the disk cache fills in next (`isLoading` covers only that
+ * step); cards cached nowhere are then fetched from Scryfall in one batch, in the
+ * background, and appear when they arrive.
+ */
 export function useScryfallCache(cards: CardEntry[]) {
   const idsKey = useMemo(() => cardsToScryfallIdsKey(cards), [cards])
 
-  const [cache, setCache] = useState<Map<string, ScryfallCard>>(() => new Map())
+  const [cache, setCache] = useState<CardMap>(() => inMemory(idsOf(idsKey)))
   const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
-    if (idsKey === '') {
-      // Preserve the existing reference when already empty so we don't trigger a
-      // needless state update (and re-render) on every mount/update.
-      setCache(prev => (prev.size === 0 ? prev : new Map()))
+    const ids = idsOf(idsKey)
+    const known = inMemory(ids)
+    setCache(keepIfSame(known))
+    if (known.size === ids.length) {
       setIsLoading(false)
       return
     }
@@ -37,20 +68,15 @@ export function useScryfallCache(cards: CardEntry[]) {
     let cancelled = false
     setIsLoading(true)
 
-    window.electronAPI.getCachedCards(idsKey.split(','))
-      .then((result) => {
-        if (cancelled) return
-        const map = new Map<string, ScryfallCard>()
-        for (const [id, data] of Object.entries(result)) {
-          map.set(id, data as ScryfallCard)
-        }
-        setCache(map)
+    void cardCache.getLocal(ids)
+      .then(local => {
+        if (cancelled) return local
+        setCache(keepIfSame(local))
         setIsLoading(false)
+        return local.size === ids.length ? local : cardCache.getCards(ids)
       })
-      .catch(() => {
-        if (cancelled) return
-        setCache(prev => (prev.size === 0 ? prev : new Map()))
-        setIsLoading(false)
+      .then(all => {
+        if (!cancelled) setCache(keepIfSame(all))
       })
 
     return () => { cancelled = true }

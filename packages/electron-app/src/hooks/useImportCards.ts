@@ -2,20 +2,12 @@ import { useState, useCallback, useRef } from 'react'
 import { formats, detectFormat, type ParsedCard } from '@mtg-deckbuilder/shared'
 import { searchCardByName, lookupCardsByIdentifiers } from '@/lib/scryfall'
 import { describeScryfallError } from '@/lib/scryfallOutcome'
-import type { ScryfallCard } from '@/types'
+import { cardCache } from '@/lib/cardCacheInstance'
 import { resolveImportedCards } from './importLookup'
 import type { ImportProgress, ResolvedCard, UseImportCardsResult } from './types'
 
 export type { ImportProgress, ResolvedCard, UseImportCardsResult } from './types'
 
-async function persistToLocalCache(cards: ScryfallCard[]): Promise<void> {
-  if (cards.length === 0) return
-  try {
-    await window.electronAPI.saveCachedCards(cards)
-  } catch (error) {
-    console.error('Failed to persist imported cards to local cache:', error)
-  }
-}
 
 /**
  * Hook to encapsulate shared import logic between ImportDialog and ImportNewDeckDialog.
@@ -93,7 +85,7 @@ export function useImportCards(sideboardSize?: number): UseImportCardsResult {
           lookupByName: searchCardByName,
         },
       )
-      await persistToLocalCache(fetchedScryfallCards)
+      await cardCache.save(fetchedScryfallCards)
       setErrors(newErrors)
       return { resolvedCards, errors: newErrors }
     } catch (error) {

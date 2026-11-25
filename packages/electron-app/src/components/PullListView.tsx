@@ -7,8 +7,7 @@ import { CardImage } from '@/components/CardImage'
 import { CollapsibleSection } from '@/components/CollapsibleSection'
 import { usePullList, type PullListGroup, type PullListItem } from '@/hooks/usePullList'
 import { pullListGroupHeading } from '@mtg-deckbuilder/shared'
-import { getCardById } from '@/lib/scryfall'
-import { lookupOrNull } from '@/lib/scryfallOutcome'
+import { cardCache } from '@/lib/cardCacheInstance'
 import {
   captionLabelStyle,
   editorialTextStyle,
@@ -106,7 +105,7 @@ export function PullListView({ deck }: PullListViewProps) {
     const fetchCard = async () => {
       setLoadingCard(true)
       try {
-        const scryfallCard = await lookupOrNull(() => getCardById(focusedScryfallId), 'focused card')
+        const scryfallCard = await cardCache.getCard(focusedScryfallId)
         if (!cancelled) {
           setFocusedScryfallCard(scryfallCard)
         }

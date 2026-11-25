@@ -11,7 +11,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useStore } from '@/hooks/useStore'
-import { autocomplete, searchCardByName, getCardsByIds, getCardImageUrl, listLegalities } from '@/lib/scryfall'
+import { autocomplete, searchCardByName, getCardImageUrl, listLegalities } from '@/lib/scryfall'
+import { cardCache } from '@/lib/cardCacheInstance'
 import { lookupOrNull } from '@/lib/scryfallOutcome'
 import { AUTOCOMPLETE } from '@/lib/constants'
 import type { CardEntry, CardList, ScryfallCard, FormatType } from '@/types'
@@ -114,9 +115,7 @@ export function CardListView() {
       if (card) {
         await addCardToList(list.id, createCardIdentifier(card), undefined, 'user')
         // Persist into the local cache so format-legality and previews can resolve it.
-        window.electronAPI.saveCachedCards([card]).catch((err: unknown) =>
-          console.error('Failed to cache added card:', err),
-        )
+        void cardCache.save([card])
       }
     } finally {
       setIsLoading(false)
@@ -314,30 +313,13 @@ function LegalityPanel({ entries }: LegalityPanelProps) {
     }
     setIsLoading(true)
     const ids = entries.map(e => e.card.scryfallId).filter((id): id is string => Boolean(id))
-    ;(async () => {
-      const cached = (await window.electronAPI.getCachedCards(ids)) as Record<string, ScryfallCard>
+    // The card cache back-fills anything cached nowhere (e.g. lists imported before
+    // import-time caching landed) with one batched request and writes it to disk.
+    cardCache.getCards(ids).then(found => {
       if (cancelled) return
-
-      // Back-fill cards that aren't yet cached (e.g. lists imported before
-      // import-time caching landed). Hits Scryfall once per missing card,
-      // then writes them to the local cache so subsequent renders are fast.
-      const missingIds = ids.filter(id => !cached[id])
-      if (missingIds.length === 0) {
-        setResolved(Object.values(cached))
-        setIsLoading(false)
-        return
-      }
-
-      const fetched = await lookupOrNull(() => getCardsByIds(missingIds), 'list legality backfill') ?? []
-      if (cancelled) return
-      if (fetched.length > 0) {
-        window.electronAPI.saveCachedCards(fetched).catch((err: unknown) =>
-          console.error('Failed to cache backfilled cards:', err),
-        )
-      }
-      setResolved([...Object.values(cached), ...fetched])
+      setResolved([...found.values()])
       setIsLoading(false)
-    })()
+    })
     return () => { cancelled = true }
   }, [entries])
 
