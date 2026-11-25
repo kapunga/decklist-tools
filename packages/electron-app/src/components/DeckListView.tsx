@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { memo, useState, useEffect, useCallback, useMemo } from 'react'
 import { Plus, Minus } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { CardImage } from '@/components/CardImage'
@@ -12,7 +12,8 @@ import { CardFilterBar } from '@/components/CardFilterBar'
 import { useStore, useGlobalRoles } from '@/hooks/useStore'
 import { useScryfallCache } from '@/hooks/useScryfallCache'
 import { captionLabelStyle, editorialTextStyle, previewPlaceholderStyle } from '@/lib/mastheadStyles'
-import type { CardEntry, Deck, CardSetName } from '@/types'
+import type { CardEntry, Deck, CardSetName, RoleDefinition } from '@/types'
+import { sortedByName } from '@/lib/deckRows'
 import { getCardLimit, isCardFullyPulled, getCardDisplayName, getCanonicalSuffix, OWNERSHIP_STATUS, CARD_SOURCE, CARD_SET } from '@/types'
 import { CARD_TYPE_SORT_ORDER, getAllRoles } from '@/lib/constants'
 import type { CardFilter } from '@mtg-deckbuilder/shared'
@@ -31,6 +32,7 @@ export function DeckListView({ deck, listType }: DeckListViewProps) {
   const selectAllCards = useStore(state => state.selectAllCards)
   const setFocusedCard = useStore(state => state.setFocusedCard)
   const updateCardInDeck = useStore(state => state.updateCardInDeck)
+  const adjustCardQuantity = useStore(state => state.adjustCardQuantity)
   const removeCardFromDeck = useStore(state => state.removeCardFromDeck)
   const addRoleToCard = useStore(state => state.addRoleToCard)
   const removeRoleFromCard = useStore(state => state.removeRoleFromCard)
@@ -92,17 +94,21 @@ export function DeckListView({ deck, listType }: DeckListViewProps) {
     return groups
   }, [filteredCards, scryfallCache])
 
-  // Sort groups by type order, with Commander first
+  // Sort groups by type order, with Commander first, and each group's cards by name.
+  // Sorting here rather than in the render keeps the memoized groups from being
+  // re-sorted (and mutated) on every render.
   const sortedGroups = useMemo(() => {
-    return Object.entries(groupedCards).sort(([a], [b]) => {
-      // Put "Commander" at the top
-      if (a === 'Commander') return -1
-      if (b === 'Commander') return 1
-      // Sort by card type order
-      const orderA = CARD_TYPE_SORT_ORDER[a] ?? 99
-      const orderB = CARD_TYPE_SORT_ORDER[b] ?? 99
-      return orderA - orderB
-    })
+    return Object.entries(groupedCards)
+      .sort(([a], [b]) => {
+        // Put "Commander" at the top
+        if (a === 'Commander') return -1
+        if (b === 'Commander') return 1
+        // Sort by card type order
+        const orderA = CARD_TYPE_SORT_ORDER[a] ?? 99
+        const orderB = CARD_TYPE_SORT_ORDER[b] ?? 99
+        return orderA - orderB
+      })
+      .map(([typeName, groupCards]): [string, CardEntry[]] => [typeName, sortedByName(groupCards)])
   }, [groupedCards])
 
   // Auto-focus the first card when deck view opens
@@ -110,9 +116,7 @@ export function DeckListView({ deck, listType }: DeckListViewProps) {
     if (!focusedCardId && sortedGroups.length > 0) {
       const [, firstGroupCards] = sortedGroups[0]
       if (firstGroupCards && firstGroupCards.length > 0) {
-        // Sort alphabetically like in the render and focus the first one
-        const sortedCards = [...firstGroupCards].sort((a, b) => a.card.name.localeCompare(b.card.name))
-        setFocusedCard(sortedCards[0].id)
+        setFocusedCard(firstGroupCards[0].id)
       }
     }
   }, [deck.id]) // Only run when deck changes, not on every sortedGroups change
@@ -129,19 +133,14 @@ export function DeckListView({ deck, listType }: DeckListViewProps) {
   const focusedScryfallCard = focusedScryfallId ? scryfallCache.get(focusedScryfallId) ?? null : null
   const focusedManaCost = getCardManaCost(focusedScryfallCard ?? undefined)
 
+  // The row callbacks below take the row's id or name as an argument and depend only on
+  // the deck id, so the same function objects are handed to every row on every render —
+  // which is what lets a memoized row skip rendering when its own card has not changed.
+
   // Handle quantity change
-  const handleQuantityChange = useCallback(async (cardName: string, delta: number) => {
-    const card = cards.find(c => c.card.name === cardName)
-    if (!card) return
-
-    const maxQty = getCardLimit(card.card.name, deck.format)
-    const currentQty = card.quantity
-    const newQty = Math.max(1, Math.min(maxQty === Infinity ? 99 : maxQty, currentQty + delta))
-
-    if (newQty !== currentQty) {
-      await updateCardInDeck(deck.id, cardName, { quantity: newQty })
-    }
-  }, [cards, deck.id, deck.format, updateCardInDeck])
+  const handleQuantityChange = useCallback(async (cardId: string, delta: number) => {
+    await adjustCardQuantity(deck.id, cardId, delta)
+  }, [deck.id, adjustCardQuantity])
 
   // Handle delete
   const handleDelete = useCallback(async (cardName: string) => {
@@ -162,6 +161,13 @@ export function DeckListView({ deck, listType }: DeckListViewProps) {
   const handleUpdateNotes = useCallback(async (cardName: string, notes: string | undefined) => {
     await updateCardInDeck(deck.id, cardName, { notes })
   }, [deck.id, updateCardInDeck])
+
+  // One edit dialog for the whole list, pointed at whichever row asked for it. It stays
+  // mounted while closing so the dialog's exit animation can play.
+  const [editing, setEditing] = useState<{ cardId: string; isOpen: boolean } | null>(null)
+  const editingCard = editing ? cards.find(c => c.id === editing.cardId) : undefined
+  const handleEdit = useCallback((cardId: string) => setEditing({ cardId, isOpen: true }), [])
+  const handleCloseEdit = useCallback(() => setEditing(prev => prev && { ...prev, isOpen: false }), [])
 
   // Check if all cards in a group are selected
   const isGroupSelected = useCallback((groupCards: CardEntry[]) => {
@@ -291,27 +297,26 @@ export function DeckListView({ deck, listType }: DeckListViewProps) {
                 defaultOpen={true}
               >
                 <div className="space-y-1">
-                  {groupCards
-                    .sort((a, b) => a.card.name.localeCompare(b.card.name))
-                    .map((card, index) => (
-                      <CardRow
-                        key={`${typeName}-${card.card.name}-${card.card.scryfallId || index}`}
-                        card={card}
-                        deck={deck}
-                        globalRoles={globalRoles}
-                        isSelected={selectedCards.has(card.card.name)}
-                        isFocused={focusedCardId === card.id}
-                        isCommander={card.id.startsWith('commander-')}
-                        listType={listType}
-                        onToggleSelect={() => toggleCardSelection(card.card.name)}
-                        onFocus={() => setFocusedCard(card.id)}
-                        onQuantityChange={handleQuantityChange}
-                        onDelete={handleDelete}
-                        onAddRole={(roleId) => handleAddRole(card.card.name, roleId)}
-                        onRemoveRole={(roleId) => handleRemoveRole(card.card.name, roleId)}
-                        onUpdateNotes={(notes) => handleUpdateNotes(card.card.name, notes)}
-                      />
-                    ))}
+                  {groupCards.map(card => (
+                    <CardRow
+                      key={card.id}
+                      card={card}
+                      maxQty={getCardLimit(card.card.name, deck.format)}
+                      globalRoles={globalRoles}
+                      customRoles={deck.customRoles}
+                      isSelected={selectedCards.has(card.card.name)}
+                      isFocused={focusedCardId === card.id}
+                      isCommander={card.id.startsWith('commander-')}
+                      onToggleSelect={toggleCardSelection}
+                      onFocus={setFocusedCard}
+                      onQuantityChange={handleQuantityChange}
+                      onDelete={handleDelete}
+                      onAddRole={handleAddRole}
+                      onRemoveRole={handleRemoveRole}
+                      onUpdateNotes={handleUpdateNotes}
+                      onEdit={handleEdit}
+                    />
+                  ))}
                 </div>
               </CollapsibleSection>
             )
@@ -342,52 +347,66 @@ export function DeckListView({ deck, listType }: DeckListViewProps) {
         hasSideboard={deck.format.sideboardSize > 0}
       />
 
+      {editing && editingCard && (
+        <CardEditModal
+          key={editingCard.id}
+          isOpen={editing.isOpen}
+          onClose={handleCloseEdit}
+          card={editingCard}
+          deckId={deck.id}
+          listType={listType}
+        />
+      )}
     </div>
   )
 }
 
+// Every prop is either a primitive, an object whose identity survives edits to other
+// cards (the entry itself, the role lists), or a callback that never changes — so the
+// memo below holds, and editing or focusing one card re-renders one or two rows rather
+// than the whole list. The callbacks take the row's id or name for the same reason: a
+// per-row closure would be a new function, and a changed prop, on every render.
 interface CardRowProps {
   card: CardEntry
-  deck: Deck
-  globalRoles: import('@/types').RoleDefinition[]
+  maxQty: number
+  globalRoles: RoleDefinition[]
+  customRoles: RoleDefinition[]
   isSelected: boolean
   isFocused: boolean
   isCommander?: boolean
-  listType: CardSetName
-  onToggleSelect: () => void
-  onFocus: () => void
-  onQuantityChange: (cardName: string, delta: number) => void
+  onToggleSelect: (cardName: string) => void
+  onFocus: (cardId: string) => void
+  onQuantityChange: (cardId: string, delta: number) => void
   onDelete: (cardName: string) => void
-  onAddRole: (roleId: string) => void
-  onRemoveRole: (roleId: string) => void
-  onUpdateNotes: (notes: string | undefined) => void
+  onAddRole: (cardName: string, roleId: string) => void
+  onRemoveRole: (cardName: string, roleId: string) => void
+  onUpdateNotes: (cardName: string, notes: string | undefined) => void
+  onEdit: (cardId: string) => void
 }
 
-function CardRow({
+const CardRow = memo(function CardRow({
   card,
-  deck,
+  maxQty,
   globalRoles,
+  customRoles,
   isSelected,
   isFocused,
   isCommander = false,
-  listType,
   onToggleSelect,
   onFocus,
   onQuantityChange,
   onDelete,
   onAddRole,
   onRemoveRole,
-  onUpdateNotes
+  onUpdateNotes,
+  onEdit
 }: CardRowProps) {
-  const maxQty = getCardLimit(card.card.name, deck.format)
+  const cardName = card.card.name
   const displayRoles = card.roles
 
   // Notes editing state
   const [isEditingNotes, setIsEditingNotes] = useState(false)
   const [notesValue, setNotesValue] = useState(card.notes || '')
-
-  // Edit modal state
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
 
   // Sync notes value when card changes
   useEffect(() => {
@@ -397,7 +416,7 @@ function CardRow({
   const handleSaveNotes = () => {
     const trimmedNotes = notesValue.trim()
     if (trimmedNotes !== (card.notes || '')) {
-      onUpdateNotes(trimmedNotes || undefined)
+      onUpdateNotes(cardName, trimmedNotes || undefined)
     }
     setIsEditingNotes(false)
   }
@@ -414,7 +433,7 @@ function CardRow({
             ? 'color-mix(in srgb, var(--foreground) 4%, transparent)'
             : 'transparent',
       }}
-      onClick={onFocus}
+      onClick={() => onFocus(card.id)}
     >
       {/* Checkbox - hidden for commanders */}
       {isCommander ? (
@@ -422,7 +441,7 @@ function CardRow({
       ) : (
         <Checkbox
           checked={isSelected}
-          onCheckedChange={onToggleSelect}
+          onCheckedChange={() => onToggleSelect(cardName)}
           onClick={e => e.stopPropagation()}
         />
       )}
@@ -445,7 +464,7 @@ function CardRow({
           }}
           onClick={e => {
             e.stopPropagation()
-            onQuantityChange(card.card.name, -1)
+            onQuantityChange(card.id, -1)
           }}
           disabled={isCommander || card.quantity <= 1}
         >
@@ -476,7 +495,7 @@ function CardRow({
           }}
           onClick={e => {
             e.stopPropagation()
-            onQuantityChange(card.card.name, 1)
+            onQuantityChange(card.id, 1)
           }}
           disabled={isCommander || (maxQty !== Infinity && card.quantity >= maxQty)}
         >
@@ -499,16 +518,16 @@ function CardRow({
             key={roleId}
             roleId={roleId}
             globalRoles={globalRoles}
-            customRoles={deck.customRoles}
-            onRemove={isCommander ? undefined : () => onRemoveRole(roleId)}
+            customRoles={customRoles}
+            onRemove={isCommander ? undefined : () => onRemoveRole(cardName, roleId)}
             disabled={isCommander}
           />
         ))}
 
         <RoleAutocomplete
-          deck={deck}
+          customRoles={customRoles}
           existingRoles={card.roles}
-          onAdd={onAddRole}
+          onAdd={roleId => onAddRole(cardName, roleId)}
           placeholder={displayRoles.length === 0 ? "No roles" : undefined}
           disabled={isCommander}
         />
@@ -617,7 +636,7 @@ function CardRow({
             }}
             onClick={e => {
               e.stopPropagation()
-              setIsEditModalOpen(true)
+              onEdit(card.id)
             }}
             title="Edit card"
           >
@@ -639,7 +658,7 @@ function CardRow({
             }}
             onClick={e => {
               e.stopPropagation()
-              onDelete(card.card.name)
+              onDelete(cardName)
             }}
             title="Remove card"
           >
@@ -649,18 +668,9 @@ function CardRow({
       ) : (
         <div className="flex-shrink-0" style={{ width: '52px' }} />
       )}
-
-      {/* Edit Card Modal */}
-      <CardEditModal
-        isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-        card={card}
-        deckId={deck.id}
-        listType={listType}
-      />
     </div>
   )
-}
+})
 
 // Caption label + value row used by the focused-card panel for Cost / Printing / Roles.
 function MetaRow({ label, children }: { label: string; children: React.ReactNode }) {

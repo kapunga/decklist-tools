@@ -1,5 +1,5 @@
 import { X } from 'lucide-react'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { getRoleColor, getRoleById } from '@/lib/constants'
 import type { RoleDefinition } from '@/types'
 
@@ -49,16 +49,14 @@ export function RolePill({ roleId, globalRoles, customRoles, onRemove, disabled 
 
   if (description) {
     return (
-      <TooltipProvider delayDuration={300}>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            {pill}
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>{description}</p>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          {pill}
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>{description}</p>
+        </TooltipContent>
+      </Tooltip>
     )
   }
 

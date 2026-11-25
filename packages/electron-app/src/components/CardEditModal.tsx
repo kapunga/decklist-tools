@@ -216,7 +216,7 @@ export function CardEditModal({
                 />
               ))}
               <RoleAutocomplete
-                deck={deck}
+                customRoles={deck.customRoles}
                 existingRoles={card.roles}
                 onAdd={handleAddRole}
                 placeholder={card.roles.length === 0 ? 'Add role...' : undefined}

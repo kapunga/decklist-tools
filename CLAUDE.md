@@ -96,7 +96,7 @@ TypeScript MCP server with 30+ tools:
 - `src/views/` - Deck rendering (full, skeleton, checklist, curve, by-role, by-type)
 
 ### Electron App (packages/electron-app/)
-React 18 + TypeScript with Vite bundling:
+React 19 + TypeScript with Vite bundling:
 - `electron/main.ts` - Electron main process with Claude Desktop integration
 - `electron/preload.ts` - IPC bridge for secure API access
 - `electron/storage.ts` - File system operations
@@ -115,8 +115,10 @@ The Electron app includes a "Connect to Claude Desktop" feature in Settings:
 
 ## Key Dependencies
 
+Major versions only; the `package.json` files are the source of truth.
+
 ### Shared Package
-- TypeScript 5.2.2
+- TypeScript 7
 - uuid (deck/card ID generation)
 
 ### MCP Server
@@ -124,10 +126,10 @@ The Electron app includes a "Connect to Claude Desktop" feature in Settings:
 - @mtg-deckbuilder/shared (shared types and utilities)
 
 ### Electron App
-- Electron 39.0.0
-- React 18.2.0 + TypeScript 5.2.2
-- Zustand 4.4.7 (state) + TanStack React Query 5.8.4
-- Tailwind CSS 3.3.5 + Radix UI
+- Electron 45
+- React 19 + TypeScript 7, bundled with Vite 8
+- Zustand 5 (state) + TanStack React Query 5
+- Tailwind CSS 4 + Radix UI
 - @mtg-deckbuilder/shared (shared types and utilities)
 
 ## Specifications

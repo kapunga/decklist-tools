@@ -5,8 +5,11 @@ import {
   removeCardFromDeck,
   moveCard as domainMoveCard,
   findCardAcrossLists,
+  getAllDeckEntries,
+  getCardLimit,
   mapAllDeckEntries,
 } from '@mtg-deckbuilder/shared'
+import { clampQuantity } from '@/lib/deckRows'
 import type { CardSlice, SliceCreator } from './types'
 
 export const createCardSlice: SliceCreator<CardSlice> = (_set, get) => ({
@@ -40,6 +43,17 @@ export const createCardSlice: SliceCreator<CardSlice> = (_set, get) => ({
         : entry
     )
     await get().updateDeck(updatedDeck)
+  },
+
+  adjustCardQuantity: async (deckId, cardId, delta) => {
+    const deck = get().decks.find(d => d.id === deckId)
+    const entry = deck && getAllDeckEntries(deck).find(e => e.id === cardId)
+    if (!deck || !entry) return
+
+    const quantity = clampQuantity(entry.quantity, delta, getCardLimit(entry.card.name, deck.format))
+    if (quantity === entry.quantity) return
+
+    await get().updateDeck(mapAllDeckEntries(deck, e => (e.id === cardId ? { ...e, quantity } : e)))
   },
 
   moveCard: async (deckId, cardName, from, to, quantity) => {
