@@ -2,7 +2,7 @@ import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, protocol, sessi
 import path from 'path'
 import fs from 'fs'
 import os from 'os'
-import { Storage, loadCardDeckLimits, buildArtCropUrlFromId, getFormat } from '@mtg-deckbuilder/shared'
+import { Storage, loadCardDeckLimits, buildArtCropUrlFromId, getFormat, scryfallImageFetch } from '@mtg-deckbuilder/shared'
 import type { Deck, Taxonomy, CardList, Config, RoleDefinition, SetCollectionFile, PullListConfig } from '@mtg-deckbuilder/shared'
 import {
   watchForChanges,
@@ -671,7 +671,7 @@ function setupIpcHandlers() {
     if (storage.getCachedArtCropPath(scryfallId, resolvedFace)) return cacheUrl
 
     try {
-      const response = await fetch(buildArtCropUrlFromId(scryfallId, resolvedFace))
+      const response = await scryfallImageFetch(buildArtCropUrlFromId(scryfallId, resolvedFace))
       if (!response.ok) return null
       const buffer = Buffer.from(await response.arrayBuffer())
       storage.cacheArtCrop(scryfallId, buffer, resolvedFace)

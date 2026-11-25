@@ -1,7 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import type { Deck, CardIdentifier, ScryfallCard } from '@mtg-deckbuilder/shared'
-import { Storage, isDoubleFacedCard, getAllDeckEntries } from '@mtg-deckbuilder/shared'
+import { Storage, isDoubleFacedCard, getAllDeckEntries, scryfallApiFetch, scryfallImageFetch } from '@mtg-deckbuilder/shared'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -203,8 +203,6 @@ export async function preCacheDeck(
         result.errors.push(`Card not found: ${deckCard.card.name}`)
       }
 
-      // Rate limiting: wait 100ms between Scryfall API calls
-      await new Promise(resolve => setTimeout(resolve, 100))
     } catch (error) {
       result.errors.push(`Error caching ${deckCard.card.name}: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
@@ -225,7 +223,6 @@ export async function preCacheDeck(
         result.errors.push(`Commander not found: ${commander.name}`)
       }
 
-      await new Promise(resolve => setTimeout(resolve, 100))
     } catch (error) {
       result.errors.push(`Error caching commander ${commander.name}: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
@@ -354,8 +351,6 @@ export async function loadAllCardsToCache(
         errors.push(`Card not found: ${name}`)
       }
 
-      // Rate limiting: wait 100ms between Scryfall API calls
-      await new Promise(resolve => setTimeout(resolve, 100))
     } catch (error) {
       errors.push(`Error fetching ${name}: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
@@ -384,7 +379,7 @@ async function fetchAndCacheCard(
     const cached = storage.getCachedCard(identifier.scryfallId) as ScryfallCard | null
     if (cached) return cached
 
-    const response = await fetch(`https://api.scryfall.com/cards/${identifier.scryfallId}`)
+    const response = await scryfallApiFetch(`https://api.scryfall.com/cards/${identifier.scryfallId}`)
     if (response.ok) {
       const card = await response.json() as ScryfallCard
       storage.cacheCardWithIndex(card)
@@ -394,7 +389,7 @@ async function fetchAndCacheCard(
     const cached = storage.getCachedCardBySetCollector(identifier.setCode, identifier.collectorNumber)
     if (cached) return cached
 
-    const response = await fetch(`https://api.scryfall.com/cards/${identifier.setCode.toLowerCase()}/${identifier.collectorNumber}`)
+    const response = await scryfallApiFetch(`https://api.scryfall.com/cards/${identifier.setCode.toLowerCase()}/${identifier.collectorNumber}`)
     if (response.ok) {
       const card = await response.json() as ScryfallCard
       storage.cacheCardWithIndex(card)
@@ -404,7 +399,7 @@ async function fetchAndCacheCard(
     const cached = storage.getCachedCardByName(identifier.name)
     if (cached) return cached
 
-    const response = await fetch(`https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(identifier.name)}`)
+    const response = await scryfallApiFetch(`https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(identifier.name)}`)
     if (response.ok) {
       const card = await response.json() as ScryfallCard
       storage.cacheCardWithIndex(card)
@@ -438,7 +433,7 @@ async function cacheCardImages(storage: Storage, card: ScryfallCard): Promise<vo
 
     if (frontUrl && !storage.getCachedImagePath(card.id, 'front')) {
       try {
-        const response = await fetch(frontUrl)
+        const response = await scryfallImageFetch(frontUrl)
         if (response.ok) {
           const buffer = Buffer.from(await response.arrayBuffer())
           storage.cacheImage(card.id, buffer, 'front')
@@ -450,7 +445,7 @@ async function cacheCardImages(storage: Storage, card: ScryfallCard): Promise<vo
 
     if (backUrl && !storage.getCachedImagePath(card.id, 'back')) {
       try {
-        const response = await fetch(backUrl)
+        const response = await scryfallImageFetch(backUrl)
         if (response.ok) {
           const buffer = Buffer.from(await response.arrayBuffer())
           storage.cacheImage(card.id, buffer, 'back')
@@ -465,7 +460,7 @@ async function cacheCardImages(storage: Storage, card: ScryfallCard): Promise<vo
 
     if (imageUrl && !storage.getCachedImagePath(card.id)) {
       try {
-        const response = await fetch(imageUrl)
+        const response = await scryfallImageFetch(imageUrl)
         if (response.ok) {
           const buffer = Buffer.from(await response.arrayBuffer())
           storage.cacheImage(card.id, buffer)

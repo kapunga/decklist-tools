@@ -1,6 +1,7 @@
 import { ScryfallRateLimitError } from './errors.js'
 
-const USER_AGENT = 'MTGDeckbuilder/1.0'
+/** Scryfall rejects default-library User-Agents (HTTP 400 `generic_user_agent`), so every request names the app. */
+export const SCRYFALL_USER_AGENT = 'MTGDeckbuilder/1.0'
 
 /** Time source, injectable so tests can run on virtual time. */
 export interface Clock {
@@ -118,7 +119,7 @@ export interface ScryfallTransportDeps {
 
 const withUserAgent = (init?: ScryfallRequestInit): ScryfallRequestInit => ({
   ...init,
-  headers: { 'User-Agent': USER_AGENT, ...init?.headers },
+  headers: { 'User-Agent': SCRYFALL_USER_AGENT, ...init?.headers },
 })
 
 const retryDelay = (response: Response, attempt: number, deps: ScryfallTransportDeps): number =>

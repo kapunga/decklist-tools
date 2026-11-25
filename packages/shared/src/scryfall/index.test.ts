@@ -15,6 +15,8 @@ import {
   ScryfallError,
   ScryfallRateLimitError,
   setScryfallTransport,
+  scryfallApiFetch,
+  scryfallImageFetch,
   WUBRG_ORDER,
 } from './index.js'
 import { createRateLimiter, createScryfallTransport, type Clock } from './transport.js'
@@ -435,5 +437,56 @@ describe('lookupCardsByIdentifiers', () => {
       jsonResponse(429, { details: 'Slow down' }, { 'Retry-After': '1' })))
     const error = await lookupCardsByIdentifiers([{ name: 'Opt' }]).catch(e => e)
     expect(error).toBeInstanceOf(ScryfallRateLimitError)
+  })
+})
+
+// Scryfall answers requests that carry a default-library User-Agent with HTTP 400
+// (`generic_user_agent`), on the API and the image CDN alike. These are the two doors
+// callers outside this module use, so both must identify the app.
+describe('fetch helpers for callers outside the client', () => {
+  const userAgentOf = (fetchMock: ReturnType<typeof vi.fn>): string | undefined =>
+    (fetchMock.mock.calls[0][1] as { headers?: Record<string, string> } | undefined)?.headers?.['User-Agent']
+
+  beforeEach(useInstantTransport)
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    setScryfallTransport()
+  })
+
+  it('scryfallApiFetch sends the app User-Agent', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, {}))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await scryfallApiFetch('https://api.scryfall.com/cards/abc')
+
+    expect(userAgentOf(fetchMock)).toBe('MTGDeckbuilder/1.0')
+  })
+
+  it('scryfallApiFetch follows a swapped transport, so it shares the process queue', async () => {
+    const swapped = vi.fn().mockResolvedValue(jsonResponse(200, {}))
+    setScryfallTransport(swapped)
+
+    await scryfallApiFetch('https://api.scryfall.com/cards/abc')
+
+    expect(swapped).toHaveBeenCalledWith('https://api.scryfall.com/cards/abc', undefined)
+  })
+
+  it('scryfallImageFetch sends the app User-Agent', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response('jpeg-bytes'))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await scryfallImageFetch('https://cards.scryfall.io/normal/front/a/b/abc.jpg')
+
+    expect(userAgentOf(fetchMock)).toBe('MTGDeckbuilder/1.0')
+  })
+
+  it('scryfallImageFetch stays off the API queue', async () => {
+    const swapped = vi.fn()
+    setScryfallTransport(swapped)
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('jpeg-bytes')))
+
+    await scryfallImageFetch('https://cards.scryfall.io/normal/front/a/b/abc.jpg')
+
+    expect(swapped).not.toHaveBeenCalled()
   })
 })
