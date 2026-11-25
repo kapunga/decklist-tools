@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { cardsToScryfallIdsKey } from './useScryfallCache'
-import type { CardEntry } from '@/types'
+import { cardsToScryfallIdsKey, sameCards } from './useScryfallCache'
+import type { CardEntry, ScryfallCard } from '@/types'
 
 // Minimal CardEntry stub — only `card.scryfallId` matters for the signature.
 function entry(scryfallId?: string): CardEntry {
@@ -38,5 +38,26 @@ describe('cardsToScryfallIdsKey', () => {
 
   it('ignores entries without a scryfallId', () => {
     expect(cardsToScryfallIdsKey([entry('a'), entry(undefined)])).toBe(cardsToScryfallIdsKey([entry('a')]))
+  })
+})
+
+describe('sameCards', () => {
+  const sol = { id: 'sol' } as ScryfallCard
+  const signet = { id: 'signet' } as ScryfallCard
+
+  it('is true for two maps holding the same card objects', () => {
+    expect(sameCards(new Map([['sol', sol]]), new Map([['sol', sol]]))).toBe(true)
+  })
+
+  it('is false when a card was added', () => {
+    expect(sameCards(new Map([['sol', sol]]), new Map([['sol', sol], ['signet', signet]]))).toBe(false)
+  })
+
+  it('is false when the same id holds a different object', () => {
+    expect(sameCards(new Map([['sol', sol]]), new Map([['sol', { ...sol }]]))).toBe(false)
+  })
+
+  it('is false when one id was swapped for another', () => {
+    expect(sameCards(new Map([['sol', sol]]), new Map([['signet', signet]]))).toBe(false)
   })
 })

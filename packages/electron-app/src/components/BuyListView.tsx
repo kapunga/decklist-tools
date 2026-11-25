@@ -2,7 +2,11 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { ArrowLeft, ExternalLink, ArrowUpDown, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useStore, useBuyList, type BuyListItem } from '@/hooks/useStore'
-import { getCardById, getCardPrices, type CardPrices } from '@/lib/scryfall'
+import { getCardsByIds, type CardPrices } from '@/lib/scryfall'
+import type { ScryfallCard } from '@/types'
+import { lookupOrNull } from '@/lib/scryfallOutcome'
+import { cardCache } from '@/lib/cardCacheInstance'
+import { buyListIdsKey, pricesByCardName } from '@/lib/buyListPrices'
 
 type SortKey = 'name' | 'quantity' | 'price'
 type SortDirection = 'asc' | 'desc'
@@ -14,36 +18,31 @@ export function BuyListView() {
 
   const [sortKey, setSortKey] = useState<SortKey>('name')
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
-  const [prices, setPrices] = useState<Record<string, CardPrices>>({})
+  const [pricedCards, setPricedCards] = useState<ScryfallCard[]>([])
   const [loadingPrices, setLoadingPrices] = useState(false)
 
-  // Fetch prices for all cards
+  // Prices go stale, so this asks Scryfall rather than the card cache — but as one
+  // batched request, and only when the set of cards on the list changes.
+  const idsKey = useMemo(() => buyListIdsKey(buyList), [buyList])
   useEffect(() => {
-    if (buyList.length === 0) return
-
-    const fetchPrices = async () => {
-      setLoadingPrices(true)
-      const newPrices: Record<string, CardPrices> = {}
-
-      for (const item of buyList) {
-        if (item.scryfallId) {
-          try {
-            const card = await getCardById(item.scryfallId)
-            if (card) {
-              newPrices[item.cardName.toLowerCase()] = getCardPrices(card)
-            }
-          } catch (e) {
-            // Ignore individual card errors
-          }
-        }
-      }
-
-      setPrices(newPrices)
+    if (idsKey === '') {
       setLoadingPrices(false)
+      return
     }
 
-    fetchPrices()
-  }, [buyList])
+    let cancelled = false
+    setLoadingPrices(true)
+    lookupOrNull(() => getCardsByIds(idsKey.split(',')), 'buy list prices').then(fetched => {
+      if (cancelled) return
+      const cards = fetched ?? []
+      cardCache.put(cards)
+      setPricedCards(cards)
+      setLoadingPrices(false)
+    })
+    return () => { cancelled = true }
+  }, [idsKey])
+
+  const prices = useMemo(() => pricesByCardName(buyList, pricedCards), [buyList, pricedCards])
 
   const handleSort = useCallback((key: SortKey) => {
     if (key === sortKey) {

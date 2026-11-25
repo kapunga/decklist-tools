@@ -24,7 +24,7 @@ import { formats } from '@mtg-deckbuilder/shared'
 import { ImportFileButton } from '@/components/ImportFileButton'
 
 const deckImportFormats = formats.filter(f => !f.listOnly)
-import { getCardById } from '@/lib/scryfall'
+import { cardCache } from '@/lib/cardCacheInstance'
 import type { FormatType, Deck, CardEntry, CardIdentifier } from '@/types'
 import { createEmptyDeck, formatDefaults, FORMAT_TYPE, CARD_SET, isCommanderLikeFormat } from '@/types'
 import { withDeckCardSet, getCardSetEntries } from '@mtg-deckbuilder/shared'
@@ -145,7 +145,7 @@ export function ImportNewDeckDialog({ open: controlledOpen, onOpenChange }: Impo
 
         // Fetch color identity from commanders
         if (commanders.length > 0 && commanders[0].scryfallId) {
-          const scryfallCard = await getCardById(commanders[0].scryfallId)
+          const scryfallCard = await cardCache.getCard(commanders[0].scryfallId)
           if (scryfallCard) {
             colorIdentity = scryfallCard.color_identity
           }

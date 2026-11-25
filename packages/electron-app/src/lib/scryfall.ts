@@ -8,7 +8,6 @@ export {
   searchCardByName,
   searchCardByNameExact,
   getCardBySetAndNumber,
-  getCardById,
   getCardsByIds,
   lookupCardsByIdentifiers,
   autocomplete,

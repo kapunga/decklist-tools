@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input'
 import { useStore } from '@/hooks/useStore'
 import { autocomplete, searchCardByName } from '@/lib/scryfall'
 import { lookupOrNull } from '@/lib/scryfallOutcome'
+import { cardCache } from '@/lib/cardCacheInstance'
 import { AUTOCOMPLETE } from '@/lib/constants'
 import { CardAddModal } from '@/components/CardAddModal'
 import type { ScryfallCard, DeckFormat, RoleDefinition, CardSetName } from '@/types'
@@ -94,6 +95,10 @@ export function QuickAdd({ deckId, format, colorIdentity, customRoles, activeTab
         console.error('Card not found:', name)
         return
       }
+
+      // Keep the card we just fetched: without this the deck would hold an entry whose
+      // data is cached nowhere, and the next view would have to fetch it again.
+      void cardCache.save([scryfallCard])
 
       // Open modal with card info
       setPendingCard(scryfallCard)
