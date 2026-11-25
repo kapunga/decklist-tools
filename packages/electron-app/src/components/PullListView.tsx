@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Loader2, Package, Check } from 'lucide-react'
 import { PullListToolbar } from '@/components/PullListToolbar'
 import { PullListTable } from '@/components/PullListTable'
@@ -7,14 +7,16 @@ import { CardImage } from '@/components/CardImage'
 import { CollapsibleSection } from '@/components/CollapsibleSection'
 import { usePullList, type PullListGroup, type PullListItem } from '@/hooks/usePullList'
 import { pullListGroupHeading } from '@mtg-deckbuilder/shared'
-import { cardCache } from '@/lib/cardCacheInstance'
+import { findPrintingById } from '@/lib/printings'
+import { useLocalCard } from '@/hooks/useLocalCard'
 import {
   captionLabelStyle,
   editorialTextStyle,
+  previewPlaceholderStyle,
   sectionTitleStyle,
   PAGE_X_PAD,
 } from '@/lib/mastheadStyles'
-import type { Deck, ScryfallCard } from '@/types'
+import type { Deck } from '@/types'
 
 interface PullListViewProps {
   deck: Deck
@@ -87,51 +89,18 @@ export function PullListView({ deck }: PullListViewProps) {
   // Focus state for card preview
   const [focusedItem, setFocusedItem] = useState<PullListItem | null>(null)
   const [focusedScryfallId, setFocusedScryfallId] = useState<string | null>(null)
-  const [focusedScryfallCard, setFocusedScryfallCard] = useState<ScryfallCard | null>(null)
-  const [loadingCard, setLoadingCard] = useState(false)
 
-  useEffect(() => {
-    if (!focusedScryfallId) {
-      setFocusedScryfallCard(null)
-      return
-    }
-
-    if (focusedScryfallCard?.id === focusedScryfallId) {
-      return
-    }
-
-    let cancelled = false
-
-    const fetchCard = async () => {
-      setLoadingCard(true)
-      try {
-        const scryfallCard = await cardCache.getCard(focusedScryfallId)
-        if (!cancelled) {
-          setFocusedScryfallCard(scryfallCard)
-        }
-      } finally {
-        if (!cancelled) {
-          setLoadingCard(false)
-        }
-      }
-    }
-
-    fetchCard()
-
-    return () => {
-      cancelled = true
-    }
-  }, [focusedScryfallId])
+  // Every printing on this page is already loaded, so the focused one is a lookup. The
+  // disk cache covers the rare id that is not among them; hovering never reaches Scryfall.
+  const focusedPrinting = focusedScryfallId ? findPrintingById(printingsMap, focusedScryfallId) ?? null : null
+  const cachedFocusedCard = useLocalCard(focusedPrinting ? null : focusedScryfallId)
+  const focusedScryfallCard = focusedPrinting ?? cachedFocusedCard
 
   const handleFocusItem = (item: PullListItem) => {
     setFocusedItem(item)
     setFocusedScryfallId(item.scryfallId)
   }
 
-  const handleHoverPrintingById = (scryfallId: string) => {
-    if (focusedScryfallCard?.id === scryfallId) return
-    setFocusedScryfallId(scryfallId)
-  }
 
   const focusedItemKey = focusedItem ? getItemKey(focusedItem) : null
 
@@ -165,11 +134,7 @@ export function PullListView({ deck }: PullListViewProps) {
         >
           <span style={captionLabelStyle}>Currently viewing</span>
 
-          {loadingCard ? (
-            <div className="flex items-center justify-center" style={{ height: '380px' }}>
-              <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--muted-foreground)' }} />
-            </div>
-          ) : focusedScryfallCard ? (
+          {focusedScryfallCard ? (
             <div className="flex flex-col gap-4">
               <CardImage card={focusedScryfallCard} size="large" />
               <div className="flex flex-col gap-1">
@@ -194,17 +159,8 @@ export function PullListView({ deck }: PullListViewProps) {
               </div>
             </div>
           ) : (
-            <div
-              className="flex items-center justify-center"
-              style={{
-                height: '380px',
-                fontFamily: 'var(--font-tagline)',
-                fontStyle: 'italic',
-                fontSize: '14px',
-                color: 'var(--muted-foreground)',
-              }}
-            >
-              click a card to preview
+            <div className="flex items-center justify-center text-center" style={previewPlaceholderStyle}>
+              {focusedItem ? focusedItem.cardName : 'click a card to preview'}
             </div>
           )}
         </div>
@@ -219,7 +175,7 @@ export function PullListView({ deck }: PullListViewProps) {
             items={identifyItems}
             printingsMap={printingsMap}
             deckId={deck.id}
-            onHoverPrinting={handleHoverPrintingById}
+            onHoverPrinting={setFocusedScryfallId}
           />
         ) : (
           <>
