@@ -1,6 +1,5 @@
 import type { CardEntry, DeckNote } from '@/types'
-import { propagateNoteRole } from '@/types'
-import { mapAllDeckEntries } from '@mtg-deckbuilder/shared'
+import { mapAllDeckEntries, withNoteRole } from '@mtg-deckbuilder/shared'
 import type { NoteSlice, SliceCreator } from './types'
 
 export const createNoteSlice: SliceCreator<NoteSlice> = (_set, get) => ({
@@ -16,9 +15,7 @@ export const createNoteSlice: SliceCreator<NoteSlice> = (_set, get) => ({
       updatedAt: now,
     }
 
-    const updatedDeck = { ...deck, notes: [...deck.notes, note] }
-    propagateNoteRole(updatedDeck, note)
-    await get().updateDeck(updatedDeck)
+    await get().updateDeck(withNoteRole({ ...deck, notes: [...deck.notes, note] }, note))
   },
 
   updateNote: async (deckId, noteId, updates) => {
@@ -28,14 +25,10 @@ export const createNoteSlice: SliceCreator<NoteSlice> = (_set, get) => ({
     const updatedNotes = deck.notes.map(n =>
       n.id === noteId ? { ...n, ...updates, updatedAt: new Date().toISOString() } : n
     )
-    const updatedDeck = { ...deck, notes: updatedNotes }
+    const withNotes = { ...deck, notes: updatedNotes }
+    const updatedNote = updatedNotes.find(n => n.id === noteId)
 
-    const updatedNote = updatedDeck.notes.find(n => n.id === noteId)
-    if (updatedNote) {
-      propagateNoteRole(updatedDeck, updatedNote)
-    }
-
-    await get().updateDeck(updatedDeck)
+    await get().updateDeck(updatedNote ? withNoteRole(withNotes, updatedNote) : withNotes)
   },
 
   deleteNote: async (deckId, noteId, removeRole = false) => {

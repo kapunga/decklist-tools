@@ -149,3 +149,101 @@ describe('card list saves', () => {
     expect(useStore.getState().cardLists).toBe(afterSave)
   })
 })
+
+describe('deck saves', () => {
+  beforeEach(() => useStore.setState(initialState, true))
+  afterEach(() => vi.unstubAllGlobals())
+
+  // Like Storage.saveDeck behind IPC: the reply is a clone of what was sent, with the
+  // version bumped and a fresh updatedAt. Nothing else differs.
+  const saveToDisk = (disk: FakeDisk) => async (sent: Deck) => {
+    const saved: Deck = { ...structuredClone(sent), version: sent.version + 1, updatedAt: '2026-04-04T00:00:00.000Z' }
+    disk.decks = disk.decks.some(d => d.id === saved.id)
+      ? disk.decks.map(d => (d.id === saved.id ? saved : d))
+      : [...disk.decks, saved]
+    return structuredClone(saved)
+  }
+
+  const twoCardDeck = () =>
+    deck('d1', 'One', [{ name: 'mainboard', entries: [entry('Opt', 1, 'owned'), entry('Sol Ring', 1, 'owned')] }])
+
+  async function loadedStore(disk: FakeDisk, overrides: Record<string, unknown> = {}) {
+    stubElectronApi(disk, { saveDeck: saveToDisk(disk), ...overrides })
+    await useStore.getState().loadData()
+    return useStore.getState().decks[0]
+  }
+
+  it('updateDeck keeps the identity of entries the edit did not touch', async () => {
+    const before = await loadedStore({ decks: [twoCardDeck()], cardLists: [] })
+
+    await useStore.getState().updateCardInDeck('d1', 'Opt', { quantity: 3 })
+    const after = useStore.getState().decks[0]
+
+    expect(after.cardSets[0].entries[0].quantity).toBe(3)
+    expect(after.cardSets[0].entries[1]).toBe(before.cardSets[0].entries[1])
+  })
+
+  it('updateDeck takes version and updatedAt from the save', async () => {
+    await loadedStore({ decks: [twoCardDeck()], cardLists: [] })
+
+    await useStore.getState().updateCardInDeck('d1', 'Opt', { quantity: 3 })
+    const after = useStore.getState().decks[0]
+
+    expect(after.version).toBe(2)
+    expect(after.updatedAt).toBe('2026-04-04T00:00:00.000Z')
+  })
+
+  it('a save followed by the reload it triggers changes nothing', async () => {
+    await loadedStore({ decks: [twoCardDeck()], cardLists: [] })
+    await useStore.getState().updateCardInDeck('d1', 'Opt', { quantity: 3 })
+    const afterSave = useStore.getState().decks
+    const listener = vi.fn()
+    const unsubscribe = useStore.subscribe(listener)
+
+    await useStore.getState().loadData()
+    unsubscribe()
+
+    expect(listener).not.toHaveBeenCalled()
+    expect(useStore.getState().decks).toBe(afterSave)
+  })
+
+  it('a rejected save leaves the decks untouched', async () => {
+    const disk: FakeDisk = { decks: [twoCardDeck()], cardLists: [] }
+    await loadedStore(disk, { saveDeck: async () => { throw new Error('Concurrent modification') } })
+    const before = useStore.getState().decks
+
+    await expect(useStore.getState().updateCardInDeck('d1', 'Opt', { quantity: 3 })).rejects.toThrow('Concurrent modification')
+
+    expect(useStore.getState().decks).toBe(before)
+  })
+
+  it('addDeck stores and returns the same deck object, at the saved version', async () => {
+    const disk: FakeDisk = { decks: [], cardLists: [] }
+    await loadedStore(disk)
+    const fresh = { ...twoCardDeck(), version: 0 }
+
+    const returned = await useStore.getState().addDeck(fresh)
+
+    expect(useStore.getState().decks[0]).toBe(returned)
+    expect(returned.version).toBe(1)
+    expect(returned.cardSets[0].entries[0]).toBe(fresh.cardSets[0].entries[0])
+  })
+
+  it('a note that carries a role gives the referenced entry a new identity instead of mutating it', async () => {
+    // The IPC clone used to hide an in-place mutation here. With identities preserved
+    // across a save, a mutated entry would look unchanged and its row would never update.
+    const before = await loadedStore({ decks: [twoCardDeck()], cardLists: [] })
+    const optBefore = before.cardSets[0].entries[0]
+
+    await useStore.getState().addNote('d1', {
+      title: 'Cantrips', content: '', noteType: 'general',
+      cardRefs: [{ cardName: 'Opt', ordinal: 1 }], roleId: 'card-draw',
+    } as Parameters<ReturnType<typeof useStore.getState>['addNote']>[1])
+    const after = useStore.getState().decks[0]
+
+    expect(optBefore.roles).toEqual([])
+    expect(after.cardSets[0].entries[0].roles).toEqual(['card-draw'])
+    expect(after.cardSets[0].entries[0]).not.toBe(optBefore)
+    expect(after.cardSets[0].entries[1]).toBe(before.cardSets[0].entries[1])
+  })
+})

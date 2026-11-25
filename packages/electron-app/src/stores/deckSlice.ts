@@ -2,11 +2,21 @@ import { createEmptyDeck, formatDefaults } from '@/types'
 import type { Deck } from '@/types'
 import type { DeckSlice, SliceCreator } from './types'
 
+// Saving sends the deck across IPC, and the reply is a deep clone: same content, but
+// every card entry a new object. Storing that clone would make a one-card edit look
+// like a hundred changed cards to anything keyed on entry identity. The only things the
+// save actually decides are `version` and `updatedAt`, so keep the deck we built and
+// take just those two from the reply.
+async function persistDeck(deck: Deck): Promise<Deck> {
+  const saved = await window.electronAPI.saveDeck(deck) as Deck
+  return { ...deck, version: saved.version, updatedAt: saved.updatedAt }
+}
+
 export const createDeckSlice: SliceCreator<DeckSlice> = (set, get) => ({
   addDeck: async (deck) => {
-    const saved = await window.electronAPI.saveDeck(deck) as Deck
-    set(state => ({ decks: [...state.decks, saved] }))
-    return saved
+    const stored = await persistDeck(deck)
+    set(state => ({ decks: [...state.decks, stored] }))
+    return stored
   },
 
   createDeck: async (name, formatType) => {
@@ -14,11 +24,11 @@ export const createDeckSlice: SliceCreator<DeckSlice> = (set, get) => ({
   },
 
   updateDeck: async (deck) => {
-    const saved = await window.electronAPI.saveDeck(deck) as Deck
+    const stored = await persistDeck(deck)
     set(state => ({
-      decks: state.decks.map(d => d.id === saved.id ? saved : d)
+      decks: state.decks.map(d => d.id === stored.id ? stored : d)
     }))
-    return saved
+    return stored
   },
 
   deleteDeck: async (id) => {
