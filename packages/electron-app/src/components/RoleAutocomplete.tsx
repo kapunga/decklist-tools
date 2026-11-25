@@ -2,10 +2,10 @@ import { useState, useRef, useEffect, useMemo } from 'react'
 import { Plus } from 'lucide-react'
 import { getAllRoles, getRoleColor } from '@/lib/constants'
 import { useGlobalRoles } from '@/hooks/useStore'
-import type { Deck, RoleDefinition } from '@/types'
+import type { RoleDefinition } from '@/types'
 
 interface RoleAutocompleteProps {
-  deck: Deck
+  customRoles: RoleDefinition[]
   existingRoles: string[]
   onAdd: (roleId: string) => void
   placeholder?: string
@@ -13,7 +13,7 @@ interface RoleAutocompleteProps {
 }
 
 export function RoleAutocomplete({
-  deck,
+  customRoles,
   existingRoles,
   onAdd,
   placeholder,
@@ -28,9 +28,9 @@ export function RoleAutocomplete({
 
   // Get all available roles, filtered to exclude already assigned
   const availableRoles = useMemo(() => {
-    const allRoles = getAllRoles(globalRoles, deck.customRoles)
+    const allRoles = getAllRoles(globalRoles, customRoles)
     return allRoles.filter(role => !existingRoles.includes(role.id))
-  }, [globalRoles, deck.customRoles, existingRoles])
+  }, [globalRoles, customRoles, existingRoles])
 
   // Filter roles by input
   const filteredRoles = useMemo(() => {
@@ -46,8 +46,10 @@ export function RoleAutocomplete({
     setSelectedIndex(0)
   }, [filteredRoles.length])
 
-  // Handle click outside to close dropdown
+  // Handle click outside to close dropdown. Only listens while the dropdown is open:
+  // there is one of these per card row, and a closed one has nothing to close.
   useEffect(() => {
+    if (!isOpen) return
     const handleClickOutside = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setIsOpen(false)
@@ -56,7 +58,7 @@ export function RoleAutocomplete({
     }
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
+  }, [isOpen])
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
@@ -158,7 +160,7 @@ export function RoleAutocomplete({
                     <div className="flex items-center gap-2">
                       <span
                         className="w-2 h-2 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: getRoleColor(role.id, globalRoles, deck.customRoles) }}
+                        style={{ backgroundColor: getRoleColor(role.id, globalRoles, customRoles) }}
                       />
                       <span className="font-medium">{role.name}</span>
                     </div>

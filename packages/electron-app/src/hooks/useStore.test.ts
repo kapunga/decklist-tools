@@ -207,6 +207,143 @@ describe('deck saves', () => {
     expect(useStore.getState().decks).toBe(afterSave)
   })
 
+  describe('adjustCardQuantity', () => {
+    // A format that allows four copies, so there is room to go up as well as down.
+    const standardDeck = (cardSets: CardSet[]): Deck =>
+      ({ ...deck('d1', 'One', cardSets), format: formatDefaults[FORMAT_TYPE.STANDARD] })
+
+    const optAndBolt = () =>
+      standardDeck([{ name: 'mainboard', entries: [entry('Opt', 1, 'owned'), entry('Shock', 2, 'owned')] }])
+
+    const quantities = () =>
+      useStore.getState().decks[0].cardSets.map(set => set.entries.map(e => e.quantity))
+
+    it('adds up across two changes made one after the other', async () => {
+      await loadedStore({ decks: [optAndBolt()], cardLists: [] })
+
+      await useStore.getState().adjustCardQuantity('d1', 'Opt', 1)
+      await useStore.getState().adjustCardQuantity('d1', 'Opt', 1)
+
+      expect(quantities()).toEqual([[3, 2]])
+    })
+
+    it('changes only the row with that id when the card is in two sets', async () => {
+      // The same card can sit in the mainboard and in alternates; pressing + on one
+      // row must not change the other.
+      const inBoth = standardDeck([
+        { name: 'mainboard', entries: [{ ...entry('Opt', 1, 'owned'), id: 'opt-main' }] },
+        { name: 'alternates', entries: [{ ...entry('Opt', 1, 'owned'), id: 'opt-alt' }] },
+      ])
+      await loadedStore({ decks: [inBoth], cardLists: [] })
+
+      await useStore.getState().adjustCardQuantity('d1', 'opt-alt', 1)
+
+      expect(quantities()).toEqual([[1], [2]])
+    })
+
+    it('keeps the identity of every other entry', async () => {
+      const before = await loadedStore({ decks: [optAndBolt()], cardLists: [] })
+
+      await useStore.getState().adjustCardQuantity('d1', 'Opt', 1)
+
+      expect(useStore.getState().decks[0].cardSets[0].entries[1]).toBe(before.cardSets[0].entries[1])
+    })
+
+    it('does not save when the quantity is already one and the change is down', async () => {
+      const saveDeck = vi.fn()
+      await loadedStore({ decks: [optAndBolt()], cardLists: [] }, { saveDeck })
+
+      await useStore.getState().adjustCardQuantity('d1', 'Opt', -1)
+
+      expect(saveDeck).not.toHaveBeenCalled()
+    })
+
+    it('does not save when the quantity is already at the format limit', async () => {
+      const full = standardDeck([{ name: 'mainboard', entries: [entry('Opt', 4, 'owned')] }])
+      const saveDeck = vi.fn()
+      await loadedStore({ decks: [full], cardLists: [] }, { saveDeck })
+
+      await useStore.getState().adjustCardQuantity('d1', 'Opt', 1)
+
+      expect(saveDeck).not.toHaveBeenCalled()
+    })
+
+    it('does nothing for an id the deck does not have', async () => {
+      const saveDeck = vi.fn()
+      await loadedStore({ decks: [optAndBolt()], cardLists: [] }, { saveDeck })
+
+      await useStore.getState().adjustCardQuantity('d1', 'nope', 1)
+
+      expect(saveDeck).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('editCardRow', () => {
+    // Opt sits in the mainboard and in alternates: two rows, one card name.
+    const optInBothSets = (): Deck => ({
+      ...deck('d1', 'One', [
+        { name: 'mainboard', entries: [{ ...entry('Opt', 4, 'owned'), id: 'opt-main' }, entry('Shock', 2, 'owned')] },
+        { name: 'alternates', entries: [{ ...entry('Opt', 1, 'owned'), id: 'opt-alt' }] },
+      ]),
+      format: formatDefaults[FORMAT_TYPE.STANDARD],
+    })
+
+    const rows = () => useStore.getState().decks[0].cardSets.flatMap(set => set.entries)
+    const row = (id: string) => rows().find(e => e.id === id)!
+
+    it('changes the quantity of the edited row only', async () => {
+      // Saving quantity 2 on the alternates row used to set the mainboard copy to 2 as well.
+      await loadedStore({ decks: [optInBothSets()], cardLists: [] })
+
+      await useStore.getState().editCardRow('d1', 'opt-alt', { quantity: 2 })
+
+      expect(row('opt-alt').quantity).toBe(2)
+      expect(row('opt-main').quantity).toBe(4)
+    })
+
+    it('still applies notes and ownership to every row of that card', async () => {
+      await loadedStore({ decks: [optInBothSets()], cardLists: [] })
+
+      await useStore.getState().editCardRow('d1', 'opt-alt', { notes: 'cantrip', ownership: 'need_to_buy' })
+
+      expect(rows().filter(e => e.card.name === 'Opt').map(e => [e.notes, e.ownership])).toEqual([
+        ['cantrip', 'need_to_buy'],
+        ['cantrip', 'need_to_buy'],
+      ])
+    })
+
+    it('saves a quantity and a note together in one save', async () => {
+      const disk: FakeDisk = { decks: [optInBothSets()], cardLists: [] }
+      const saveDeck = vi.fn(saveToDisk(disk))
+      await loadedStore(disk, { saveDeck })
+
+      await useStore.getState().editCardRow('d1', 'opt-alt', { quantity: 3, notes: 'cantrip' })
+
+      expect(saveDeck).toHaveBeenCalledTimes(1)
+      expect([row('opt-alt').quantity, row('opt-alt').notes]).toEqual([3, 'cantrip'])
+      expect([row('opt-main').quantity, row('opt-main').notes]).toEqual([4, 'cantrip'])
+    })
+
+    it('keeps the identity of rows the edit does not reach', async () => {
+      await loadedStore({ decks: [optInBothSets()], cardLists: [] })
+      const before = { main: row('opt-main'), shock: row('Shock') }
+
+      await useStore.getState().editCardRow('d1', 'opt-alt', { quantity: 2 })
+
+      expect(row('opt-main')).toBe(before.main)
+      expect(row('Shock')).toBe(before.shock)
+    })
+
+    it('does nothing for an id the deck does not have', async () => {
+      const saveDeck = vi.fn()
+      await loadedStore({ decks: [optInBothSets()], cardLists: [] }, { saveDeck })
+
+      await useStore.getState().editCardRow('d1', 'nope', { quantity: 2 })
+
+      expect(saveDeck).not.toHaveBeenCalled()
+    })
+  })
+
   it('a rejected save leaves the decks untouched', async () => {
     const disk: FakeDisk = { decks: [twoCardDeck()], cardLists: [] }
     await loadedStore(disk, { saveDeck: async () => { throw new Error('Concurrent modification') } })
