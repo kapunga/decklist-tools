@@ -56,6 +56,21 @@ export const createCardSlice: SliceCreator<CardSlice> = (_set, get) => ({
     await get().updateDeck(mapAllDeckEntries(deck, e => (e.id === cardId ? { ...e, quantity } : e)))
   },
 
+  editCardRow: async (deckId, cardId, updates) => {
+    const deck = get().decks.find(d => d.id === deckId)
+    const edited = deck && getAllDeckEntries(deck).find(e => e.id === cardId)
+    if (!deck || !edited) return
+
+    const { quantity, ...shared } = updates
+    const hasShared = Object.keys(shared).length > 0
+    const sameCard = (e: CardEntry) => e.card.name.toLowerCase() === edited.card.name.toLowerCase()
+
+    await get().updateDeck(mapAllDeckEntries(deck, (e: CardEntry) => {
+      const withShared = hasShared && sameCard(e) ? { ...e, ...shared } : e
+      return quantity !== undefined && e.id === cardId ? { ...withShared, quantity } : withShared
+    }))
+  },
+
   moveCard: async (deckId, cardName, from, to, quantity) => {
     const deck = get().decks.find(d => d.id === deckId)
     if (!deck) return

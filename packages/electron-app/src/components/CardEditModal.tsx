@@ -46,7 +46,7 @@ export function CardEditModal({
 }: CardEditModalProps) {
   const deck = useDeckById(deckId)
   const globalRoles = useGlobalRoles()
-  const updateCardInDeck = useStore(state => state.updateCardInDeck)
+  const editCardRow = useStore(state => state.editCardRow)
   const addRoleToCard = useStore(state => state.addRoleToCard)
   const removeRoleFromCard = useStore(state => state.removeRoleFromCard)
 
@@ -131,7 +131,7 @@ export function CardEditModal({
     }
 
     if (Object.keys(updates).length > 0) {
-      await updateCardInDeck(deckId, card.card.name, updates)
+      await editCardRow(deckId, card.id, updates)
     }
 
     onClose()

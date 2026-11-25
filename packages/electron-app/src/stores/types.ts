@@ -54,6 +54,11 @@ export interface CardSlice {
   updateCardInDeck: (deckId: string, cardName: string, updates: Partial<CardEntry>) => Promise<void>
   /** Step one row's quantity up or down. Keyed by entry id, so only that row changes. */
   adjustCardQuantity: (deckId: string, cardId: string, delta: number) => Promise<void>
+  /**
+   * Save an edit made on one row. Quantity is the row's own, so it changes that row
+   * only; the other fields describe the card and follow its name across the deck.
+   */
+  editCardRow: (deckId: string, cardId: string, updates: Partial<CardEntry>) => Promise<void>
   moveCard: (deckId: string, cardName: string, from: CardSetName, to: CardSetName, quantity?: number) => Promise<void>
 }
 
